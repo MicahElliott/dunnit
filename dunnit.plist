@@ -4,6 +4,8 @@
 <dict>
   <key>Label</key>
   <string>com.micahelliott.dunnit</string>
+  <key>KeepAlive</key>
+  <false/>
   <key>ProgramArguments</key>
   <array>
     <string>/bin/zsh</string>
@@ -11,7 +13,7 @@
     <string>~/proj/dunnit/dunnit.zsh</string>
   </array>
   <key>StartInterval</key>
-  <integer>60</integer>
+  <integer>3600</integer>
   <key>StandardOutPath</key>
   <string>/tmp/dunnit-launchd.log</string>
   <key>StandardErrorPath</key>

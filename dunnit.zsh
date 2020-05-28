@@ -19,6 +19,9 @@ if ! [[ -f $dunnit_file ]]; then
     echo "Creating new dunnit file for today's work: $dunnit_file"
 fi
 
+# Bail out if user pressed 'Cancel'.
+if [[ -z $ans ]]; then exit; fi
+
 line="$stamp $ans"
 
 echo $line >>$dunnit_file
