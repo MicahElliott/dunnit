@@ -12,7 +12,8 @@ if ! [[ -d $dunnit_dir ]]; then
    mkdir -p $dunnit_dir
 fi
 
-ans=$(alerter -reply -timeout 120 -sound default -message "What did you work on the last hour?" -title "Dunnit...")
+ans=$(/usr/local/bin/alerter -reply -timeout 120 -sound default -message "What did you work on the last hour?" -title "Dunnit...")
+# ans=$(alerter -reply -timeout 120 -sound default -message "What did you work on the last hour?" -title "Dunnit...")
 
 if ! [[ -f $dunnit_file ]]; then
     echo "Creating new dunnit file for today's work: $dunnit_file"
