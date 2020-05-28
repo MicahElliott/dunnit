@@ -14,6 +14,7 @@ list of things you worked on.
 
 1. Install Alerter
 1. Copy the .plist file into `~/Library/LaunchAgents/`
+1. `launchctl load dunnit.plist`
 1. Answer the popup prompt every hour (or ignore it)
 1. At the end of the week (or day), look over what you did in the
    `$DUNNIT_DIR` log

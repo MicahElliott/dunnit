@@ -3,15 +3,20 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.micahelliott.dunnit
+  <string>com.micahelliott.dunnit</string>
   <key>ProgramArguments</key>
   <array>
-    <string>dunnit.zsh</string>
+    <string>/bin/zsh</string>
+    <string>-c</string>
+    <string>~/proj/dunnit/dunnit.zsh</string>
   </array>
-  <key>StartCalendarInterval</key>
-  <dict>
-    <key>Hour</key>
-    <integer>1</integer>
+  <key>StartInterval</key>
+  <integer>60</integer>
+  <key>StandardOutPath</key>
+  <string>/tmp/dunnit-launchd.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/dunnit-launchd-err.log</string>
+  <key>RunAtLoad</key>
+  <true/>
   </dict>
-</dict>
 </plist>
