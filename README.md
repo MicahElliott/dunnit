@@ -10,6 +10,8 @@ what you worked on. The update you record in the popup is saved to a
 daily log. At the end of a good day you’ll end up with a timestamped
 list of things you worked on.
 
+![Dunnit Screenshot](dunnit.png)
+
 ## Install and Run
 
 1. Install Alerter: copy the [alerter zip
