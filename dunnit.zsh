@@ -12,15 +12,21 @@ if ! [[ -d $dunnit_dir ]]; then
    mkdir -p $dunnit_dir
 fi
 
-ans=$(/usr/local/bin/alerter -reply -timeout 120 -sound default -message "What did you work on the last hour?" -title "Dunnit...")
-# ans=$(alerter -reply -timeout 120 -sound default -message "What did you work on the last hour?" -title "Dunnit...")
+if [[ -f $dunnit_file ]]; then
+    last_update="LAST: $(sed -n '$p'  $dunnit_file | sed 's/^\[[0-9]*\] //')"
+fi
+
+ans=$(/usr/local/bin/alerter -reply -timeout 120 -sound default \
+      -title "Dunnit..." \
+      -subtitle "What did you work on the last hour?" \
+      -message "${last_update}")
 
 if ! [[ -f $dunnit_file ]]; then
     echo "Creating new dunnit file for today's work: $dunnit_file"
 fi
 
 # Bail out if user pressed 'Cancel'.
-if [[ -z $ans ]]; then exit; fi
+if [[ $ans == '@CLOSED' || $ans == '@TIMEOUT' ]]; then exit; fi
 
 line="$stamp $ans"
 
