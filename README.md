@@ -14,12 +14,35 @@ list of things you worked on.
 
 ## Install and Run
 
-1. Install Alerter: copy the [alerter zip
-   file](https://github.com/vjeantet/alerter/releases) to somewhere on
-   your PATH (`/usr/local/bin/alerter`)
-1. Clone this Dunnit repo and `cd` into it
-1. Start the dunnit service: `launchctl load dunnit.plist`
-1. Answer the popup prompt every hour (or ignore it; you have 2 minutes)
+Do all these steps from a terminal.
+
+1. Install Alerter: Download, extract, and install the
+   [alerter zip file](https://github.com/vjeantet/alerter/releases):
+
+   ```sh
+   mkdir ~/proj && cd ~/proj
+   wget https://github.com/vjeantet/alerter/releases/download/003/alerter_v003_darwin_amd64.zip
+   unzip alerter_v003_darwin_amd64.zip
+   mv alerter /usr/local/bin/alerter
+   ```
+
+1. Run alerter manually once to ensure it’ll work: `alerter -message hi`
+
+1. Clone this Dunnit repo. If you decide to clone it to somewhere
+   other than `~/proj/dunnit`, edit `dunnit.plist` to adjust the path
+   accordingly.
+
+   ```sh
+   git clone https://github.com/MicahElliott/dunnit.git
+   cd dunnit
+   ```
+
+1. Start the dunnit service: `launchctl load -w dunnit.plist`
+
+1. Answer the popup prompt every hour (or ignore it; you have 2
+   minutes till it disappears). Use #hashtags to categorize your
+   entries; that helps with later analysis.
+
 1. At the end of the week (or day), look over what you did in the
    `$DUNNIT_DIR` log
 
@@ -37,6 +60,8 @@ a local directory and sequence of files (with timestamped lines) like:
 ```sh
 # The location of all the daily dunnit log files
 export DUNNIT_DIR=~/doc/dunnit
+
+# THESE ARE NOT YET IMPLEMENTED…
 # The timestamp format for each entry
 export DUNNIT_TIME_FMT='%…'
 # The directory format
@@ -60,3 +85,4 @@ export DUNNIT_USE_ORG=false
 ## TODO
 
 - maybe package up as a homebrew service
+- add a couple utils to analyze/summarize the day, week, etc
