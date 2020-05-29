@@ -37,14 +37,24 @@ Do all these steps from a terminal.
    cd dunnit
    ```
 
+1. Run `./dunnit.zsh` manually once to see it working.
+
 1. Start the dunnit service: `launchctl load -w dunnit.plist`
 
-1. Answer the popup prompt every hour (or ignore it; you have 2
-   minutes till it disappears). Use #hashtags to categorize your
-   entries; that helps with later analysis.
+## Usage
 
-1. At the end of the week (or day), look over what you did in the
-   `$DUNNIT_DIR` log
+Answer the popup prompt every hour (or ignore it; you have 2 minutes
+till it disappears). Use #hashtags to categorize your entries; that
+helps with later analysis.
+
+If you didn’t accomplish anything noteworth, just click **Nothing**
+(or **Close**), and no entry will be recoded for the hour.
+
+You can _snooze_ by clicking **Reply** and then **Send** with an empty
+message.
+
+At the end of the week (or day), look over what you did in the
+`$DUNNIT_DIR` log.
 
 You can **stop the service** (if you ever feel the need) with:
 `launchctl unload dunnit.plist`.
@@ -86,3 +96,5 @@ export DUNNIT_USE_ORG=false
 
 - maybe package up as a homebrew service
 - add a couple utils to analyze/summarize the day, week, etc
+- throw away launchd and just go with daemonize
+- flexible scheduler to run on the hour instead of when started
