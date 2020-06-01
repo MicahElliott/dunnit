@@ -1,7 +1,9 @@
 #! /bin/zsh
 
-dt=$(date +%Y%m%d)
-dunnit_dir=${DUNNIT_DIR:-~/doc/dunnit}
+dt=$(date +%Y%m%d-%a) # 20200601-Mon
+wk=$(date +w%V) # w23
+yr=$(date +%Y)
+dunnit_dir=${DUNNIT_DIR:-~/dunnit/log/$yr/$wk}
 dunnit_file=$dunnit_dir/$dt.log
 
 alerter=/usr/local/bin/alerter
