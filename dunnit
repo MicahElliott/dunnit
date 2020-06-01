@@ -1,7 +1,8 @@
 #! /bin/zsh
 
 dt=$(date +%Y%m%d-%a) # 20200601-Mon
-wk=$(date +w%V) # w23
+mo=$(date -dmonday +%b) # Month of nearest mon
+wk=$(date +w%V-$mo) # w23-Jun
 yr=$(date +%Y)
 dunnit_dir=${DUNNIT_DIR:-~/dunnit/log/$yr/$wk}
 dunnit_file=$dunnit_dir/$dt.log
