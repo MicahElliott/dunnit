@@ -57,12 +57,19 @@ You can _snooze_ by clicking **Reply** and then **Send** with an empty
 message.
 
 At the end of the week (or day), look over what you did in the
-`$DUNNIT_DIR` log. There is a convenience command to show you the
-day’s status: `dunnit-today`. You can also use `fzf` to quickly browse
-past logs.
+`$DUNNIT_DIR` log. There is a convenience shortcut to show you the
+any day’s status: <kbd>Ctrl-t</kbd>
 
 ```sh
-% ,«tab»
+% «Ctrl-t»
+```
+
+You can also dunnit commands with `fzf` by sourcing the setup file for
+Zsh.
+
+```sh
+% source setup.zsh
+% dunnit ,«tab»
 ```
 
 You can **stop the service** (if you ever feel the need) with:
@@ -72,7 +79,7 @@ You can **stop the service** (if you ever feel the need) with:
 
 The following config reflects the defaults. It will leave you with
 a local directory and sequence of files (with timestamped lines) like:
-`~/dunnit/log/20200530.log`
+`~/dunnit/log/2020/w23-Jun/20200530-Mon.log`
 
 ```sh
 # The location of all the daily dunnit log files

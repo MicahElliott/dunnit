@@ -9,7 +9,10 @@ _fzf_complete_dunnit() {
                   --preview 'bat -l log --color always log/$(date +%Y)/{}.log' \
                   --prompt="log> " -- "$@" \
                   < <(ls $logfiles | sed -e 's#log/202./##' -e 's/\.log//' |tac) }
-                  # < <( for f in $logfiles; sed -e 's#.*/log-##' -e 's/\..*//' <<<$f ) }
+
+# See .envrc file for simpler Ctrl-T access to fzf
+# FZF_CTRL_T_COMMAND='ls log/*/*/*.log | sed -e "s#log/202./##" -e "s/\.log//" |tac'
+# FZF_CTRL_T_OPTS='--preview "bat --style=numbers --color=always log/$(date +%Y)/{}.log"'
 
 # Micah likes this as a shortcut.
 FZF_COMPLETION_TRIGGER=,
