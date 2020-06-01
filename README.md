@@ -16,11 +16,20 @@ list of things you worked on.
 
 Do all these steps from a terminal.
 
+1. Clone this Dunnit repo. If you decide to clone it to somewhere
+   other than `~/dunnit`, edit `dunnit.plist` to adjust the path
+   accordingly.
+
+   ```sh
+   cd # to your $HOME
+   git clone https://github.com/MicahElliott/dunnit.git
+   cd dunnit
+   ```
+
 1. Install Alerter: Download, extract, and install the
    [alerter zip file](https://github.com/vjeantet/alerter/releases):
 
    ```sh
-   mkdir ~/proj && cd ~/proj
    wget https://github.com/vjeantet/alerter/releases/download/003/alerter_v003_darwin_amd64.zip
    unzip alerter_v003_darwin_amd64.zip
    mv alerter /usr/local/bin/alerter
@@ -28,16 +37,7 @@ Do all these steps from a terminal.
 
 1. Run alerter manually once to ensure it’ll work: `alerter -message hi`
 
-1. Clone this Dunnit repo. If you decide to clone it to somewhere
-   other than `~/proj/dunnit`, edit `dunnit.plist` to adjust the path
-   accordingly.
-
-   ```sh
-   git clone https://github.com/MicahElliott/dunnit.git
-   cd dunnit
-   ```
-
-1. Run `./dunnit.zsh` manually once to see it working.
+1. Run `./dunnit` manually once to see it working.
 
 1. Start the dunnit service: `launchctl load -w dunnit.plist`
 
