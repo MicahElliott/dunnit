@@ -10,7 +10,7 @@
   <array>
     <string>/bin/zsh</string>
     <string>-c</string>
-    <string>~/dunnit/dunnit</string>
+    <string>~/dunnit/dunnit-bubble</string>
   </array>
   <key>StartInterval</key>
   <integer>3600</integer>

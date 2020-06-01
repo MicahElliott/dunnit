@@ -1,7 +1,7 @@
-#! /bin/zsh
+# this file is source'd by dunnit scripts and functions
 
 dt=$(date +%Y%m%d-%a) # 20200601-Mon
-mo=$(date -dmonday +%b) # Month of nearest mon
+mo=$(gdate -dmonday +%b) # Month of nearest mon
 wk=$(date +w%V-$mo) # w23-Jun
 yr=$(date +%Y)
 dunnit_dir=${DUNNIT_DIR:-~/dunnit/log/$yr/$wk}
@@ -18,7 +18,7 @@ if [[ -f $dunnit_file ]]; then
     last_update="LAST: $(sed -n '$p'  $dunnit_file | sed 's/^\[[0-9]*\] //')"
 fi
 
-alert() {
+dunnit-alert() {
     ans=$($alerter -reply \
 		   -timeout 120 \
 		   -sound default \
@@ -39,15 +39,11 @@ alert() {
 	# Support a SNOOZE hack by pressing 'Send' with an empty message.
 	terminal-notifier -message 'Snoozing for 5m...'
 	sleep 300
-        # Recursive!
-	alert
+        # Recursive for snooze support!
+	dunnit-alert
     fi
 
     tm=$(date +%H%M)
-    stamp="[$tm]"
-    line="$stamp $ans"
-    echo $line >>$dunnit_file
+    echo "[$tm] $ans" >>$dunnit_file
     echo "Captured your update in dunnit file: $dunnit_file"
-    exit
 }
-alert

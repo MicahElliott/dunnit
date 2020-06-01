@@ -1,9 +1,7 @@
 # Dunnit Time Recorder
 
-Dunnit is the simplest possible activity recorder.  It’s dumbly
-simple, works only on a Mac, and relies on
-[Alerter](https://github.com/vjeantet/alerter) to do almost all of the
-real work (which isn’t much).
+Dunnit is a KISS process for recording your daily activity. It’s
+dumbly simple, works only on a Mac (for now).
 
 Dunnit is set to pop up a notification prompt every hour to ask you
 what you worked on. The update you record in the popup is saved to a
@@ -26,6 +24,12 @@ Do all these steps from a terminal.
    cd dunnit
    ```
 
+1. Install most prerequisites via Homebrew:
+
+   ```sh
+   % brew install direnv bat fzf coreutils the_silver_searcher
+   ```
+
 1. Install Alerter: Download, extract, and install the
    [alerter zip file](https://github.com/vjeantet/alerter/releases):
 
@@ -37,7 +41,7 @@ Do all these steps from a terminal.
 
 1. Run alerter manually once to ensure it’ll work: `alerter -message hi`
 
-1. Run `./dunnit` manually once to see it working.
+1. Run `./dunnit-bubble` manually once to see it working.
 
 1. Start the dunnit service: `launchctl load -w dunnit.plist`
 
@@ -57,19 +61,26 @@ You can _snooze_ by clicking **Reply** and then **Send** with an empty
 message.
 
 At the end of the week (or day), look over what you did in the
-`$DUNNIT_DIR` log. There is a convenience shortcut to show you the
-any day’s status: <kbd>Ctrl-t</kbd>
-
-```sh
-% «Ctrl-t»
-```
-
-You can also dunnit commands with `fzf` by sourcing the setup file for
-Zsh.
+`$DUNNIT_DIR` log. There is a convenience shortcut to show you any
+day’s status: <kbd>Ctrl-t</kbd>
 
 ```sh
 % source setup.zsh
-% dunnit ,«tab»
+% «Ctrl-t»
+```
+
+Search for hashtags across all log files:
+
+```sh
+% g '#mywork'
+log/2020/w22-May/20200529-Thu.log
+[1518] Added snooze feature to #mywork
+
+log/2020/w22-May/20200528-Wed.log
+[1739] Added proper LAST message to #mywork
+
+log/2020/w23-Jun/20200601-Mon.log
+[1605] Refactored and added some separated commands to #mywork
 ```
 
 You can **stop the service** (if you ever feel the need) with:

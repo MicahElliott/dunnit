@@ -16,3 +16,13 @@ _fzf_complete_dunnit() {
 
 # Micah likes this as a shortcut.
 FZF_COMPLETION_TRIGGER=,
+
+dunnit-add() {
+    update=${1?must provide a status update}
+    source dunnit.zsh
+    tm=$(date +%H%M)
+    echo "[$tm] $@" >>$dunnit_file
+    echo "Captured your update in dunnit file: $dunnit_file"
+}
+
+alias g='ag -it --nonumbers'

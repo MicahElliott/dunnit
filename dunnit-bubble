@@ -1,0 +1,5 @@
+#! /bin/zsh
+
+source dunnit.zsh
+
+dunnit-alert
