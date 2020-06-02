@@ -9,6 +9,7 @@ _fzf_complete_dunnit() {
                   --preview 'bat -l log --color always log/$(date +%Y)/{}.log' \
                   --prompt="log> " -- "$@" \
                   < <(ls $logfiles | sed -e 's#log/202./##' -e 's/\.log//' |tac) }
+                  # < <(ls $logfiles | sed -e 's#log/202./##' -e 's/\.log//' |tac) }
 
 # See .envrc file for simpler Ctrl-T access to fzf
 # FZF_CTRL_T_COMMAND='ls log/*/*/*.log | sed -e "s#log/202./##" -e "s/\.log//" |tac'
@@ -25,4 +26,5 @@ dunnit-add() {
     echo "Captured your update in dunnit file: $dunnit_file"
 }
 
-alias g='ag -it --nonumbers'
+di-g() { ag -it --nonumbers $1 log }
+alias di-discover="ag --nobreak --nocolor --nofilename --nonumbers -o -r '#[-a-z0-9]+' log |sort |uniq -c "

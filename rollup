@@ -1,0 +1,12 @@
+#! /bin/zsh
+
+. ~/dunnit/dunnit.zsh
+
+wk1=$(gdate +W%V)
+outf=$wk-rollup.md
+
+echo -e "## $wk1" >$outf
+
+for log in log/$yr/$wk/*.log; do
+    sed 's/\[....\] /- /' $log >>$outf
+done

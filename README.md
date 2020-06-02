@@ -1,12 +1,17 @@
 # Dunnit Time Recorder
 
 Dunnit is a KISS process for recording your daily activity. It’s
-dumbly simple, works only on a Mac (for now).
+dumbly simple, works only on a Mac (for now). It is not a TODO app.
+TODOs are a totally different things than Dunnits.
 
 Dunnit is set to pop up a notification prompt every hour to ask you
 what you worked on. The update you record in the popup is saved to a
 daily log. At the end of a good day you’ll end up with a timestamped
 list of things you worked on.
+
+Analysis is CLI-driven. You can roll up your Dunnits at the end of a
+week or a month. Generate status reports and aggregate by tag
+categories.
 
 ![Dunnit Screenshot](dunnit.png)
 
@@ -69,6 +74,14 @@ day’s status: <kbd>Ctrl-t</kbd>
 % «Ctrl-t»
 ```
 
+You can **stop the service** (if you ever feel the need) with:
+`launchctl unload dunnit.plist`.
+
+### Hashtagging
+
+It’s a good idea to adopt some tagging conventions for categorizing
+your Dunnits. Suggestions: ticket numbers, `#star`, `#rollup`
+
 Search for hashtags across all log files:
 
 ```sh
@@ -82,9 +95,6 @@ log/2020/w22-May/20200528-Wed.log
 log/2020/w23-Jun/20200601-Mon.log
 [1605] Refactored and added some separated commands to #mywork
 ```
-
-You can **stop the service** (if you ever feel the need) with:
-`launchctl unload dunnit.plist`.
 
 ## Customization
 
@@ -123,3 +133,7 @@ export DUNNIT_USE_ORG=false
 - add a couple utils to analyze/summarize the day, week, etc
 - throw away launchd and just go with daemonize
 - flexible scheduler to run on the hour instead of when started
+- generate a weekly or monthly status report with the key tagged
+  #rollup items
+- histogram/word cloud of used hashtags
+- ask at end of day if you want to see all the Dunnits

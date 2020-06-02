@@ -1,7 +1,7 @@
 # this file is source'd by dunnit scripts and functions
 
 dt=$(date +%Y%m%d-%a) # 20200601-Mon
-mo=$(gdate -dmonday +%b) # Month of nearest mon
+mo=$(gdate -dsunday +%b) # Month of nearest Sunday
 wk=$(date +w%V-$mo) # w23-Jun
 yr=$(date +%Y)
 dunnit_dir=${DUNNIT_DIR:-~/dunnit/log/$yr/$wk}
@@ -21,8 +21,7 @@ fi
 dunnit-alert() {
     ans=$($alerter -reply \
 		   -timeout 120 \
-		   -sound default \
-		   -title "Dunnit..." \
+                   -title "Dunnit Activity Entry" \
 		   -subtitle "What did you work on the last hour?" \
 		   -closeLabel 'Nothing' \
 		   -sound 'Glass' \
@@ -33,7 +32,7 @@ dunnit-alert() {
     fi
 
     # Bail out if user pressed 'Cancel'.
-    if [[ $ans == '@CLOSED' || $ans == '@TIMEOUT' ]]; then
+    if [[ $ans == 'Nothing' || $ans == '@TIMEOUT' ]]; then
 	exit
     elif [[ $ans == '@ACTIONCLICKED' ]]; then
 	# Support a SNOOZE hack by pressing 'Send' with an empty message.
@@ -45,5 +44,21 @@ dunnit-alert() {
 
     tm=$(date +%H%M)
     echo "[$tm] $ans" >>$dunnit_file
-    echo "Captured your update in dunnit file: $dunnit_file"
+    echo "[$tm] Captured your update in dunnit file: $dunnit_file"
+}
+
+dunnit-eod() {
+    ans=$($alerter -action 'Yes' \
+		   -timeout 120 \
+                   -title "Dunnit Summary" \
+		   -message "Would you like to visit these?"
+		   -subtitle "You completed $(wc -l $dunnit_file) today." \
+		   -closeLabel 'Yes' \
+		   -sound 'Glass' \
+		   )
+    echo $ans
+    if [[ $ans == '@ACTIONCLICKED' ]]; then
+	echo "Firing up your editor on $dunnit_file"
+	open -e $dunnit_file
+    fi
 }
