@@ -51,7 +51,7 @@ dunnit-eod() {
     ans=$($alerter -action 'Yes' \
 		   -timeout 120 \
                    -title "Dunnit Summary" \
-		   -message "Would you like to visit these?"
+		   -message "Would you like to show/edit your day’s work??"
 		   -subtitle "You completed $(wc -l $dunnit_file) today." \
 		   -closeLabel 'Yes' \
 		   -sound 'Glass' \

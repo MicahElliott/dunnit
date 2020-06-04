@@ -1,29 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-<dict>
-  <key>Label</key>
-  <string>com.micahelliott.dunnit</string>
-  <key>KeepAlive</key>
-  <false/>
-  <key>ProgramArguments</key>
-  <array>
-    <string>/bin/zsh</string>
-    <string>-c</string>
-    <string>~/dunnit/dunnit-bubble</string>
-  </array>
-  <key>StartCalendarInterval</key>
-  <array>
-    <dict>
-      <key>Minute</key>
-      <integer>0</integer>
-    </dict>
-  </array>
-  <key>StandardOutPath</key>
-  <string>/tmp/dunnit-launchd.log</string>
-  <key>StandardErrorPath</key>
-  <string>/tmp/dunnit-launchd-err.log</string>
-  <key>RunAtLoad</key>
-  <true/>
+  <dict>
+    <key>Label</key>
+    <string>com.micahelliott.dunnit</string>
+    <key>KeepAlive</key>
+    <false/>
+    <key>ProgramArguments</key>
+    <array>
+      <string>/bin/zsh</string>
+      <string>-c</string>
+      <string>~/dunnit/dunnit-bubble</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <array>
+      <dict>
+	<key>Minute</key>
+	<integer>0</integer>
+      </dict>
+    </array>
+    <key>StandardOutPath</key>
+    <string>/tmp/dunnit-launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/dunnit-launchd-err.log</string>
+    <key>RunAtLoad</key>
+    <true/>
   </dict>
 </plist>

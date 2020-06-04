@@ -28,3 +28,6 @@ dunnit-add() {
 
 di-g() { ag -it --nonumbers $1 log }
 alias di-discover="ag --nobreak --nocolor --nofilename --nonumbers -o -r '#[-a-z0-9]+' log |sort |uniq -c "
+
+# Open logs that are retrieved from fzf Ctrl-T
+alias -s log=$EDITOR
