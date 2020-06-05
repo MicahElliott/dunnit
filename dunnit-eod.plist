@@ -2,8 +2,13 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
   <dict>
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
     <key>Label</key>
-    <string>com.micahelliott.dunnit</string>
+    <string>com.micahelliott.dunnit-eod</string>
     <key>KeepAlive</key>
     <false/>
     <key>ProgramArguments</key>
@@ -47,8 +52,8 @@
       </dict>
     </array>
     <key>StandardOutPath</key>
-    <string>/tmp/dunnit-lau.log</string>
+    <string>/tmp/dunnit-launchd.log</string>
     <key>StandardErrorPath</key>
-    <string>/tmp/dunnit-launchd-err.log</string>
+    <string>/tmp/dunnit-launchd.log</string>
   </dict>
 </plist>

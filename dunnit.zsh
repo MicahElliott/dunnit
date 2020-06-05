@@ -1,5 +1,8 @@
 # this file is source'd by dunnit scripts and functions
 
+# plist files have restricted paths
+path+=/usr/local/bin
+
 dt=$(date +%Y%m%d-%a) # 20200601-Mon
 mo=$(gdate -dsunday +%b) # Month of nearest Sunday
 wk=$(date +w%V-$mo) # w23-Jun
@@ -28,7 +31,7 @@ dunnit-alert() {
 		   -message "${last_update}")
 
     if ! [[ -f $dunnit_file ]]; then
-	echo "Creating new dunnit file for today's work: $dunnit_file"
+	echo "[%dt] Creating new dunnit file for today's work: $dunnit_file"
     fi
 
     # Bail out if user pressed 'Cancel'.
@@ -44,17 +47,17 @@ dunnit-alert() {
 
     tm=$(date +%H%M)
     echo "[$tm] $ans" >>$dunnit_file
-    echo "[$tm] Captured your update in dunnit file: $dunnit_file"
+    echo "[$dt $tm] Captured your update in dunnit file: $dunnit_file"
 }
 
 dunnit-eod() {
     ans=$($alerter -action 'Yes' \
 		   -timeout 120 \
                    -title "Dunnit Summary" \
-		   -message "Would you like to show/edit your day’s work??"
+		   -message "Would you like to show/edit your day’s work??" \
 		   -subtitle "You completed $(wc -l $dunnit_file) today." \
 		   -closeLabel 'Yes' \
-		   -sound 'Glass' \
+		   -sound 'Glass'
 		   )
     echo $ans
     if [[ $ans == '@ACTIONCLICKED' ]]; then
