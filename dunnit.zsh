@@ -51,12 +51,11 @@ dunnit-alert() {
 }
 
 dunnit-eod() {
-    ans=$($alerter -action 'Yes' \
-		   -timeout 120 \
-                   -title "Dunnit Summary" \
-		   -message "Would you like to show/edit your day’s work??" \
-		   -subtitle "You completed $(wc -l $dunnit_file) today." \
-		   -closeLabel 'Yes' \
+    ans=$($alerter -timeout 120 \
+                   -title "Dunnit Daily Summary" \
+		   -message "Tag your day’s work??" \
+		   -subtitle "You completed $(wc -l $dunnit_file | awk '{print $1}') today." \
+		   -closeLabel 'Skip' \
 		   -sound 'Glass'
 		   )
     echo $ans
