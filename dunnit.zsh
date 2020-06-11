@@ -31,7 +31,7 @@ dunnit-alert() {
 		   -message "${last_update}")
 
     if ! [[ -f $dunnit_file ]]; then
-	echo "[%dt] Creating new dunnit file for today's work: $dunnit_file"
+	echo "[$dt-$tm] Creating new dunnit file for today's work: $dunnit_file"
     fi
 
     # Bail out if user pressed 'Cancel'.
@@ -47,7 +47,7 @@ dunnit-alert() {
 
     tm=$(date +%H%M)
     echo "[$tm] $ans" >>$dunnit_file
-    echo "[$dt $tm] Captured your update in dunnit file: $dunnit_file"
+    echo "[$dt-$tm] Captured your update in dunnit file: $dunnit_file"
 }
 
 dunnit-eod() {
