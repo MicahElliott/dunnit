@@ -56,11 +56,9 @@ dunnit-eod() {
 		   -message "Tag your day’s work??" \
 		   -subtitle "You completed $(wc -l $dunnit_file | awk '{print $1}') today." \
 		   -closeLabel 'Skip' \
-		   -sound 'Glass'
-		   )
-    echo $ans
+		   -sound 'Glass')
     if [[ $ans == '@ACTIONCLICKED' ]]; then
-	echo "Firing up your editor on $dunnit_file"
+	echo "[$dt-$tm] Opening editor on $dunnit_file"
 	open -e $dunnit_file
     fi
 }
