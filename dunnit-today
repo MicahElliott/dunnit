@@ -2,5 +2,5 @@
 
 ### Show what you did for a given day or today.
 
-dt='date +%Y%m%d'
+dt=$(date +%Y%m%d)
 bat log/$dt.log
