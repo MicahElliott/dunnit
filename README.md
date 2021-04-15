@@ -39,8 +39,8 @@ Do all these steps from a terminal.
    [alerter zip file](https://github.com/vjeantet/alerter/releases):
 
    ```sh
-   wget https://github.com/vjeantet/alerter/releases/download/003/alerter_v003_darwin_amd64.zip
-   unzip alerter_v003_darwin_amd64.zip
+   wget https://github.com/vjeantet/alerter/releases/download/004/alerter_v004_darwin_amd64.zip
+   unzip alerter_v004_darwin_amd64.zip
    mv alerter /usr/local/bin/alerter
    ```
 
@@ -60,7 +60,7 @@ till it disappears). Use #hashtags to categorize your entries; that
 helps with later analysis.
 
 If you didn’t accomplish anything noteworthy, just click **Nothing**
-(or **Close**), and no entry will be recoded for the hour.
+(or **Close**), and no entry will be recorded for the hour.
 
 You can _snooze_ by clicking **Reply** and then **Send** with an empty
 message.
@@ -129,7 +129,6 @@ export DUNNIT_USE_ORG=false
 
 ## TODO
 
-- maybe package up as a homebrew service
 - add a couple utils to analyze/summarize the day, week, etc
 - throw away launchd and just go with daemonize
 - flexible scheduler to run on the hour instead of when started
@@ -137,3 +136,15 @@ export DUNNIT_USE_ORG=false
   #rollup items
 - histogram/word cloud of used hashtags
 - ask at end of day if you want to see all the Dunnits
+- ask at start of day for rough list of expected accomplishments
+- prompt for what you want to accomplish the next hour
+- allow for multiple items staring with `-`
+- check off completed planned items
+- ditto“ button to indicate working on same thing as last time
+- more tagging conventions?
+- clickable menubar icon for recording a dunnit at any time
+- configurable/invocable day start and end prompts
+- better menuing with checkboxes for planned/completed items
+- org-todo as basis for structure
+- store all todos (not dunnits) in a single file
+- support archive feature
