@@ -20,9 +20,11 @@ class DunnitStatusBarApp(rumps.App):
         if sender.state: # night mode is on
             print("Turning off nighty mode")
             sender.state = False
+            self.title = '✔ Dunnit'
             if os.path.isfile(nightyfile): os.remove(nightyfile)
         else:
             print("Turning on nighty mode")
+            self.title = '💤 Dunnit'
             with open(nightyfile, 'a'): pass
             sender.state = True
 
@@ -33,11 +35,19 @@ class DunnitStatusBarApp(rumps.App):
     @rumps.clicked("Record a dunnit")
     def bubble(self, sender):
         if not sender.state:
-            os.system("~/dunnit/dunnit-bubble")
+            os.system('cliclick kd:cmd,ctrl t:a ku:cmd,ctrl')
+            # os.system("~/dunnit/dunnit-bubble")
 
     @rumps.clicked("Edit/summarize the day")
     def eod(self, _):
-        os.system("~/dunnit/dunnit-eod")
+        # os.system("~/dunnit/dunnit-eod")
+        os.system('cliclick kd:cmd,ctrl t:t ku:cmd,ctrl')
+
+    @rumps.clicked('On')
+    def button(self, sender):
+        sender.title = 'Off' if sender.title == 'On' else 'On'
+        Window("I can't think of a good example app...").run()
+
 
 if __name__ == "__main__":
-    DunnitStatusBarApp("Dunnit").run()
+    DunnitStatusBarApp("✔ Dunnit").run()

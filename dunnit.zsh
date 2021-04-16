@@ -19,7 +19,7 @@ if ! [[ -d $dunnit_dir ]]; then
 fi
 
 if [[ -f $dunnit_file ]]; then
-    todo=$(grep TODO $dunnit_file)
+    todo=$(tail -1 $dunnit_file | grep TODO)
     if [[ $? -ne 0 ]]; then
 	last_update="LAST: $(sed -n '$p' $dunnit_file | sed 's/^\[[0-9]*\] //')"
     else
@@ -61,6 +61,15 @@ dunnit-alert() {
     echo "[$dt-$tm] Captured your update in dunnit file: $dunnit_file"
 }
 
+dunnit-alert() {
+    if [[ -f /tmp/dunnit-nighty ]]; then
+	echo 'in nighty mode'
+	exit
+    fi
+    terminal-notifier -sound Glass -message 'Whadja work on?' -title 'Dunnit Reminder'
+    cliclick kd:cmd,ctrl t:a ku:cmd,ctrl
+}
+
 dunnit-eod() {
     ans=$($alerter -timeout 120 \
                    -title "Dunnit Daily Summary" \
@@ -71,7 +80,8 @@ dunnit-eod() {
     tm=$(gdate +%H%M)
     if [[ $ans == '@ACTIONCLICKED' ]]; then
 	echo "[$dt-$tm] Opening editor on $dunnit_file"
-	open -e $dunnit_file
+	# open -e $dunnit_file
+	cliclick kd:cmd,ctrl t:t ku:cmd,ctrl
     fi
 }
 

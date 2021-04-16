@@ -46,12 +46,17 @@ Do all these steps from a terminal.
 
 1. Run alerter manually once to ensure it’ll work: `alerter -message hi`
 
+1. Install [cliclick](https://github.com/BlueM/cliclick)
+   [binary](https://www.bluem.net/jump/cliclick/).
+
 1. Run `./dunnit-bubble` manually once to see it working.
 
 1. Start the dunnit service: `launchctl load -w dunnit.plist`
 
-If it doesn’t seem to be working, check for dunnit output and error
-logs in `/tmp`.
+   If it doesn’t seem to be working, check for dunnit output and error
+   logs in `/tmp`.
+
+1. Start the dunnit daily service: `launchctl load -w dunnit-eod.plist`
 
 ## Usage
 
