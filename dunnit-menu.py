@@ -7,13 +7,29 @@ if os.path.isfile(nightyfile): os.remove(nightyfile)
 
 class DunnitStatusBarApp(rumps.App):
 
-    @rumps.clicked("About Dunnit")
-    def about(self, _):
-        rumps.notification("Dunnit is for tracking WTF you did", "Just write a sentence each hour.", "You can pop up and record anytime.")
-
     # @rumps.clicked("Preferences (ignore!)")
     # def prefs(self, _):
     #     rumps.alert("jk! no preferences available!")
+
+    @rumps.clicked("TODO")
+    def todo(self, _):
+        os.system("~/dunnit/dunnit-todo")
+        # Use todoist instead
+        # os.system('cliclick kd:cmd,ctrl t:a ku:cmd,ctrl')
+
+
+    @rumps.clicked("Dunnit")
+    def bubble(self, sender):
+        if not sender.state:
+            os.system("~/dunnit/dunnit-bubble")
+            # Use todoist instead
+            # os.system('cliclick kd:cmd,ctrl t:a ku:cmd,ctrl')
+
+    @rumps.clicked("Edit/summarize the day")
+    def eod(self, _):
+        os.system("~/dunnit/dunnit-eod")
+        # Use todoist instead
+        # os.system('cliclick kd:cmd,ctrl t:t ku:cmd,ctrl')
 
     @rumps.clicked("Nighty-night mode")
     def onoff(self, sender):
@@ -28,25 +44,14 @@ class DunnitStatusBarApp(rumps.App):
             with open(nightyfile, 'a'): pass
             sender.state = True
 
-    @rumps.clicked("Add to TODO target")
-    def todo(self, _):
-        os.system("~/dunnit/dunnit-todo")
+    @rumps.clicked("About Dunnit")
+    def about(self, _):
+        rumps.notification("Dunnit is for tracking WTF you did", "Just write a sentence each hour.", "You can pop up and record anytime.")
 
-    @rumps.clicked("Record a dunnit")
-    def bubble(self, sender):
-        if not sender.state:
-            os.system('cliclick kd:cmd,ctrl t:a ku:cmd,ctrl')
-            # os.system("~/dunnit/dunnit-bubble")
-
-    @rumps.clicked("Edit/summarize the day")
-    def eod(self, _):
-        # os.system("~/dunnit/dunnit-eod")
-        os.system('cliclick kd:cmd,ctrl t:t ku:cmd,ctrl')
-
-    @rumps.clicked('On')
-    def button(self, sender):
-        sender.title = 'Off' if sender.title == 'On' else 'On'
-        Window("I can't think of a good example app...").run()
+    # @rumps.clicked('On')
+    # def button(self, sender):
+    #     sender.title = 'Off' if sender.title == 'On' else 'On'
+    #     Window("I can't think of a good example app...").run()
 
 
 if __name__ == "__main__":

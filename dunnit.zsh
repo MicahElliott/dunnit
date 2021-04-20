@@ -42,6 +42,10 @@ dunnit-alert() {
 
     if ! [[ -f $dunnit_file ]]; then
 	echo "[$dt-$tm] Creating new dunnit file for today's work: $dunnit_file"
+	username=$(osascript -e "long user name of (system info)")
+	echo "# $username: Status for $dt\n" >$dunnit_file
+	echo "**Summary:**\n"  >>$dunnit_file
+	echo "## Accomplishments\n"  >>$dunnit_file
     fi
 
     # Bail out if user pressed 'Cancel'.
@@ -55,22 +59,24 @@ dunnit-alert() {
 	dunnit-alert
     fi
 
-    tm=$(gdate +%H%M)
+    tm=$(gdate +%H:%M)
     # Even if ans was DONE, record it as such
-    echo "[$tm] $ans" >>$dunnit_file
+    echo "- $ans [$tm]" >>$dunnit_file
     echo "[$dt-$tm] Captured your update in dunnit file: $dunnit_file"
 }
 
-dunnit-alert() {
+dunnit-alert-todoist() {
     if [[ -f /tmp/dunnit-nighty ]]; then
 	echo 'in nighty mode'
 	exit
     fi
     terminal-notifier -sound Glass -message 'Whadja work on?' -title 'Dunnit Reminder'
-    cliclick kd:cmd,ctrl t:a ku:cmd,ctrl
+    # Pop up fast-entry for todoist
+    /usr/local/bin/cliclick kd:cmd,ctrl t:a ku:cmd,ctrl
 }
 
 dunnit-eod() {
+    set -x
     ans=$($alerter -timeout 120 \
                    -title "Dunnit Daily Summary" \
 		   -message "Edit your day’s work (with tags etc)??" \
@@ -80,9 +86,14 @@ dunnit-eod() {
     tm=$(gdate +%H%M)
     if [[ $ans == '@ACTIONCLICKED' ]]; then
 	echo "[$dt-$tm] Opening editor on $dunnit_file"
-	# open -e $dunnit_file
-	cliclick kd:cmd,ctrl t:t ku:cmd,ctrl
+	echo "\n## Problems\n" >>$dunnit_file
+	echo "## Plans\n" >>$dunnit_file
+	# open -e $dunnit_file # can't choose arbitrary editor with finder
+        emacsclient --create-frame $dunnit_file &
+	# Open todoist instead
+	# /usr/local/bin/cliclick kd:cmd,ctrl t:t ku:cmd,ctrl
     fi
+    set +x
 }
 
 dunnit-todo() {
@@ -92,7 +103,7 @@ dunnit-todo() {
 		  -subtitle "Whatcha gonna do next?" \
 		  -message '\(just one thing)' \
                   -sound 'Glass')
-    tm=$(gdate +%H%M)
+    tm=$(gdate +%H:%M)
     if [[ $ans != '@CLOSED' ]]; then
 	echo "[$dt-$tm] Got it"
 	echo "[$tm] TODO $ans" >>$dunnit_file
