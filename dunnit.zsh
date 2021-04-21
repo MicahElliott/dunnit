@@ -8,7 +8,7 @@ mo=$(gdate -dsunday +%b) # Month of nearest Sunday
 wk=$(date +w%V-$mo) # w23-Jun
 yr=$(date +%Y)
 dunnit_dir=${DUNNIT_DIR:-~/dunnit/log/$yr/$wk}
-dunnit_file=$dunnit_dir/$dt.log
+dunnit_file=$dunnit_dir/$dt.md
 
 alerter=/usr/local/bin/alerter
 # alerter=~/contrib/bin/alerter
@@ -44,6 +44,7 @@ dunnit-alert() {
 	echo "[$dt-$tm] Creating new dunnit file for today's work: $dunnit_file"
 	username=$(osascript -e "long user name of (system info)")
 	echo "# $username: Status for $dt\n" >$dunnit_file
+	echo "**Sentiment:**\n"  >>$dunnit_file
 	echo "**Summary:**\n"  >>$dunnit_file
 	echo "## Accomplishments\n"  >>$dunnit_file
     fi
@@ -85,10 +86,9 @@ dunnit-eod() {
 		   -sound 'Glass')
     tm=$(gdate +%H%M)
     if [[ $ans == '@ACTIONCLICKED' ]]; then
+	echo "\n## Plans/Problems\n" >>$dunnit_file
 	echo "[$dt-$tm] Opening editor on $dunnit_file"
-	echo "\n## Problems\n" >>$dunnit_file
-	echo "## Plans\n" >>$dunnit_file
-	# open -e $dunnit_file # can't choose arbitrary editor with finder
+        # open -e $dunnit_file # can't choose arbitrary editor with finder
         emacsclient --create-frame $dunnit_file &
 	# Open todoist instead
 	# /usr/local/bin/cliclick kd:cmd,ctrl t:t ku:cmd,ctrl
