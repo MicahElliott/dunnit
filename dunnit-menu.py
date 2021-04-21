@@ -2,6 +2,8 @@ import rumps
 import os
 import os.path
 
+rumps.debug_mode(True)
+
 nightyfile = "/tmp/dunnit-nighty"
 if os.path.isfile(nightyfile): os.remove(nightyfile)
 
@@ -24,6 +26,18 @@ class DunnitStatusBarApp(rumps.App):
             os.system("~/dunnit/dunnit-bubble")
             # Use todoist instead
             # os.system('cliclick kd:cmd,ctrl t:a ku:cmd,ctrl')
+
+    @rumps.clicked("Show today's progress")
+    def progress(self, _):
+        prog = os.popen("~/dunnit/dunnit-progress").read()
+        win = rumps.Window("foo", 'bar', dimensions=(500,600))
+        win.title = 'Dunnit Progress Today'
+        win.message = "This is an in-flight view of your day so far. It's just markdown; you'll have a chance to edit it when you close the day."
+        win.default_text = prog
+        resp = win.run()
+        print(resp)
+        # Use todoist instead
+        # os.system('cliclick kd:cmd,ctrl t:t ku:cmd,ctrl')
 
     @rumps.clicked("Edit/summarize the day")
     def eod(self, _):

@@ -112,3 +112,7 @@ dunnit-todo() {
 	echo no-op
     fi
 }
+
+dunnit-progress() {
+    cat $dunnit_file
+}
