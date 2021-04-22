@@ -27,6 +27,16 @@ if [[ -f $dunnit_file ]]; then
     fi
 fi
 
+sectionize() {
+    gsed '/## Accomp/q' $dunnit_file 	# print only lines up to
+    groups=( $(ggrep -E -o '#[a-z]+' $dunnit_file | sort | uniq) )
+    for g in $groups; do
+	i2=$(sed 's/#//' <<<$g)
+	print "\n### ${(C)i2}\n"
+	ggrep $g $dunnit_file | sed "s/$g //"
+    done
+}
+
 maybe-create-daily-file() {
     if ! [[ -f $dunnit_file ]]; then
 	echo "[$dt-$tm] Creating new dunnit file for today's work: $dunnit_file"
@@ -80,7 +90,6 @@ dunnit-alert-todoist() {
 }
 
 dunnit-eod() {
-    set -x
     ans=$($alerter -timeout 120 \
                    -title "Dunnit Daily Summary" \
 		   -message "Edit your day’s work (with tags etc)??" \
@@ -89,16 +98,16 @@ dunnit-eod() {
 		   -sound 'Glass')
     tm=$(gdate +%H%M)
     if [[ $ans == '@ACTIONCLICKED' ]]; then
+	sectionize >! $dunnit_file
 	echo "\n## Big Win (rare section)\n"  >>$dunnit_file
 	echo "\n## Today I Learned\n"  >>$dunnit_file
 	# echo "\n## Plans/Problems\n" >>$dunnit_file
 	echo "[$dt-$tm] Opening editor on $dunnit_file"
         # emacsclient --create-frame $dunnit_file &
-	[[ -n $EDITOR ]] && $EDITOR $dunnit_file  || open -e $dunnit_file &
+	[[ -n $EDITOR ]] && "$EDITOR" $dunnit_file  || open -e $dunnit_file &
 	# Open todoist instead
 	# /usr/local/bin/cliclick kd:cmd,ctrl t:t ku:cmd,ctrl
     fi
-    set +x
 }
 
 dunnit-bod() {
