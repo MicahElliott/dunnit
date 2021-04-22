@@ -27,6 +27,18 @@ if [[ -f $dunnit_file ]]; then
     fi
 fi
 
+maybe-create-daily-file() {
+    if ! [[ -f $dunnit_file ]]; then
+	echo "[$dt-$tm] Creating new dunnit file for today's work: $dunnit_file"
+	username=$(osascript -e "long user name of (system info)")
+	echo "# $username: Status for $dt\n" >$dunnit_file
+	echo "## Original Goals (list 3)\n"  >>$dunnit_file
+	echo "**Sentiment:** (bad, neutral, or good)\n"  >>$dunnit_file
+	echo "**Summary:** (1 para)\n"  >>$dunnit_file
+	echo "## Accomplishments\n"  >>$dunnit_file
+    fi
+}
+
 dunnit-alert() {
     if [[ -f /tmp/dunnit-nighty ]]; then
 	echo 'in nighty mode'
@@ -39,16 +51,7 @@ dunnit-alert() {
 		   -closeLabel 'Ignore' \
 		   -sound 'Glass' \
 		   -message "${last_update}")
-
-    if ! [[ -f $dunnit_file ]]; then
-	echo "[$dt-$tm] Creating new dunnit file for today's work: $dunnit_file"
-	username=$(osascript -e "long user name of (system info)")
-	echo "# $username: Status for $dt\n" >$dunnit_file
-	echo "**Sentiment:**\n"  >>$dunnit_file
-	echo "**Summary:**\n"  >>$dunnit_file
-	echo "## Accomplishments\n"  >>$dunnit_file
-    fi
-
+    maybe-create-daily-file
     # Bail out if user pressed 'Cancel'.
     if [[ $ans == 'Ignore' || $ans == '@TIMEOUT' ]]; then
 	exit
@@ -86,14 +89,29 @@ dunnit-eod() {
 		   -sound 'Glass')
     tm=$(gdate +%H%M)
     if [[ $ans == '@ACTIONCLICKED' ]]; then
-	echo "\n## Plans/Problems\n" >>$dunnit_file
+	echo "\n## Big Win (rare section)\n"  >>$dunnit_file
+	echo "\n## Today I Learned\n"  >>$dunnit_file
+	# echo "\n## Plans/Problems\n" >>$dunnit_file
 	echo "[$dt-$tm] Opening editor on $dunnit_file"
-        # open -e $dunnit_file # can't choose arbitrary editor with finder
-        emacsclient --create-frame $dunnit_file &
+        # emacsclient --create-frame $dunnit_file &
+	[[ -n $EDITOR ]] && $EDITOR $dunnit_file  || open -e $dunnit_file &
 	# Open todoist instead
 	# /usr/local/bin/cliclick kd:cmd,ctrl t:t ku:cmd,ctrl
     fi
     set +x
+}
+
+dunnit-bod() {
+    maybe-create-daily-file
+    # emacsclient --create-frame $dunnit_file &
+    [[ -n $EDITOR ]] && $EDITOR $dunnit_file  || open -e $dunnit_file &
+}
+
+dunnit-report() {
+    mkdir -p ~/dunnit/reports/
+    print "pandoc -f markdown $dunnit_file -o ~/dunnit/reports/$dunnit_file:t:r.html"
+    pandoc -f markdown $dunnit_file -o ~/dunnit/reports/$dunnit_file:t:r.html
+    pandoc -t html --self-contained --css reports/report.css -f markdown -o $dunnit_file:t:r.html
 }
 
 dunnit-todo() {

@@ -1,8 +1,9 @@
 # Dunnit Time Recorder
 
 Dunnit is a KISS process for recording your daily activity. It’s
-dumbly simple, works only on a Mac (for now). It is not a TODO app.
-TODOs are a totally different things than Dunnits.
+dumbly simple, and works only on a Mac (for now). It is not a TODO
+app, because TODOs are strictly aspirational, and are a totally
+different things than Dunnits, which are factual.
 
 Dunnit is set to pop up a notification prompt every hour to ask you
 what you worked on. The update you record in the popup is saved to a
@@ -13,15 +14,14 @@ Analysis is CLI-driven. You can roll up your Dunnits at the end of a
 week or a month. Generate status reports and aggregate by tag
 categories.
 
-![Dunnit Screenshot](dunnit.png)
+![Dunnit Poput](dunnit.png)
+![Dunnit Menu](menu.png)
 
 ## Install and Run
 
 Do all these steps from a terminal.
 
-1. Clone this Dunnit repo. If you decide to clone it to somewhere
-   other than `~/dunnit`, edit `dunnit.plist` to adjust the path
-   accordingly.
+1. Clone this Dunnit repo. to `~/dunnit`
 
    ```sh
    cd # to your $HOME
@@ -32,7 +32,8 @@ Do all these steps from a terminal.
 1. Install most prerequisites via Homebrew:
 
    ```sh
-   % brew install direnv bat fzf coreutils the_silver_searcher
+   % brew install direnv bat fzf coreutils the_silver_searcher pandoc
+   % sudo pip install rumps
    ```
 
 1. Install Alerter: Download, extract, and install the
@@ -46,8 +47,8 @@ Do all these steps from a terminal.
 
 1. Run alerter manually once to ensure it’ll work: `alerter -message hi`
 
-1. Install [cliclick](https://github.com/BlueM/cliclick)
-   [binary](https://www.bluem.net/jump/cliclick/).
+<!-- 1. Install [cliclick](https://github.com/BlueM/cliclick) -->
+<!--    [binary](https://www.bluem.net/jump/cliclick/). -->
 
 1. Run `./dunnit-bubble` manually once to see it working.
 
@@ -56,7 +57,7 @@ Do all these steps from a terminal.
    If it doesn’t seem to be working, check for dunnit output and error
    logs in `/tmp`.
 
-1. Start the dunnit daily service: `launchctl load -w dunnit-eod.plist`
+1. Start the dunnit EOD daily service: `launchctl load -w dunnit-eod.plist`
 
 ## Usage
 

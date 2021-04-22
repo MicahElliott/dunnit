@@ -52,11 +52,18 @@ class DunnitStatusBarApp(rumps.App):
             sender.state = False
             self.title = '✔ Dunnit'
             if os.path.isfile(nightyfile): os.remove(nightyfile)
+            os.system("~/dunnit/dunnit-bod")
         else:
             print("Turning on nighty mode")
             self.title = '💤 Dunnit'
             with open(nightyfile, 'a'): pass
             sender.state = True
+
+    @rumps.clicked("Generate daily report")
+    def report(self, _):
+        os.system("~/dunnit/dunnit-report")
+        # Use todoist instead
+        # os.system('cliclick kd:cmd,ctrl t:t ku:cmd,ctrl')
 
     @rumps.clicked("About Dunnit")
     def about(self, _):
