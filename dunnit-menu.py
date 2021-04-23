@@ -65,6 +65,11 @@ class DunnitStatusBarApp(rumps.App):
         # Use todoist instead
         # os.system('cliclick kd:cmd,ctrl t:t ku:cmd,ctrl')
 
+    # TODO
+    @rumps.clicked("Email daily report")
+    def email(self, _):
+        os.system("~/dunnit/dunnit-email")
+
     @rumps.clicked("About Dunnit")
     def about(self, _):
         rumps.notification("Dunnit is for tracking WTF you did", "Just write a sentence each hour.", "You can pop up and record anytime.")
