@@ -9,25 +9,40 @@ if os.path.isfile(nightyfile): os.remove(nightyfile)
 
 class DunnitStatusBarApp(rumps.App):
 
-    # @rumps.clicked("Preferences (ignore!)")
-    # def prefs(self, _):
-    #     rumps.alert("jk! no preferences available!")
+    @rumps.clicked("Preferences (NYI)")
+    def prefs(self, _):
+        rumps.alert("jk! No preferences available yet.")
 
-    @rumps.clicked("TODO")
+    @rumps.clicked("GM, Sunshine! (set goals)")
+    def setgoals(self, _):
+        os.system("~/dunnit/dunnit-goals")
+        # Use todoist instead
+        # os.system('cliclick kd:cmd,ctrl t:t ku:cmd,ctrl')
+
+    @rumps.clicked("Show All Todos")
+    def showtodos(self, _):
+        with open('help.txt', 'r') as file: txt = file.read()
+        prog = os.popen("~/dunnit/dunnit-showtodos").read()
+        win = rumps.Window("foo", 'bar', dimensions=(500,600))
+        win.title = 'Dunnit Todos'
+        win.message = "These are all the things you planned to do."
+        win.default_text = prog
+        resp = win.run()
+
+    @rumps.clicked("New Todo")
     def todo(self, _):
         os.system("~/dunnit/dunnit-todo")
         # Use todoist instead
         # os.system('cliclick kd:cmd,ctrl t:a ku:cmd,ctrl')
 
-
-    @rumps.clicked("Dunnit")
+    @rumps.clicked("New Dunnit (YAY!)")
     def bubble(self, sender):
-        if not sender.state:
-            os.system("~/dunnit/dunnit-bubble")
-            # Use todoist instead
-            # os.system('cliclick kd:cmd,ctrl t:a ku:cmd,ctrl')
+        # if not sender.state:
+        os.system("~/dunnit/dunnit-bubble")
+        # Use todoist instead
+        # os.system('cliclick kd:cmd,ctrl t:a ku:cmd,ctrl')
 
-    @rumps.clicked("Show today's progress")
+    @rumps.clicked("Show Today's Ledger")
     def progress(self, _):
         prog = os.popen("~/dunnit/dunnit-progress").read()
         win = rumps.Window("foo", 'bar', dimensions=(500,600))
@@ -39,38 +54,54 @@ class DunnitStatusBarApp(rumps.App):
         # Use todoist instead
         # os.system('cliclick kd:cmd,ctrl t:t ku:cmd,ctrl')
 
-    @rumps.clicked("Edit/summarize the day")
+    @rumps.clicked("Edit Ledger Items (careful!)")
+    def raw(self, _):
+        es = os.system("~/dunnit/dunnit-editraw")
+
+    @rumps.clicked("Finalize the Day (only once!)")
     def eod(self, _):
-        os.system("~/dunnit/dunnit-eod")
+        # TODO pop lp alert if already exists
+        es = os.system("~/dunnit/dunnit-eod")
+        if es != 0: rumps.alert('Summary file already exists! Delete it and try again.')
         # Use todoist instead
         # os.system('cliclick kd:cmd,ctrl t:t ku:cmd,ctrl')
 
-    @rumps.clicked("Nighty-night mode")
-    def onoff(self, sender):
-        if sender.state: # night mode is on
-            print("Turning off nighty mode")
-            sender.state = False
-            self.title = '✔ Dunnit'
-            if os.path.isfile(nightyfile): os.remove(nightyfile)
-            os.system("~/dunnit/dunnit-bod")
-        else:
-            print("Turning on nighty mode")
-            self.title = '💤 Dunnit'
-            with open(nightyfile, 'a'): pass
-            sender.state = True
-
-    @rumps.clicked("Generate daily report")
+    @rumps.clicked("Generate Daily Report (HTML)")
     def report(self, _):
         os.system("~/dunnit/dunnit-report")
         # Use todoist instead
         # os.system('cliclick kd:cmd,ctrl t:t ku:cmd,ctrl')
 
     # TODO
-    @rumps.clicked("Email daily report")
+    @rumps.clicked("Email Daily Report (NYI)")
     def email(self, _):
         os.system("~/dunnit/dunnit-email")
 
-    @rumps.clicked("About Dunnit")
+    @rumps.clicked("Nighty-night Mode (AFK)")
+    def onoff(self, sender):
+        if sender.state: # night mode is on
+            print("Turning off nighty mode")
+            sender.state = False
+            self.title = '✔ Dunnit'
+            if os.path.isfile(nightyfile): os.remove(nightyfile)
+            # os.system("~/dunnit/dunnit-goals")
+        else:
+            print("Turning on nighty mode")
+            self.title = '💤 Dunnit'
+            with open(nightyfile, 'a'): pass
+            sender.state = True
+
+    @rumps.clicked("Help (NYI)")
+    def help(self, _):
+        with open('help.txt', 'r') as file: txt = file.read()
+        win = rumps.Window("foo", 'bar', dimensions=(500,600))
+        win.title = 'Dunnit Help'
+        win.message = "This is all you get for now."
+        win.default_text = txt
+        resp = win.run()
+
+
+    @rumps.clicked("About")
     def about(self, _):
         rumps.notification("Dunnit is for tracking WTF you did", "Just write a sentence each hour.", "You can pop up and record anytime.")
 

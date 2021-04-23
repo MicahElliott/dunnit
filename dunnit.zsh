@@ -8,7 +8,9 @@ mo=$(gdate -dsunday +%b) # Month of nearest Sunday
 wk=$(date +w%V-$mo) # w23-Jun
 yr=$(date +%Y)
 dunnit_dir=${DUNNIT_DIR:-~/dunnit/log/$yr/$wk}
-dunnit_file=$dunnit_dir/$dt.md
+dunnit_summary=$dunnit_dir/$dt.md
+dunnit_ledger=~/dunnit/ledger-$dt.txt
+dunnit_goals=~/dunnit/goals-$dt.txt
 dunnit_tmp=$dunnit_dir/$dt-tmp.md
 
 alerter=/usr/local/bin/alerter
@@ -19,44 +21,70 @@ if ! [[ -d $dunnit_dir ]]; then
     mkdir -p $dunnit_dir
 fi
 
-if [[ -f $dunnit_file ]]; then
-    todo=$(tail -1 $dunnit_file | grep TODO)
-    if [[ $? -ne 0 ]]; then
-	last_update="LAST: $(sed -n '$p' $dunnit_file | sed 's/^\[[0-9]*\] //')"
-    else
-	last_update="TODO: $todo"
-    fi
-fi
-
 # Convert pieces of daily status working file into sections
-sectionize() {
+sectionize-ledger() {
     # FIXME losing all non-tagged dunnits!
-    ggrep -q UNCOMPILED $dunnit_file || { print "Already been compiled." 2>&1; return 1 }
-    gsed '/## Accomp/q' $dunnit_tmp 	# print only lines up to
-    groups=( $(ggrep -E -o '#[a-z]+' $dunnit_tmp | sort | uniq) )
+    # ggrep -q UNCOMPILED $dunnit_summary || { print "Already been compiled." 2>&1; return 1 }
+    # gsed '/## Accomp/q' $dunnit_tmp 	# print only lines up to
+    groups=( $(ggrep -E -o '#[a-z]+' $dunnit_ledger | sort | uniq) )
     for g in $groups; do
 	i2=$(sed 's/#//' <<<$g)
 	print "\n### ${(C)i2}\n"
-	ggrep $g $dunnit_tmp | sed "s/$g //"
+	ggrep $g $dunnit_ledger | sed -e "s/$g //" -e 's/^/- /'
+        print '\n> IMPACT:'
     done
+    print '\n### Other\n'
+    ggrep -vE '#[a-z]+|GOAL|TODO' $dunnit_ledger | gsed 's/^/- /'
+    print '\n> IMPACT:'
+    if ggrep -q ' TODO ' $dunnit_ledger; then
+       print '\n### Incomplete\n'
+       ggrep ' TODO ' $dunnit_ledger | gsed 's/^([A-Z]) TODO/-/'
+    fi
 }
 
-maybe-create-daily-file() {
-    if ! [[ -f $dunnit_file ]]; then
-	echo "[$dt-$tm] Creating new dunnit file for today's work: $dunnit_file"
+maybe-create-ledger-file() {
+    if ! [[ -f $dunnit_ledger ]]; then
+	echo "[$dt-$tm] Creating new dunnit ledger file for today's work: $dunnit_ledger"
+        touch $dunnit_ledger
+    fi
+}
+
+# Create a new editable summary file from scratch
+create-summary-file() {
+    if [[ -f $dunnit_summary ]]; then
+	print "Oops, summary file $dunnit_summary already exists."
+    else
+	echo "[$dt-$tm] Creating new dunnit summary file for today's work: $dunnit_summary"
 	username=$(osascript -e "long user name of (system info)")
-	echo "UNCOMPILED" >$dunnit_file
-	echo "# $username: Status $dt\n" >>$dunnit_file
-	echo "## Original Planned Goals (list 3)\n"  >>$dunnit_file
-	echo "**Sentiment:** (bad, neutral, or good)\n"  >>$dunnit_file
-	echo "**Summary:** (1 para)\n"  >>$dunnit_file
-	echo "## Accomplishments\n"  >>$dunnit_file
+	# Create the file anew
+        echo "# $username: Status $dt\n" >$dunnit_summary
+        echo "**Sentiment:** (bad, neutral, or good)\n"  >>$dunnit_summary
+	echo "**Summary:** (1 para)"  >>$dunnit_summary
+	print '\n## Original Planned Goals\n' >>$dunnit_summary
+	ggrep 'GOAL' $dunnit_ledger | gsed 's/^GOAL/-/' >>$dunnit_summary
+        echo "\n## Accomplishments"  >>$dunnit_summary
+	sectioned=$(sectionize-ledger)
+	# [[ $? -eq 0 ]] || return 1
+        echo $sectioned >> $dunnit_summary
+	echo "\n## Big Win (rare section)\n"  >>$dunnit_summary
+	echo "## Today I Learned\n"  >>$dunnit_summary
+	# echo "\n## Plans/Problems\n" >>$dunnit_summary
     fi
 }
 
 dunnit-alert() {
+    # Get most recent entry, prefer a TODO
+    if [[ -f $dunnit_ledger ]]; then
+	todo=$(tail -1 $dunnit_ledger | ggrep TODO)
+	if [[ $? -ne 0 ]]; then
+	    last_update="LAST: $(sed -n '$p' $dunnit_ledger | sed 's/^\[[0-9]*\] //')"
+	else
+	    last_update="TODO: $todo"
+	fi
+    fi
+
     if [[ -f /tmp/dunnit-nighty ]]; then
-	echo 'in nighty mode'
+	echo 'in nighty mode; exiting as no-op'
 	exit
     fi
     ans=$($alerter -reply \
@@ -66,7 +94,7 @@ dunnit-alert() {
 		   -closeLabel 'Ignore' \
 		   -sound 'Glass' \
 		   -message "${last_update}")
-    maybe-create-daily-file
+    maybe-create-ledger-file
     # Bail out if user pressed 'Cancel'.
     if [[ $ans == 'Ignore' || $ans == '@TIMEOUT' ]]; then
 	exit
@@ -79,9 +107,19 @@ dunnit-alert() {
     fi
 
     tm=$(gdate +%H:%M)
-    # Even if ans was DONE, record it as such
-    echo "- $ans [$tm]" >>$dunnit_file
-    echo "[$dt-$tm] Captured your update in dunnit file: $dunnit_file"
+    if ggrep -q '^[A-Z]$' <<<$ans ; then
+	item=$(ggrep "^($ans) " $dunnit_ledger | sed 's/([A-Z]) TODO //')
+	[[ -z $item ]] && return 1
+	gsed -i "/^($ans) /d" $dunnit_ledger # now remove the line
+	echo "[$tm] $item" >>$dunnit_ledger
+    else
+	echo "[$tm] $ans" >>$dunnit_ledger
+    fi
+    echo "[$dt-$tm] Captured your update in dunnit file: $dunnit_ledger"
+}
+
+dunnit-editraw() {
+    [[ -n $EDITOR ]] && $=EDITOR $dunnit_ledger  || open -e $dunnit_ledger &
 }
 
 dunnit-alert-todoist() {
@@ -95,63 +133,91 @@ dunnit-alert-todoist() {
 }
 
 dunnit-eod() {
-    set -x
     ans=$($alerter -timeout 120 \
                    -title "Dunnit Daily Summary" \
-		   -message "Edit your day’s work (with tags etc)??" \
-		   -subtitle "You completed $(wc -l $dunnit_file | awk '{print $1}') today." \
+		   -message "Edit your day’s work (with tags etc)" \
+		   -subtitle "You completed $(wc -l $dunnit_ledger | awk '{print $1}') today." \
 		   -closeLabel 'Skip' \
 		   -sound 'Glass')
-    tm=$(gdate +%H%M)
+    tm=$(gdate +%H:%M)
     if [[ $ans == '@ACTIONCLICKED' ]]; then
-	cp $dunnit_file $dunnit_tmp
-	sectioned=$(sectionize)
-	[[ $? -eq 0 ]] || return 1
-	echo $sectioned >! $dunnit_file
-	echo "\n## Big Win (rare section)\n"  >>$dunnit_file
-	echo "\n## Today I Learned\n"  >>$dunnit_file
-	# echo "\n## Plans/Problems\n" >>$dunnit_file
-	echo "[$dt-$tm] Opening editor on $dunnit_file"
-        # emacsclient --create-frame $dunnit_file &
-	[[ -n $EDITOR ]] && $=EDITOR $dunnit_file  || open -e $dunnit_file &
+	if [[ -f $dunnit_summary ]]; then
+	    print "Summary file already exists and may have been finessed already."
+	    print "Will not overwrite."
+	    exit 1
+	else
+            create-summary-file
+	fi
+	echo "[$dt-$tm] Opening editor on $dunnit_summary"
+        # emacsclient --create-frame $dunnit_summary &
+	[[ -n $EDITOR ]] && $=EDITOR $dunnit_summary  || open -e $dunnit_summary &
 	# Open todoist instead
 	# /usr/local/bin/cliclick kd:cmd,ctrl t:t ku:cmd,ctrl
     fi
-    set +x
 }
 
-dunnit-bod() {
-    maybe-create-daily-file
-    # emacsclient --create-frame $dunnit_file &
-    [[ -n $EDITOR ]] && $=EDITOR $dunnit_file  || open -e $dunnit_file &
+dunnit-goals() {
+    ans=$($alerter -reply \
+	           -timeout 240 \
+                   -title "Dunnit Daily Goals" \
+		   -subtitle "Start your day with 3 goals." \
+		   -message "Use Ctrl-Enter for extra goal lines." \
+    		   -closeLabel 'Ignore' \
+		   -sound 'Glass')
+    # tm=$(gdate +%H:%M)
+    if [[ $ans != "Ignore" ]]; then
+       touch $dunnit_ledger
+       gsed "s/$(echo -ne '\u2028')/\n/g" <<<$ans | gsed 's/^/GOAL /' >>$dunnit_ledger
+    fi
+    # emacsclient --create-frame $dunnit_summary &
+    # [[ -n $EDITOR ]] && $=EDITOR $dunnit_summary  || open -e $dunnit_summary &
 }
 
 dunnit-report() {
     mkdir -p ~/dunnit/reports/
-    # pandoc -f markdown $dunnit_file -o ~/dunnit/reports/$dunnit_file:t:r.html
-    html=$dunnit_file:r.html
-    pandoc -t html --self-contained --css reports/report.css -f markdown $dunnit_file -o $html
+    # pandoc -f markdown $dunnit_summary -o ~/dunnit/reports/$dunnit_file:t:r.html
+    html=$dunnit_summary:r.html
+    pandoc -t html --self-contained --css reports/report.css -f markdown $dunnit_summary -o $html
     # pandoc -t html --self-contained --css reports/report.css -f markdown log/2021/w16-Apr/20210420-Tue.md -o foo.html
-    /Applications/Firefox.app/Contents/MacOS/firefox $html
+    # /Applications/Firefox.app/Contents/MacOS/firefox $html
+    ${BROWSER-/Applications/Safari.app/Contents/MacOS/Safari} $html
 }
 
 dunnit-todo() {
-    ans=$(alerter -reply \
-		  -timeout 300 \
+    ans=$($alerter -reply \
+	 	  -timeout 300 \
                   -title "Dunnit TODO" \
 		  -subtitle "Whatcha gonna do next?" \
 		  -message '\(just one thing)' \
                   -sound 'Glass')
     tm=$(gdate +%H:%M)
     if [[ $ans != '@CLOSED' ]]; then
-	echo "[$dt-$tm] Got it"
-	echo "[$tm] TODO $ans" >>$dunnit_file
-	echo "[$dt-$tm] Captured your TODO in dunnit file: $dunnit_file"
+	touch $dunnit_ledger
+	# Generate a random letter
+	# alpha=(); for c in {A..Z}; alpha+=$c; i=$(( RANDOM % 26 ))
+	# Get highest letter todo
+	if ! ggrep '^([A-Z]) TODO' $dunnit_ledger; then
+	    next='A'
+	else
+	    next=$(ggrep TODO $dunnit_ledger | sort | tail -1 |
+		    gsed -E -e 's/[()]//g' -e 's/ .*//' |
+		    tr "0-9A-z" "1-9A-z_")
+            # echo "($alpha[i]) TODO $ans" >>$dunnit_ledger
+            echo "($next) TODO $ans" >>$dunnit_ledger
+	    echo "[$dt-$tm] Captured your TODO in dunnit file: $dunnit_ledger"
+	fi
     else
 	echo no-op
     fi
 }
 
+dunnit-showtodos() {
+    print '## Goals'
+    ggrep 'GOAL' $dunnit_ledger | gsed 's/^GOAL/-/'
+    print '\n## Todos'
+    ggrep 'TODO' $dunnit_ledger | gsed 's/^TODO/-/'
+}
+
 dunnit-progress() {
-    cat $dunnit_file
+    cat $dunnit_ledger
 }

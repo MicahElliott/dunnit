@@ -21,19 +21,19 @@ categories.
 
 Do all these steps from a terminal.
 
+1. Install most prerequisites via Homebrew:
+
+   ```sh
+   brew install direnv bat fzf coreutils git grep python wget terminal-notifier the_silver_searcher pandoc
+   sudo pip install rumps
+   ```
+
 1. Clone this Dunnit repo. to `~/dunnit`
 
    ```sh
    cd # to your $HOME
    git clone https://github.com/MicahElliott/dunnit.git
    cd dunnit
-   ```
-
-1. Install most prerequisites via Homebrew:
-
-   ```sh
-   % brew install direnv bat fzf coreutils the_silver_searcher pandoc
-   % sudo pip install rumps
    ```
 
 1. Install Alerter: Download, extract, and install the
