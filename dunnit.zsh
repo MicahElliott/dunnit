@@ -66,9 +66,9 @@ create-summary-file() {
 	sectioned=$(sectionize-ledger)
 	# [[ $? -eq 0 ]] || return 1
         echo $sectioned >> $dunnit_summary
-	echo "\n## Big Win (rare section)\n"  >>$dunnit_summary
+	echo "\n## Biggest Thing of the Day\n"  >>$dunnit_summary
 	echo "## Today I Learned\n"  >>$dunnit_summary
-	# echo "\n## Plans/Problems\n" >>$dunnit_summary
+        # echo "\n## Plans/Problems\n" >>$dunnit_summary
     fi
 }
 
@@ -98,12 +98,26 @@ dunnit-alert() {
     # Bail out if user pressed 'Cancel'.
     if [[ $ans == 'Ignore' || $ans == '@TIMEOUT' ]]; then
 	exit
-    elif [[ $ans == '@ACTIONCLICKED' ]]; then
+    elif [[ $ans == '@ACTIONCLICKED' || $ans == 'snooze' || $ans == 'zzz' ]]; then
 	# Support a SNOOZE hack by pressing 'Send' with an empty message.
 	terminal-notifier -message 'Snoozing for 5m...'
 	sleep 300
         # Recursive for snooze support!
 	dunnit-alert
+    fi
+
+    if [[ $ans == 'Ditto' ]]; then
+        # Determine if already a %N points indicator on last line
+        if gsed -n '$p' $dunnit_ledger | ggrep -qE '%[0-9]+$'; then
+	    # Increment
+	    integer n=$(gsed -n '$p' $dunnit_ledger | gsed -r 's/.*%([0-9])$/\1/')
+	    n+=1
+            gsed -ri '$s/%[0-9]+/'"%$n/" $dunnit_ledger
+	else
+	    # Just append %1
+            gsed -ri '$s/$/ %2/' $dunnit_ledger
+        fi
+	exit
     fi
 
     tm=$(gdate +%H:%M)
