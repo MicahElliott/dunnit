@@ -26,7 +26,7 @@ sectionize-ledger() {
     # FIXME losing all non-tagged dunnits!
     # ggrep -q UNCOMPILED $dunnit_summary || { print "Already been compiled." 2>&1; return 1 }
     # gsed '/## Accomp/q' $dunnit_tmp 	# print only lines up to
-    groups=( $(ggrep -E -o '#[a-z]+' $dunnit_ledger | sort | uniq) )
+    groups=( $(ggrep -E -o '#[0-9a-z]+' $dunnit_ledger | sort | uniq) )
     for g in $groups; do
 	i2=$(sed 's/#//' <<<$g)
 	print "\n### ${(C)i2}\n"
@@ -34,7 +34,7 @@ sectionize-ledger() {
         print '\n> IMPACT:'
     done
     print '\n### Other\n'
-    ggrep -vE '#[a-z]+|GOAL|TODO' $dunnit_ledger | gsed 's/^/- /'
+    ggrep -vE '#[0-9a-z]+|GOAL|TODO' $dunnit_ledger | gsed 's/^/- /'
     print '\n> IMPACT:'
     if ggrep -q ' TODO ' $dunnit_ledger; then
        print '\n### Incomplete\n'

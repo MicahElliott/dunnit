@@ -9,17 +9,13 @@ if os.path.isfile(nightyfile): os.remove(nightyfile)
 
 class DunnitStatusBarApp(rumps.App):
 
-    @rumps.clicked("Preferences (NYI)")
-    def prefs(self, _):
-        rumps.alert("jk! No preferences available yet.")
-
     @rumps.clicked("GM, Sunshine! (set goals)")
     def setgoals(self, _):
         os.system("~/dunnit/dunnit-goals")
         # Use todoist instead
         # os.system('cliclick kd:cmd,ctrl t:t ku:cmd,ctrl')
 
-    @rumps.clicked("Show All Todos")
+    @rumps.clicked("All Todos")
     def showtodos(self, _):
         with open('help.txt', 'r') as file: txt = file.read()
         prog = os.popen("~/dunnit/dunnit-showtodos").read()
@@ -29,20 +25,20 @@ class DunnitStatusBarApp(rumps.App):
         win.default_text = prog
         resp = win.run()
 
-    @rumps.clicked("New Todo")
+    @rumps.clicked("Todo")
     def todo(self, _):
         os.system("~/dunnit/dunnit-todo")
         # Use todoist instead
         # os.system('cliclick kd:cmd,ctrl t:a ku:cmd,ctrl')
 
-    @rumps.clicked("New Dunnit (YAY!)")
+    @rumps.clicked("Dunnit (YAY!)")
     def bubble(self, sender):
         # if not sender.state:
         os.system("~/dunnit/dunnit-bubble")
         # Use todoist instead
         # os.system('cliclick kd:cmd,ctrl t:a ku:cmd,ctrl')
 
-    @rumps.clicked("Show Today's Ledger")
+    @rumps.clicked("Today's Ledger")
     def progress(self, _):
         prog = os.popen("~/dunnit/dunnit-progress").read()
         win = rumps.Window("foo", 'bar', dimensions=(500,600))
@@ -58,7 +54,7 @@ class DunnitStatusBarApp(rumps.App):
     def raw(self, _):
         es = os.system("~/dunnit/dunnit-editraw")
 
-    @rumps.clicked("Finalize the Day (only once!)")
+    @rumps.clicked("Thx for all the fish! (finalize)")
     def eod(self, _):
         # TODO pop lp alert if already exists
         es = os.system("~/dunnit/dunnit-eod")
@@ -66,14 +62,14 @@ class DunnitStatusBarApp(rumps.App):
         # Use todoist instead
         # os.system('cliclick kd:cmd,ctrl t:t ku:cmd,ctrl')
 
-    @rumps.clicked("Generate Daily Report (HTML)")
+    @rumps.clicked("Daily Report (html)")
     def report(self, _):
         os.system("~/dunnit/dunnit-report")
         # Use todoist instead
         # os.system('cliclick kd:cmd,ctrl t:t ku:cmd,ctrl')
 
     # TODO
-    @rumps.clicked("Email Daily Report (NYI)")
+    @rumps.clicked("Daily Report (email, NYI)")
     def email(self, _):
         os.system("~/dunnit/dunnit-email")
 
@@ -90,6 +86,10 @@ class DunnitStatusBarApp(rumps.App):
             self.title = '💤 Dunnit'
             with open(nightyfile, 'a'): pass
             sender.state = True
+
+    # @rumps.clicked("Preferences (NYI)")
+    # def prefs(self, _):
+    #     rumps.alert("jk! No preferences available yet.")
 
     @rumps.clicked("Help (NYI)")
     def help(self, _):
