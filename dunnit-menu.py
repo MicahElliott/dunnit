@@ -96,7 +96,7 @@ class DunnitStatusBarApp(rumps.App):
         with open('help.txt', 'r') as file: txt = file.read()
         win = rumps.Window("foo", 'bar', dimensions=(500,600))
         win.title = 'Dunnit Help'
-        win.message = "This is all you get for now."
+        win.message = "All about Dunnit and its Usage'"
         win.default_text = txt
         resp = win.run()
 
