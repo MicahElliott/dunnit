@@ -10,7 +10,7 @@ yr=$(date +%Y)
 dunnit_dir=${DUNNIT_DIR:-~/dunnit/log/$yr/$wk}
 dunnit_summary=$dunnit_dir/$dt.md
 dunnit_ledger=~/dunnit/ledger-$dt.txt
-dunnit_goals=~/dunnit/goals-$dt.txt
+# dunnit_goals=~/dunnit/goals-$dt.txt
 dunnit_tmp=$dunnit_dir/$dt-tmp.md
 
 alerter=/usr/local/bin/alerter
@@ -172,7 +172,7 @@ dunnit-eod() {
 
 dunnit-goals() {
     ans=$($alerter -reply \
-	           -timeout 240 \
+	           -timeout 600 \
                    -title "Dunnit Daily Goals" \
 		   -subtitle "Start your day with 3 goals." \
 		   -message "Use Ctrl-Enter for extra goal lines." \
@@ -182,6 +182,9 @@ dunnit-goals() {
     if [[ $ans != "Ignore" ]]; then
        touch $dunnit_ledger
        gsed "s/$(echo -ne '\u2028')/\n/g" <<<$ans | gsed 's/^/GOAL /' >>$dunnit_ledger
+       terminal-notifier -sound Glass -title 'Dunnit Confirmation' \
+			 -subtitle 'Sounds great!' \
+			 -message 'You’re set up for a successful day!'
     fi
     # emacsclient --create-frame $dunnit_summary &
     # [[ -n $EDITOR ]] && $=EDITOR $dunnit_summary  || open -e $dunnit_summary &
@@ -217,9 +220,9 @@ dunnit-todo() {
 		    gsed -E -e 's/[()]//g' -e 's/ .*//' |
 		    tr "0-9A-z" "1-9A-z_")
             # echo "($alpha[i]) TODO $ans" >>$dunnit_ledger
-            echo "($next) TODO $ans" >>$dunnit_ledger
-	    echo "[$dt-$tm] Captured your TODO in dunnit file: $dunnit_ledger"
 	fi
+        echo "($next) TODO $ans" >>$dunnit_ledger
+	echo "[$dt-$tm] Captured your TODO in dunnit file: $dunnit_ledger"
     else
 	echo no-op
     fi

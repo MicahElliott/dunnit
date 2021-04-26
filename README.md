@@ -24,7 +24,7 @@ Do all these steps from a terminal.
 1. Install most prerequisites via Homebrew:
 
    ```sh
-   brew install direnv bat fzf coreutils git grep python wget terminal-notifier the_silver_searcher pandoc
+   brew install direnv bat fzf coreutils git grep python wget gsed terminal-notifier the_silver_searcher pandoc
    sudo pip install rumps
    ```
 
