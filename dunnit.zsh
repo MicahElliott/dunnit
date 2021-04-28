@@ -29,11 +29,11 @@ sectionize-ledger() {
     groups=( $(ggrep -E -o '#[0-9a-z]+' $dunnit_ledger | sort | uniq) )
     for g in $groups; do
 	i2=$(sed 's/#//' <<<$g)
-	print "\n### ${(C)i2}\n"
-	ggrep $g $dunnit_ledger | sed -e "s/$g //" -e 's/^/- /'
-        print '\n> IMPACT:'
+	print "\n## ${(C)i2}\n"
+	ggrep -vE 'GOAL|TODO' $dunnit_ledger | ggrep $g | sed -e "s/$g //" -e 's/^/- /' -e 's/ #[0-9a-z]+//g'
+        print '\n> IMPACT(N):'
     done
-    print '\n### Other\n'
+    print '\n## Other\n'
     ggrep -vE '#[0-9a-z]+|GOAL|TODO' $dunnit_ledger | gsed 's/^/- /'
     print '\n> IMPACT:'
     if ggrep -q ' TODO ' $dunnit_ledger; then
@@ -57,15 +57,19 @@ create-summary-file() {
 	echo "[$dt-$tm] Creating new dunnit summary file for today's work: $dunnit_summary"
 	username=$(osascript -e "long user name of (system info)")
 	# Create the file anew
-        echo "# $username: Status $dt\n" >$dunnit_summary
-        echo "**Sentiment:** (bad, neutral, or good)\n"  >>$dunnit_summary
+        echo "% $username" >$dunnit_summary
+        echo "% Status " >>$dunnit_summary
+        echo "% $dt\n" >>$dunnit_summary
+	echo "\n# Other"  >>$dunnit_summary
+	echo "**Sentiment:** (bad, neutral, or good)\n"  >>$dunnit_summary
 	echo "**Summary:** (1 para)"  >>$dunnit_summary
 	print '\n## Original Planned Goals\n' >>$dunnit_summary
 	ggrep 'GOAL' $dunnit_ledger | gsed 's/^GOAL/-/' >>$dunnit_summary
-        echo "\n## Accomplishments"  >>$dunnit_summary
+        echo "\n# Accomplishments"  >>$dunnit_summary
 	sectioned=$(sectionize-ledger)
 	# [[ $? -eq 0 ]] || return 1
         echo $sectioned >> $dunnit_summary
+        echo "\n# Other"  >>$dunnit_summary
 	echo "\n## Biggest Thing of the Day\n"  >>$dunnit_summary
 	echo "## Today I Learned\n"  >>$dunnit_summary
         # echo "\n## Plans/Problems\n" >>$dunnit_summary
@@ -202,11 +206,14 @@ dunnit-goals() {
 dunnit-report() {
     mkdir -p ~/dunnit/reports/
     # pandoc -f markdown $dunnit_summary -o ~/dunnit/reports/$dunnit_file:t:r.html
-    html=$dunnit_summary:r.html
+    html=$dunnit_summary:r-report.html
+    preso=$dunnit_summary:r-preso.html
     pandoc -t html --self-contained --css reports/report.css -f markdown $dunnit_summary -o $html
+    pandoc -s -t revealjs $dunnit_summary -o $preso
     # pandoc -t html --self-contained --css reports/report.css -f markdown log/2021/w16-Apr/20210420-Tue.md -o foo.html
     # /Applications/Firefox.app/Contents/MacOS/firefox $html
     ${BROWSER-/Applications/Safari.app/Contents/MacOS/Safari} $html
+    ${BROWSER-/Applications/Safari.app/Contents/MacOS/Safari} $preso
 }
 
 dunnit-todo() {
