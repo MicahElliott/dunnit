@@ -43,7 +43,7 @@ class DunnitStatusBarApp(rumps.App):
         prog = os.popen("~/dunnit/dunnit-progress").read()
         win = rumps.Window("foo", 'bar', dimensions=(500,600))
         win.title = 'Dunnit Progress Today'
-        win.message = "This is an in-flight view of your day so far. It's just markdown; you'll have a chance to edit it when you close the day."
+        win.message = "This is an in-flight view of your day so far. It's just a ledger of raw entries; you'll have a chance to edit it in a better format when you close the day."
         win.default_text = prog
         resp = win.run()
         print(resp)
@@ -91,12 +91,12 @@ class DunnitStatusBarApp(rumps.App):
     # def prefs(self, _):
     #     rumps.alert("jk! No preferences available yet.")
 
-    @rumps.clicked("Help (NYI)")
+    @rumps.clicked("Help")
     def help(self, _):
         with open('help.txt', 'r') as file: txt = file.read()
         win = rumps.Window("foo", 'bar', dimensions=(500,600))
         win.title = 'Dunnit Help'
-        win.message = "All about Dunnit and its Usage'"
+        win.message = "All about Dunnit and its usage'"
         win.default_text = txt
         resp = win.run()
 

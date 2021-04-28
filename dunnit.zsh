@@ -87,11 +87,12 @@ dunnit-alert() {
 	echo 'in nighty mode; exiting as no-op'
 	exit
     fi
+    set -x
     ans=$($alerter -reply \
 		   -timeout 120 \
                    -title "Dunnit Activity Entry" \
-		   -subtitle "Whadja work on? (blank to snooze)" \
-		   -closeLabel 'Ignore' \
+		   -subtitle "What did you work on? (blank to snooze)" \
+                   -closeLabel 'Ignore' \
 		   -sound 'Glass' \
 		   -message "${last_update}")
     maybe-create-ledger-file
@@ -120,6 +121,11 @@ dunnit-alert() {
 	exit
     fi
 
+    if [[ -z $ans ]]; then
+	terminal-notifier -sound Glass -title 'MAC BUG: UNABLE TO CAPTURE' -message 'Close this and try again manually.'
+	exit
+    fi
+
     tm=$(gdate +%H:%M)
     if ggrep -q '^[A-Z]$' <<<$ans ; then
 	item=$(ggrep "^($ans) " $dunnit_ledger | sed 's/([A-Z]) TODO //')
@@ -127,9 +133,11 @@ dunnit-alert() {
 	gsed -i "/^($ans) /d" $dunnit_ledger # now remove the line
 	echo "[$tm] $item" >>$dunnit_ledger
     else
+	ans=$(gsed "s/$(print -n '\u2028')/\n[$tm] /g" <<<$ans)
 	echo "[$tm] $ans" >>$dunnit_ledger
     fi
     echo "[$dt-$tm] Captured your update in dunnit file: $dunnit_ledger"
+    set +x
 }
 
 dunnit-editraw() {
@@ -149,12 +157,13 @@ dunnit-alert-todoist() {
 dunnit-eod() {
     ans=$($alerter -timeout 120 \
                    -title "Dunnit Daily Summary" \
-		   -message "Edit your day’s work (with tags etc)" \
-		   -subtitle "You completed $(wc -l $dunnit_ledger | awk '{print $1}') today." \
-		   -closeLabel 'Skip' \
+		   -subtitle "You completed $(ggrep -cE '\[[0-9:]+\]' $dunnit_ledger) today." \
+		   -message "Edit to finalize your day’s work (with #tags etc)" \
+		   -actions 'Finalize' \
+		   -closeLabel 'Too lazy today' \
 		   -sound 'Glass')
     tm=$(gdate +%H:%M)
-    if [[ $ans == '@ACTIONCLICKED' ]]; then
+    if [[ $ans == 'Finalize' ]]; then
 	if [[ -f $dunnit_summary ]]; then
 	    print "Summary file already exists and may have been finessed already."
 	    print "Will not overwrite."
@@ -174,14 +183,14 @@ dunnit-goals() {
     ans=$($alerter -reply \
 	           -timeout 600 \
                    -title "Dunnit Daily Goals" \
-		   -subtitle "Start your day with 3 goals." \
-		   -message "Use Ctrl-Enter for extra goal lines." \
+		   -subtitle "Start your day with 3 high-level goals." \
+		   -message "Use Ctrl-Return for each new goal line." \
     		   -closeLabel 'Ignore' \
 		   -sound 'Glass')
     # tm=$(gdate +%H:%M)
     if [[ $ans != "Ignore" ]]; then
        touch $dunnit_ledger
-       gsed "s/$(echo -ne '\u2028')/\n/g" <<<$ans | gsed 's/^/GOAL /' >>$dunnit_ledger
+       gsed "s/$(print -n '\u2028')/\n/g" <<<$ans | gsed 's/^/GOAL /' >>$dunnit_ledger
        terminal-notifier -sound Glass -title 'Dunnit Confirmation' \
 			 -subtitle 'Sounds great!' \
 			 -message 'You’re set up for a successful day!'

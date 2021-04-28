@@ -113,6 +113,10 @@ If you didn’t accomplish anything noteworthy, just click **Nothing**
 You can _snooze_ by clicking **Reply** and then **Send** with an empty
 message, or typing ‘zzz‘ or ‘snooze’.
 
+If an hour has passed and you’re still working on the same thing, just
+type “Ditto” and your task will be extended with a time-point
+indicator.
+
 ### Planning (TODOs)
 
 Although TODOs aren’t the heart of Dunnit, capturing what you wanna
@@ -138,6 +142,14 @@ day’s status: <kbd>Ctrl-t</kbd>
 % source setup.zsh
 % «Ctrl-t»
 ```
+
+## Special Sections
+
+- til
+- win
+- career
+- mtg
+- idea
 
 ## Stop and Remove
 
