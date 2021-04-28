@@ -6,6 +6,10 @@
     <dict>
       <key>PATH</key>
       <string>/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+      <key>LC_ALL</key>
+      <string>en_US.UTF-8</string>
+      <key>LANG</key>
+      <string>en_US.UTF-8</string>
     </dict>
     <key>Label</key>
     <string>com.micahelliott.dunnit</string>
