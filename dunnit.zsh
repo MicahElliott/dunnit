@@ -7,6 +7,11 @@ dt=$(date +%Y%m%d-%a) # 20200601-Mon
 mo=$(gdate -dsunday +%b) # Month of nearest Sunday
 wk=$(date +w%V-$mo) # w23-Jun
 yr=$(date +%Y)
+if [[ $(date +%a) == 'Mon' ]]; then
+    dunnit_ledger_yesterday=~/dunnit/ledger-$(date -d 'last friday' +%Y%m%d-%a).txt
+else
+    dunnit_ledger_yesterday=~/dunnit/ledger-$(date -d 'yesterday' +%Y%m%d-%a).txt
+fi
 dunnit_dir=${DUNNIT_DIR:-~/dunnit/log/$yr/$wk}
 dunnit_summary=$dunnit_dir/$dt.md
 dunnit_ledger=~/dunnit/ledger-$dt.txt
@@ -38,7 +43,7 @@ sectionize-ledger() {
     print '\n> IMPACT:'
     if ggrep -q ' TODO ' $dunnit_ledger; then
        print '\n### Incomplete\n'
-       ggrep ' TODO ' $dunnit_ledger | gsed 's/^([A-Z]) TODO/-/'
+       ggrep ' TODO ' $dunnit_ledger | gsed 's/^([A-Z]) /- /'
     fi
 }
 
@@ -195,6 +200,8 @@ dunnit-goals() {
     if [[ $ans != "Ignore" ]]; then
        touch $dunnit_ledger
        gsed "s/$(print -n '\u2028')/\n/g" <<<$ans | gsed 's/^/GOAL /' >>$dunnit_ledger
+       # Carry yesterday's unfinished TODOs into today
+       ggrep 'TODO' $dunnit_ledger_yesterday >>$dunnit_ledger
        terminal-notifier -sound Glass -title 'Dunnit Confirmation' \
 			 -subtitle 'Sounds great!' \
 			 -message 'You’re set up for a successful day!'
