@@ -240,12 +240,12 @@ dunnit-todo() {
 	if ! ggrep '^([A-Z]) TODO' $dunnit_ledger; then
 	    next='A'
 	else
-	    next=$(ggrep TODO $dunnit_ledger | sort | tail -1 |
+	    next=$(ggrep 'TODO ' $dunnit_ledger | sort | tail -1 |
 		    gsed -E -e 's/[()]//g' -e 's/ .*//' |
-		    tr "0-9A-z" "1-9A-z_")
+		    gtr "0-9A-z" "1-9A-z_")
             # echo "($alpha[i]) TODO $ans" >>$dunnit_ledger
 	fi
-        echo "($next) TODO $ans" >>$dunnit_ledger
+        print "($next) TODO $ans" >>$dunnit_ledger
 	echo "[$dt-$tm] Captured your TODO in dunnit file: $dunnit_ledger"
     else
 	echo no-op
