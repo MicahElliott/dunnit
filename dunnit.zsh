@@ -3,14 +3,14 @@
 # plist files have restricted paths
 path+=/usr/local/bin
 
-dt=$(date +%Y%m%d-%a) # 20200601-Mon
+dt=$(gdate +%Y%m%d-%a) # 20200601-Mon
 mo=$(gdate -dsunday +%b) # Month of nearest Sunday
-wk=$(date +w%V-$mo) # w23-Jun
-yr=$(date +%Y)
-if [[ $(date +%a) == 'Mon' ]]; then
-    dunnit_ledger_yesterday=~/dunnit/ledger-$(date -d 'last friday' +%Y%m%d-%a).txt
+wk=$(gdate +w%V-$mo) # w23-Jun
+yr=$(gdate +%Y)
+if [[ $(gdate +%a) == 'Mon' ]]; then
+    dunnit_ledger_yesterday=~/dunnit/ledger-$(gdate -d 'last friday' +%Y%m%d-%a).txt
 else
-    dunnit_ledger_yesterday=~/dunnit/ledger-$(date -d 'yesterday' +%Y%m%d-%a).txt
+    dunnit_ledger_yesterday=~/dunnit/ledger-$(gdate -d 'yesterday' +%Y%m%d-%a).txt
 fi
 dunnit_dir=${DUNNIT_DIR:-~/dunnit/log/$yr/$wk}
 dunnit_summary=$dunnit_dir/$dt.md
@@ -35,11 +35,12 @@ sectionize-ledger() {
     for g in $groups; do
 	i2=$(sed 's/#//' <<<$g)
 	print "\n## ${(C)i2}\n"
-	ggrep -vE 'GOAL|TODO' $dunnit_ledger | ggrep $g | sed -e "s/$g //" -e 's/^/- /' -e 's/ #[0-9a-z]+//g'
+	ggrep -vE 'GOAL|TODO' $dunnit_ledger | ggrep $g |
+	    gsed -r -e "s/$g //" -e 's/^/- /' -e 's/ #[0-9a-z]+//g' -e 's/ \[[0-9:]+\] / /'
         print '\n> IMPACT(N):'
     done
     print '\n## Other\n'
-    ggrep -vE '#[0-9a-z]+|GOAL|TODO' $dunnit_ledger | gsed 's/^/- /'
+    ggrep -vE '#[0-9a-z]+|GOAL|TODO' $dunnit_ledger | gsed -r -e 's/^/- /'  -e 's/ \[[0-9:]+\] / /'
     print '\n> IMPACT:'
     if ggrep -q ' TODO ' $dunnit_ledger; then
        print '\n### Incomplete\n'
@@ -63,9 +64,9 @@ create-summary-file() {
 	username=$(osascript -e "long user name of (system info)")
 	# Create the file anew
         echo "% $username" >$dunnit_summary
-        echo "% Status " >>$dunnit_summary
+        echo "% Impact Report" >>$dunnit_summary
         echo "% $dt\n" >>$dunnit_summary
-	echo "\n# Other"  >>$dunnit_summary
+	echo "# Overview\n"  >>$dunnit_summary
 	echo "**Sentiment:** (bad, neutral, or good)\n"  >>$dunnit_summary
 	echo "**Summary:** (1 para)"  >>$dunnit_summary
 	print '\n## Original Planned Goals\n' >>$dunnit_summary
@@ -84,7 +85,7 @@ create-summary-file() {
 dunnit-alert() {
     # Get most recent entry, prefer a TODO
     if [[ -f $dunnit_ledger ]]; then
-	todo=$(tail -1 $dunnit_ledger | ggrep TODO)
+	todo=$(tail -1 $dunnit_ledger | ggrep 'TODO ')
 	if [[ $? -ne 0 ]]; then
 	    last_update="LAST: $(sed -n '$p' $dunnit_ledger | sed 's/^\[[0-9]*\] //')"
 	else
@@ -167,7 +168,7 @@ dunnit-eod() {
     ans=$($alerter -timeout 120 \
                    -title "Dunnit Daily Summary" \
 		   -subtitle "You completed $(ggrep -cE '\[[0-9:]+\]' $dunnit_ledger) today." \
-		   -message "Edit to finalize your day’s work (with #tags etc)" \
+		   -message "Finalize your day’s work (#tags etc)" \
 		   -actions 'Finalize' \
 		   -closeLabel 'Too lazy today' \
 		   -sound 'Glass')
@@ -201,7 +202,7 @@ dunnit-goals() {
        touch $dunnit_ledger
        gsed "s/$(print -n '\u2028')/\n/g" <<<$ans | gsed 's/^/GOAL /' >>$dunnit_ledger
        # Carry yesterday's unfinished TODOs into today
-       ggrep 'TODO' $dunnit_ledger_yesterday >>$dunnit_ledger
+       ggrep 'TODO ' $dunnit_ledger_yesterday >>$dunnit_ledger
        terminal-notifier -sound Glass -title 'Dunnit Confirmation' \
 			 -subtitle 'Sounds great!' \
 			 -message 'You’re set up for a successful day!'
