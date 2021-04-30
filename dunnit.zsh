@@ -39,11 +39,11 @@ sectionize-ledger() {
 	    gsed -r -e "s/$g //" -e 's/^/- /' -e 's/ #[0-9a-z]+//g' -e 's/ \[[0-9:]+\] / /'
         print '\n> IMPACT(N):'
     done
-    print '\n## Other\n'
-    ggrep -vE '#[0-9a-z]+|GOAL|TODO' $dunnit_ledger | gsed -r -e 's/^/- /'  -e 's/ \[[0-9:]+\] / /'
+    ggrep -qvE '#[0-9a-z]+|GOAL|TODO' $dunnit_ledger && print '\n## Other\n'
+    ggrep  -vE '#[0-9a-z]+|GOAL|TODO' $dunnit_ledger | gsed -r -e 's/^/- /'  -e 's/ \[[0-9:]+\] / /'
     print '\n> IMPACT:'
     if ggrep -q ' TODO ' $dunnit_ledger; then
-       print '\n### Incomplete\n'
+       print '\n## Incomplete\n'
        ggrep ' TODO ' $dunnit_ledger | gsed 's/^([A-Z]) /- /'
     fi
 }
@@ -67,11 +67,12 @@ create-summary-file() {
         echo "% Impact Report" >>$dunnit_summary
         echo "% $dt\n" >>$dunnit_summary
 	echo "# Overview\n"  >>$dunnit_summary
-	echo "**Sentiment:** (bad, neutral, or good)\n"  >>$dunnit_summary
-	echo "**Summary:** (1 para)"  >>$dunnit_summary
+	echo "### Sentiment: (bad, neutral, or good)\n"  >>$dunnit_summary
+	echo "## Summary (1 para)"  >>$dunnit_summary
 	print '\n## Original Planned Goals\n' >>$dunnit_summary
 	ggrep 'GOAL' $dunnit_ledger | gsed 's/^GOAL/-/' >>$dunnit_summary
         echo "\n# Accomplishments"  >>$dunnit_summary
+        echo "\n### Day Score: N"  >>$dunnit_summary
 	sectioned=$(sectionize-ledger)
 	# [[ $? -eq 0 ]] || return 1
         echo $sectioned >> $dunnit_summary
