@@ -100,7 +100,7 @@ dunnit-alert() {
     fi
     set -x
     ans=$($alerter -reply \
-		   -timeout 120 \
+		   -timeout 600 \
                    -title "Dunnit Activity Entry" \
 		   -subtitle "What did you work on? (blank to snooze)" \
                    -closeLabel 'Ignore' \
@@ -166,7 +166,7 @@ dunnit-alert-todoist() {
 }
 
 dunnit-eod() {
-    ans=$($alerter -timeout 120 \
+    ans=$($alerter -timeout 600 \
                    -title "Dunnit Daily Summary" \
 		   -subtitle "You completed $(ggrep -cE '\[[0-9:]+\]' $dunnit_ledger) today." \
 		   -message "Finalize your day’s work (#tags etc)" \
