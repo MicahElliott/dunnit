@@ -88,7 +88,17 @@ class DunnitStatusBarApp(rumps.App):
     # def prefs(self, _):
     #     rumps.alert("jk! No preferences available yet.")
 
-    @rumps.clicked("Help", "Help")
+    @rumps.clicked("Sync", "Push")
+    def push(self, _):
+        rumps.notification("Pushing to remote", "...", "...")
+        os.system("~/dunnit/dunnit-push")
+
+    @rumps.clicked("Sync", "Pull")
+    def pull(self, _):
+        rumps.notification("Pulling from remote", "...", "...")
+        os.system("~/dunnit/dunnit-pull")
+
+    @rumps.clicked("Help", "Full Tutorial")
     def help(self, _):
         with open('help.txt', 'r') as file: txt = file.read()
         win = rumps.Window("foo", 'bar', dimensions=(500,600))
@@ -97,12 +107,11 @@ class DunnitStatusBarApp(rumps.App):
         win.default_text = txt
         resp = win.run()
 
-
     @rumps.clicked("Help", "Version Info")
     def verinfo(self, _):
         rumps.notification("Version", "0.0.1", "Something")
 
-    @rumps.clicked("Help", "What's Dunnit?")
+    @rumps.clicked("Help", "Dunnit??")
     def about(self, _):
         rumps.notification("Dunnit is for tracking WTF you did", "Just write a sentence each hour.", "You can pop up and record anytime.")
 

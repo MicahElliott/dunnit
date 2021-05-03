@@ -14,7 +14,8 @@ else
 fi
 dunnit_dir=${DUNNIT_DIR:-~/dunnit/log/$yr/$wk}
 dunnit_summary=$dunnit_dir/$dt.md
-dunnit_ledger=~/dunnit/ledger-$dt.txt
+# dunnit_ledger=~/dunnit/ledger-$dt.txt
+dunnit_ledger=$dunnit_dir/ledger-$dt.txt
 # dunnit_goals=~/dunnit/goals-$dt.txt
 dunnit_tmp=$dunnit_dir/$dt-tmp.md
 
@@ -262,4 +263,26 @@ dunnit-showtodos() {
 
 dunnit-progress() {
     cat $dunnit_ledger
+}
+
+dunnit-push() {
+    set -x
+    print "Adding/committing/pushing all changes to mydunnits remote."
+    cd ~/dunnit/log && {
+	git add -A .
+	git commit -am "checkpoint sync from $HOST"
+	git push origin master
+    }
+    set +x
+}
+
+dunnit-pull() {
+    set -x
+    print "Committing and pulling all changes from remote mydunnits repo."
+    cd ~/dunnit/log && {
+	git add -A .
+	git commit -am "checkpoint sync from $HOST"
+	git pull --rebase
+    }
+    set +x
 }

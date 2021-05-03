@@ -35,24 +35,25 @@ buy or make you a very fancy drink of your choosing next time we meet.
 
 ## Install and Run
 
-Do all these steps from a terminal. I would like to see you succeed
+Do most of these steps from a terminal. I would like to see you succeed
 with Dunnit, so please reach out to me for help with any of this.
 
+1. Open a terminal: Open up spotlight (Cmd-Space) and type `terminal`
+
 1. Install [Homebrew](https://brew.sh/) if you haven’t already. This
-   and then next step will take several minutes.
+   and the next step will take several minutes.
 
    ```sh
    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
    ```
 
-1. Install most prerequisites via Homebrew:
+1. Install git
 
    ```sh
-   brew install direnv bat fzf coreutils git grep python wget gsed terminal-notifier the_silver_searcher pandoc
-   pip3 install rumps
+   brew install git
    ```
 
-1. Clone this Dunnit repo. to `~/dunnit`
+1. Clone this Dunnit repo to `~/dunnit` (this step is not flexible!)
 
    ```sh
    cd # to your $HOME
@@ -60,88 +61,43 @@ with Dunnit, so please reach out to me for help with any of this.
    cd dunnit
    ```
 
-1. Install Alerter: Download, extract, and install the
-   [alerter zip file](https://github.com/vjeantet/alerter/releases):
+1. Sign up for a [Github](https://github.com/join) (or Gitlab) account.
+
+1. Set up a remote git repo to track your Dunnits: One common approach
+   to this is
+   [creating a private Github repo](https://docs.github.com/en/github/getting-started-with-github/create-a-repo).
+   Follow those instructions, and:
+
+   - name your new repo “mydunnits”
+   - select the radio button “Private”
+   - check the box “Add a README file”
+
+1. Clone your Dunnit daily activity repo for local tracking.
 
    ```sh
-   wget https://github.com/vjeantet/alerter/releases/download/004/alerter_v004_darwin_amd64.zip
-   unzip alerter_v004_darwin_amd64.zip
-   mv alerter /usr/local/bin/alerter
+   cd ~/dunnit
+   git clone git@github.com:YOURUSERNAME/mydunnits.git log
    ```
 
-1. Run alerter manually once to ensure it’ll work: `alerter -message hi`
-
-<!-- 1. Install [cliclick](https://github.com/BlueM/cliclick) -->
-<!--    [binary](https://www.bluem.net/jump/cliclick/). -->
-
-1. Run `./dunnit-bubble` manually once to see it working.
-
-1. Start the dunnit hourly and daily services:
+1. Finish the Dunnit setup by installing the remaining dependencies.
 
    ```sh
-   launchctl load -w dunnit.plist
-   launchctl load -w dunnit-eod.plist
+   cd ~/dunnit
+   ./init.zsh
    ```
 
-1. Start the dunnit menu.
+1. Run Dunnit.
 
    ```sh
-   nohup python3 dunnit-menu.py &
+   cd ~/dunnit
+   ./dunnit-menu
    ```
+
+1. Feel free to close the terminal now.
 
 ## Usage
 
-Dunnit prompts you every hour and at roughly the end of the day for
-some short input. You can also invoke these prompts and much more
-through the Dunnit menu in your menubar.
-
-### Start the Day
-
-Start each work day with some daily goals. Click _GM, Sunshine!_ and
-enter three or so.
-
-### Hourly Entry
-
-Answer the popup prompt every hour (or ignore it; you have a few minutes
-till it disappears). Use #hashtags to categorize your entries; that
-helps with later grouping and reporting. You can also record a Dunnit
-at any time with the _New Dunnit_ button.
-
-If you didn’t accomplish anything noteworthy, just click **Nothing**
-(or **Close**), and no entry will be recorded for the hour.
-
-You can _snooze_ by clicking **Reply** and then **Send** with an empty
-message, or typing ‘zzz‘ or ‘snooze’.
-
-If an hour has passed and you’re still working on the same thing, just
-type “Ditto” and your task will be extended with a time-point
-indicator.
-
-### Planning (TODOs)
-
-Although TODOs aren’t the heart of Dunnit, capturing what you wanna
-work on next is a great idea. Just enter a _New Todo_ from the menu,
-and it’ll get marked with a letter (eg, A). After you’ve done that
-Todo, just type the letter (eg, A) in the Dunnit hourly prompt, and
-it’ll get recorded automatically.
-
-### Finishing the Day
-
-At the end of the day, _Finalize_ the day when prompted, and you’ll be
-presented with a text editor to encourage you to clean up the report a
-bit. This is where you should add a bit of text to explain the impact
-each of your sections had.
-
-### Summarizing Weeks and Months
-
-At the end of the week (or day), look over what you did in the
-`$DUNNIT_DIR` log. There is a convenience shortcut to show you any
-day’s status: <kbd>Ctrl-t</kbd>
-
-```sh
-% source setup.zsh
-% «Ctrl-t»
-```
+See [help.txt](help.txt) for usage (this help is also built into Dunnit).
 
 ## Special Sections
 
