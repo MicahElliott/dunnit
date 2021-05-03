@@ -70,7 +70,7 @@ class DunnitStatusBarApp(rumps.App):
     def weeklyreport(self, _):
         os.system("~/dunnit/dunnit-weeklyreport")
 
-    @rumps.clicked("Nighty-night Mode (AFK)")
+    @rumps.clicked("AFK (away mode)")
     def onoff(self, sender):
         if sender.state: # night mode is on
             print("Turning off nighty mode")

@@ -20,8 +20,7 @@ cd ~/dunnit
 ./dunnit-bubble
 
 print "Loading background processes for hourly notifications"
-launchctl load -w dunnit.plist
-launchctl load -w dunnit-eod.plist
+launchctl load -w dunnit.plist dunnit-eod.plist dunnit-swupdate.plist
 
 print "Starting the Dunnit menu"
 ./dunnit-menu
