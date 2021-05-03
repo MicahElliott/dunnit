@@ -9,13 +9,26 @@ if os.path.isfile(nightyfile): os.remove(nightyfile)
 
 class DunnitStatusBarApp(rumps.App):
 
-    @rumps.clicked("GM, Sunshine! (set goals)")
+    @rumps.clicked("Dunnit (YAY!)")
+    def bubble(self, sender):
+        # if not sender.state:
+        os.system("~/dunnit/dunnit-bubble")
+
+    @rumps.clicked("Planning", "Todo")
+    def todo(self, _):
+        os.system("~/dunnit/dunnit-todo")
+        # Use todoist instead
+        # os.system('cliclick kd:cmd,ctrl t:a ku:cmd,ctrl')
+
+    @rumps.clicked("Planning", "Goals")
     def setgoals(self, _):
         os.system("~/dunnit/dunnit-goals")
-        # Use todoist instead
-        # os.system('cliclick kd:cmd,ctrl t:t ku:cmd,ctrl')
 
-    @rumps.clicked("All Todos")
+    @rumps.clicked("Planning", "Weekly Objectives")
+    def objectives(self, _):
+        os.system("~/dunnit/dunnit-objectives")
+
+    @rumps.clicked("Planning", "View All")
     def showtodos(self, _):
         with open('help.txt', 'r') as file: txt = file.read()
         prog = os.popen("~/dunnit/dunnit-showtodos").read()
@@ -25,20 +38,7 @@ class DunnitStatusBarApp(rumps.App):
         win.default_text = prog
         resp = win.run()
 
-    @rumps.clicked("Todo")
-    def todo(self, _):
-        os.system("~/dunnit/dunnit-todo")
-        # Use todoist instead
-        # os.system('cliclick kd:cmd,ctrl t:a ku:cmd,ctrl')
-
-    @rumps.clicked("Dunnit (YAY!)")
-    def bubble(self, sender):
-        # if not sender.state:
-        os.system("~/dunnit/dunnit-bubble")
-        # Use todoist instead
-        # os.system('cliclick kd:cmd,ctrl t:a ku:cmd,ctrl')
-
-    @rumps.clicked("Today's Ledger")
+    @rumps.clicked("Ledger", "View Today's Ledger")
     def progress(self, _):
         prog = os.popen("~/dunnit/dunnit-progress").read()
         win = rumps.Window("foo", 'bar', dimensions=(500,600))
@@ -47,31 +47,28 @@ class DunnitStatusBarApp(rumps.App):
         win.default_text = prog
         resp = win.run()
         print(resp)
-        # Use todoist instead
-        # os.system('cliclick kd:cmd,ctrl t:t ku:cmd,ctrl')
 
-    @rumps.clicked("Edit Ledger Items (careful!)")
+    @rumps.clicked("Ledger", "Edit Ledger Items (careful!)")
     def raw(self, _):
         es = os.system("~/dunnit/dunnit-editraw")
 
-    @rumps.clicked("Thx for all the fish! (finalize)")
+    @rumps.clicked("Wrap Up", "Finalize and Edit Today")
     def eod(self, _):
-        # TODO pop lp alert if already exists
         es = os.system("~/dunnit/dunnit-eod")
         if es != 0: rumps.alert('Summary file already exists! Delete it and try again.')
-        # Use todoist instead
-        # os.system('cliclick kd:cmd,ctrl t:t ku:cmd,ctrl')
 
-    @rumps.clicked("Daily Report (html)")
+    @rumps.clicked("Wrap Up", "Daily Report (html)")
     def report(self, _):
         os.system("~/dunnit/dunnit-report")
-        # Use todoist instead
-        # os.system('cliclick kd:cmd,ctrl t:t ku:cmd,ctrl')
 
-    # TODO
-    @rumps.clicked("Daily Report (email, NYI)")
+    @rumps.clicked("Wrap Up", "Daily Report (email, NYI)")
     def email(self, _):
         os.system("~/dunnit/dunnit-email")
+
+    # TODO
+    @rumps.clicked("Wrap Up", "Weekly Report (NYI)")
+    def weeklyreport(self, _):
+        os.system("~/dunnit/dunnit-weeklyreport")
 
     @rumps.clicked("Nighty-night Mode (AFK)")
     def onoff(self, sender):
@@ -91,7 +88,7 @@ class DunnitStatusBarApp(rumps.App):
     # def prefs(self, _):
     #     rumps.alert("jk! No preferences available yet.")
 
-    @rumps.clicked("Help")
+    @rumps.clicked("Help", "Help")
     def help(self, _):
         with open('help.txt', 'r') as file: txt = file.read()
         win = rumps.Window("foo", 'bar', dimensions=(500,600))
@@ -101,7 +98,11 @@ class DunnitStatusBarApp(rumps.App):
         resp = win.run()
 
 
-    @rumps.clicked("About")
+    @rumps.clicked("Help", "Version Info")
+    def verinfo(self, _):
+        rumps.notification("Version", "0.0.1", "Something")
+
+    @rumps.clicked("Help", "What's Dunnit?")
     def about(self, _):
         rumps.notification("Dunnit is for tracking WTF you did", "Just write a sentence each hour.", "You can pop up and record anytime.")
 
