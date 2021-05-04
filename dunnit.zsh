@@ -90,6 +90,8 @@ create-summary-file() {
 	echo "\n## Biggest Thing of the Day\n"  >>$dunnit_summary
 	echo "## Today I Learned\n"  >>$dunnit_summary
         # echo "\n## Plans/Problems\n" >>$dunnit_summary
+	print '\n---- DELETE_TO_EOF ----\n'  >>$dunnit_summary
+	cat ~/dunnit/summary-instructions.md >>$dunnit_summary
     fi
 }
 
