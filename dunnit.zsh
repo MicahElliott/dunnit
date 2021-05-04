@@ -270,6 +270,12 @@ dunnit-showtodos() {
     ggrep 'TODO' $dunnit_ledger | gsed 's/^TODO/-/'
 }
 
+dunnit-lunchtime() {
+    terminal-notifier -sound Glass -title 'Dunnit Goals Reminder' \
+		      -subtitle 'How are your goals coming along?' \
+                      -message "Click: Dunnit -> Planning -> View All"
+}
+
 dunnit-progress() {
     cat $dunnit_ledger
 }
