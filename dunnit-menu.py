@@ -21,7 +21,11 @@ class DunnitStatusBarApp(rumps.App):
         # Use todoist instead
         # os.system('cliclick kd:cmd,ctrl t:a ku:cmd,ctrl')
 
-    @rumps.clicked("Planning", "Goals")
+    @rumps.clicked("Planning", "Timer")
+    def pomodoro(self, _):
+        es = os.system("~/dunnit/dunnit-pomodoro")
+
+    @rumps.clicked("Planning", "Set Goals")
     def setgoals(self, _):
         os.system("~/dunnit/dunnit-goals")
 

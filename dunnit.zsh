@@ -284,6 +284,30 @@ dunnit-progress() {
     cat $dunnit_ledger
 }
 
+dunnit-pomodoro() {
+    ans=$($alerter -reply \
+	 	  -timeout 300 \
+                  -title "Dunnit New Activity" \
+		  -subtitle "Time and create a new running Dunnit" \
+		  -message 'Ex: 25m Build reactor monitor #fission' \
+                  -sound 'Glass')
+    set -x
+    if ! ggrep -q '^@' <<<$ans; then
+	print $ans
+	duration=$(gsed -r 's/([0-9]+m) .*/\1/' <<<$ans)
+	task=$(gsed -r 's/^[0-9]+m //' <<<$ans)
+        print -- $duration
+	print -- $task
+	sleep $duration
+        terminal-notifier -sound Glass -title 'Dunnit Activity Time Over' \
+			  -subtitle 'Cutting you off now and recording as done.' \
+			  -message "$task"
+	tm=$(gdate +%H:%M)
+	print "[$tm] $task" >>$dunnit_ledger
+    fi
+    set +x
+}
+
 dunnit-push() {
     set -x
     print "Adding/committing/pushing all changes to mydunnits remote."
