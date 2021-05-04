@@ -37,17 +37,25 @@ sectionize-ledger() {
 		   ggrep -E -o '#[0-9a-z]+' | sort | uniq) )
     for g in $groups; do
 	i2=$(sed 's/#//' <<<$g)
-	print "\n## ${(C)i2}\n"
-	ggrep -vE 'GOAL|TODO' $dunnit_ledger | ggrep $g |
-	    gsed -r -e "s/$g //" -e 's/^/- /' -e 's/ #[0-9a-z]+//g' -e 's/ \[[0-9:]+\] / /'
+	items=$(ggrep -vE 'GOAL|TODO' $dunnit_ledger | ggrep $g |
+	    gsed -r -e "s/$g //" -e 's/^/- /' \
+		 -e 's/ #[0-9a-z]+//g' \
+		 -e 's/ \[[0-9:]+\] / /')
+	integer item_count=$(wc -l <<<$items)
+	print "\n## ${(C)i2} ($item_count)\n"
+	print -- $items
         print '\n> IMPACT(N):'
+	# Multiple impacts if many items
+	(( item_count > 3 )) && print '\n> IMPACT(N):'
     done
     ggrep -qvE '#[0-9a-z]+|GOAL|TODO' $dunnit_ledger && print '\n## Other\n'
     ggrep  -vE '#[0-9a-z]+|GOAL|TODO' $dunnit_ledger | gsed -r -e 's/^/- /'  -e 's/ \[[0-9:]+\] / /'
-    print '\n> IMPACT:'
+    # print '\n> IMPACT:'
     if ggrep -q ' TODO ' $dunnit_ledger; then
        print '\n## Incomplete\n'
        ggrep ' TODO ' $dunnit_ledger | gsed 's/^([A-Z]) /- /'
+       # TODO Carry over tomorrow's goals
+       print '\n## Tomorrow’s Goals\n'
     fi
 }
 
