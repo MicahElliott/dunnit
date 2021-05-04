@@ -225,6 +225,8 @@ dunnit-goals() {
 }
 
 dunnit-report() {
+    print 'Saving your day’s work'
+    dunnit-push
     mkdir -p ~/dunnit/reports/
     # pandoc -f markdown $dunnit_summary -o ~/dunnit/reports/$dunnit_file:t:r.html
     # html=$dunnit_summary:r-report.html
