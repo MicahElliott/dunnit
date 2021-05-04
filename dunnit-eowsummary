@@ -1,0 +1,22 @@
+#! /bin/zsh
+
+. ~/dunnit/dunnit.zsh
+
+wk=${1?provide week}
+
+files=( ~/dunnit/log/$yr/${wk}*/*.md )
+
+print -- "% $username"
+print -- "% Week $wk\n"
+
+print '## Summaries\n'
+for f in $files; do
+    pcre2grep -hM '## Summary\n\n(.|\n)*?\n\n' $f |
+	gsed -n '3,$p'
+done
+
+print -- '## Impacts\n'
+ggrep -E -h 'IMPACT\([0-9]\):' ~/dunnit/log/$yr/${wk}*/*.md
+
+print -- '\n## Sentiments\n'
+gsed -n -r 's/### Sentiment: //p' ~/dunnit/log/$yr/${wk}*/*.md

@@ -1,6 +1,7 @@
 import rumps
 import os
 import os.path
+import datetime
 
 rumps.debug_mode(True)
 
@@ -66,9 +67,12 @@ class DunnitStatusBarApp(rumps.App):
         os.system("~/dunnit/dunnit-email")
 
     # TODO
-    @rumps.clicked("Wrap Up", "Weekly Report (NYI)")
+    @rumps.clicked("Wrap Up", "Weekly Report")
     def weeklyreport(self, _):
-        os.system("~/dunnit/dunnit-weeklyreport")
+        today = datetime.datetime.today()
+        ww = today.strftime("%U")
+        # ww = datetime.date(2010, 6, 16).isocalendar()[1]
+        os.system(f"~/dunnit/dunnit-eowsummary w{ww}")
 
     @rumps.clicked("AFK (away mode)")
     def onoff(self, sender):

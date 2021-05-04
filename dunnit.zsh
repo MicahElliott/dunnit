@@ -3,6 +3,7 @@
 # plist files have restricted paths
 path+=/usr/local/bin
 
+username=$(osascript -e "long user name of (system info)")
 dt=$(gdate +%Y%m%d-%a) # 20200601-Mon
 mo=$(gdate -dsunday +%b) # Month of nearest Sunday
 wk=$(gdate +w%V-$mo) # w23-Jun
@@ -32,7 +33,8 @@ sectionize-ledger() {
     # FIXME losing all non-tagged dunnits!
     # ggrep -q UNCOMPILED $dunnit_summary || { print "Already been compiled." 2>&1; return 1 }
     # gsed '/## Accomp/q' $dunnit_tmp 	# print only lines up to
-    groups=( $(ggrep -E -o '#[0-9a-z]+' $dunnit_ledger | sort | uniq) )
+    groups=( $(ggrep -vE 'GOAL|TODO' $dunnit_ledger |
+		   ggrep -E -o '#[0-9a-z]+' | sort | uniq) )
     for g in $groups; do
 	i2=$(sed 's/#//' <<<$g)
 	print "\n## ${(C)i2}\n"
@@ -62,8 +64,7 @@ create-summary-file() {
 	print "Oops, summary file $dunnit_summary already exists."
     else
 	echo "[$dt-$tm] Creating new dunnit summary file for today's work: $dunnit_summary"
-	username=$(osascript -e "long user name of (system info)")
-	# Create the file anew
+        # Create the file anew
         echo "% $username" >$dunnit_summary
         echo "% Impact Report" >>$dunnit_summary
         echo "% $dt\n" >>$dunnit_summary
@@ -73,7 +74,7 @@ create-summary-file() {
 	print '\n## Original Planned Goals\n' >>$dunnit_summary
 	ggrep 'GOAL' $dunnit_ledger | gsed 's/^GOAL/-/' >>$dunnit_summary
         echo "\n# Accomplishments"  >>$dunnit_summary
-        echo "\n### Day Score: N"  >>$dunnit_summary
+        echo "\n### Productivity Score: N"  >>$dunnit_summary
 	sectioned=$(sectionize-ledger)
 	# [[ $? -eq 0 ]] || return 1
         echo $sectioned >> $dunnit_summary
