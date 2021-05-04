@@ -225,8 +225,10 @@ dunnit-goals() {
 dunnit-report() {
     mkdir -p ~/dunnit/reports/
     # pandoc -f markdown $dunnit_summary -o ~/dunnit/reports/$dunnit_file:t:r.html
-    html=$dunnit_summary:r-report.html
-    preso=$dunnit_summary:r-preso.html
+    # html=$dunnit_summary:r-report.html
+    html=~/dunnit/reports/$dt-report.html
+    # preso=$dunnit_summary:r-preso.html
+    preso=~/dunnit/reports/$dt-preso.html
     pandoc -t html --self-contained --css reports/report.css -f markdown $dunnit_summary -o $html
     pandoc -s -t revealjs $dunnit_summary -o $preso
     # pandoc -t html --self-contained --css reports/report.css -f markdown log/2021/w16-Apr/20210420-Tue.md -o foo.html
