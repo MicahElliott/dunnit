@@ -225,6 +225,7 @@ dunnit-goals() {
 }
 
 dunnit-report() {
+    gsed -ir '/---- DELETE_TO_EOF /,$d' $dunnit_summary
     print 'Saving your day’s work'
     dunnit-push
     mkdir -p ~/dunnit/reports/
