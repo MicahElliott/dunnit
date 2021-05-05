@@ -76,12 +76,15 @@ create-summary-file() {
         echo "% $username" >$dunnit_summary
         echo "% Impact Report" >>$dunnit_summary
         echo "% $dt\n" >>$dunnit_summary
+	print -- '<!-- See instructions at end of file. They’ll be automatically removed for you, as will this section. -->'
 	echo "# Overview\n"  >>$dunnit_summary
 	echo "### Sentiment: (bad, neutral, or good)\n"  >>$dunnit_summary
-	echo "## Summary (1 para)"  >>$dunnit_summary
+	print -- '<!-- Write one short paragraph here summarizing the day. -->\n'
+	echo "## Summary"  >>$dunnit_summary
 	print '\n## Original Planned Goals\n' >>$dunnit_summary
 	ggrep 'GOAL' $dunnit_ledger | gsed 's/^GOAL/-/' >>$dunnit_summary
         echo "\n# Accomplishments"  >>$dunnit_summary
+	print -- '<!-- Combine bullets for each section into fewer and add a summary impact description and scores (replace N). -->'
         echo "\n### Productivity Score: N"  >>$dunnit_summary
 	sectioned=$(sectionize-ledger)
 	# [[ $? -eq 0 ]] || return 1
@@ -90,8 +93,8 @@ create-summary-file() {
 	echo "\n## Biggest Thing of the Day\n"  >>$dunnit_summary
 	echo "## Today I Learned\n"  >>$dunnit_summary
         # echo "\n## Plans/Problems\n" >>$dunnit_summary
-	print '\n---- DELETE_TO_EOF ----\n'  >>$dunnit_summary
-	cat ~/dunnit/summary-instructions.md >>$dunnit_summary
+	print '\n---- DELETE_TO_EOF ----'  >>$dunnit_summary
+	[[ -z $1 ]] && cat ~/dunnit/summary-instructions.md >>$dunnit_summary
     fi
 }
 
@@ -200,6 +203,11 @@ dunnit-eod() {
 	# Open todoist instead
 	# /usr/local/bin/cliclick kd:cmd,ctrl t:t ku:cmd,ctrl
     fi
+}
+
+dunnit-autofinalize() {
+    create-summary-file noinstructions
+    # TODO Maybe gen report, open browser, send email, etc
 }
 
 dunnit-goals() {
