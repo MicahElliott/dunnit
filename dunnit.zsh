@@ -115,7 +115,7 @@ dunnit-alert() {
     fi
     set -x
     ans=$($alerter -reply \
-		   -appIcon dunnit-icon.png \
+		   -appIcon ~/dunnit/dunnit-icon-green.png \
 		   -timeout 600 \
                    -title "Dunnit Activity Entry" \
 		   -subtitle "What did you work on? (blank to snooze)" \
@@ -128,7 +128,7 @@ dunnit-alert() {
 	exit
     elif [[ $ans == '@ACTIONCLICKED' || $ans == 'snooze' || $ans == 'zzz' ]]; then
 	# Support a SNOOZE hack by pressing 'Send' with an empty message.
-	terminal-notifier -appIcon dunnit-icon.png -message 'Snoozing for 5m...'
+	terminal-notifier -appIcon ~/dunnit/dunnit-icon-yellow.png -message 'Snoozing for 5m...'
 	sleep 300
         # Recursive for snooze support!
 	dunnit-alert
@@ -176,14 +176,14 @@ dunnit-alert-todoist() {
 	echo 'in nighty mode'
 	exit
     fi
-    terminal-notifier -appIcon dunnit-icon.png -sound Glass -message 'Whadja work on?' -title 'Dunnit Reminder'
+    terminal-notifier -sound Glass -message 'Whadja work on?' -title 'Dunnit Reminder'
     # Pop up fast-entry for todoist
     /usr/local/bin/cliclick kd:cmd,ctrl t:a ku:cmd,ctrl
 }
 
 dunnit-eod() {
     ans=$($alerter -timeout 600 \
-                   -appIcon dunnit-icon.png \
+                   -appIcon ~/dunnit/dunnit-icon-yellow.png \
 	           -title "Dunnit Daily Summary" \
 		   -subtitle "You completed $(ggrep -cE '\[[0-9:]+\]' $dunnit_ledger) today." \
 		   -message "Finalize your day’s work (#tags etc)" \
@@ -214,7 +214,7 @@ dunnit-autofinalize() {
 
 dunnit-goals() {
     ans=$($alerter -reply \
-		   -appIcon dunnit-icon.png \
+		   -appIcon ~/dunnit/dunnit-icon-purple.png \
 	           -timeout 600 \
                    -title "Dunnit Daily Goals" \
 		   -subtitle "Start your day with 3 high-level goals." \
@@ -228,7 +228,7 @@ dunnit-goals() {
        # Carry yesterday's unfinished TODOs into today
        ggrep 'TODO ' $dunnit_ledger_yesterday >>$dunnit_ledger
        terminal-notifier -sound Glass -title 'Dunnit Confirmation' \
-			 -appIcon dunnit-icon.png \
+			 -appIcon ~/dunnit/dunnit-icon-purple.png \
 			 -subtitle 'Sounds great!' \
 			 -message 'You’re set up for a successful day!'
     fi
@@ -256,7 +256,7 @@ dunnit-report() {
 
 dunnit-todo() {
     ans=$($alerter -reply \
-		   -appIcon dunnit-icon.png \
+		   -appIcon ~/dunnit/dunnit-icon-blue.png \
 	 	   -timeout 300 \
                    -title "Dunnit TODO" \
 		   -subtitle "Whatcha gonna do next?" \
@@ -292,7 +292,7 @@ dunnit-showtodos() {
 
 dunnit-lunchtime() {
     terminal-notifier -sound Glass -title 'Dunnit Goals Reminder' \
-		      -appIcon dunnit-icon.png \
+		      -appIcon ~/dunnit/dunnit-icon-orange.png \
 		      -subtitle 'How are your goals coming along?' \
                       -message "Click: Dunnit -> Planning -> View All"
 }
@@ -303,7 +303,7 @@ dunnit-progress() {
 
 dunnit-pomodoro() {
     ans=$($alerter -reply \
-		   -appIcon dunnit-icon.png \
+		   -appIcon ~/dunnit/dunnit-icon-brown.png \
 	 	   -timeout 300 \
                    -title "Dunnit New Activity" \
 		   -subtitle "Time and create a new running Dunnit" \
@@ -318,7 +318,7 @@ dunnit-pomodoro() {
 	print -- $task
 	sleep $duration
         terminal-notifier -sound Glass -title 'Dunnit Activity Time Over' \
-			  -appIcon dunnit-icon.png \
+			  -appIcon ~/dunnit/dunnit-icon-brown.png \
 			  -subtitle 'Cutting you off now and recording as done.' \
 			  -message "$task"
 	tm=$(gdate +%H:%M)
