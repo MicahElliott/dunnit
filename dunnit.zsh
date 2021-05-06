@@ -260,7 +260,6 @@ dunnit-todo() {
 	 	   -timeout 300 \
                    -title "Dunnit TODO" \
 		   -subtitle "Whatcha gonna do next?" \
-		   -message '\(just one thing)' \
                    -sound 'Glass')
     tm=$(gdate +%H:%M)
     if [[ $ans != '@CLOSED' ]]; then
@@ -291,21 +290,21 @@ dunnit-showtodos() {
 }
 
 dunnit-lunchtime() {
-    if grep GOAL $dunnit_ledger; then
+    if ggrep -q GOAL $dunnit_ledger; then
 	ans=$($alerter -timeout 3000 \
 		       -sound Glass \
 		       -title 'Dunnit Goals Reminder' \
 		       -appIcon ~/dunnit/dunnit-icon-orange.png \
 		       -subtitle 'How are your goals coming along?' \
                        -message "Click: Dunnit -> Planning -> View All" \
-		       -actions 'GREAT!!' \
-		       -closeLabel 'Doh :(')
+		       -actions 'GREAT!! 🔥' \
+		       -closeLabel '😢')
     else
 	terminal-notifier -sound Glass \
 		       -title 'Dunnit Goals Reminder' \
 		       -appIcon ~/dunnit/dunnit-icon-red.png \
-		       -subtitle 'Umm, you have no goals set for today :(' \
-                       -message "Click: Dunnit -> Planning -> Set Goals"
+		       -subtitle 'Umm, you have no goals set for today 😢'
+	dunnit-goals
     fi
 }
 
