@@ -52,9 +52,9 @@ sectionize-ledger() {
 	integer item_count=$(wc -l <<<$items)
 	print "\n## ${(C)i2} ($item_count)\n"
 	print -- $items
-        print '\n> IMPACT(N):'
+        print '\n> IMPACT(XXX):'
 	# Multiple impacts if many items
-	(( item_count > 3 )) && print '\n> IMPACT(N):'
+	(( item_count > 3 )) && print '\n> IMPACT(XXX):'
     done
     ggrep -qvE '#[0-9a-z]+|GOAL|TODO' $dunnit_ledger && print '\n## Other\n'
     ggrep  -vE '#[0-9a-z]+|GOAL|TODO' $dunnit_ledger | gsed -r -e 's/^/- /'  -e 's/ \[[0-9:]+\] / /'
@@ -89,16 +89,17 @@ create-summary-file() {
 	echo "### Sentiment: (bad, neutral, or good)\n"  >>$dunnit_summary
 	print -- '<!-- Write one short paragraph here summarizing the day. -->\n' >>$dunnit_summary
 	echo "## Summary"  >>$dunnit_summary
-	print '\n## Original Planned Goals\n' >>$dunnit_summary
+	print 'XXX'
+	print '\n## 🥅 Original Goals 🥅\n' >>$dunnit_summary
 	ggrep 'GOAL' $dunnit_ledger | gsed 's/^GOAL/-/' >>$dunnit_summary
         echo "\n# Accomplishments"  >>$dunnit_summary
-	print -- '<!-- Combine bullets for each section into fewer and add a summary impact description and scores (replace N). -->' >>$dunnit_summary
-        echo "\n### Productivity Score: N"  >>$dunnit_summary
+	print -- '<!-- Combine bullets for each section into fewer and add a summary impact description and scores (replace XXX). -->' >>$dunnit_summary
+        echo "\n### Productivity Score: XXX"  >>$dunnit_summary
 	sectioned=$(sectionize-ledger)
 	# [[ $? -eq 0 ]] || return 1
         echo $sectioned >> $dunnit_summary
         echo "\n# Other"  >>$dunnit_summary
-	echo "\n## Biggest Thing of the Day\n"  >>$dunnit_summary
+	echo "\n## 🎉 Highlight\n"  >>$dunnit_summary
 	echo "## Today I Learned\n"  >>$dunnit_summary
         # echo "\n## Plans/Problems\n" >>$dunnit_summary
 	print '\n---- DELETE_TO_EOF ----'  >>$dunnit_summary
