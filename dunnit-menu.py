@@ -10,7 +10,8 @@ if os.path.isfile(nightyfile): os.remove(nightyfile)
 
 class DunnitStatusBarApp(rumps.App):
 
-    @rumps.clicked("✅ Dunnit (YAY!)")
+    # @rumps.clicked("✅🚀 Dunnit (YAY!)")
+    @rumps.clicked("🚀 Dunnit (YAY!)")
     def bubble(self, sender):
         # if not sender.state:
         os.system("~/dunnit/dunnit-bubble")
@@ -78,20 +79,6 @@ class DunnitStatusBarApp(rumps.App):
         # ww = datetime.date(2010, 6, 16).isocalendar()[1]
         os.system(f"~/dunnit/dunnit-eowsummary w{ww}")
 
-    @rumps.clicked("💤 AFK (disable)")
-    def onoff(self, sender):
-        if sender.state: # night mode is on
-            print("Turning off nighty mode")
-            sender.state = False
-            self.title = '✔ Dunnit'
-            if os.path.isfile(nightyfile): os.remove(nightyfile)
-            # os.system("~/dunnit/dunnit-goals")
-        else:
-            print("Turning on nighty mode")
-            self.title = '💤 Dunnit'
-            with open(nightyfile, 'a'): pass
-            sender.state = True
-
     # @rumps.clicked("Preferences (NYI)")
     # def prefs(self, _):
     #     rumps.alert("jk! No preferences available yet.")
@@ -122,6 +109,20 @@ class DunnitStatusBarApp(rumps.App):
     @rumps.clicked("❓ Help", "Dunnit??")
     def about(self, _):
         rumps.notification("Dunnit is for tracking WTF you did", "Just write a sentence each hour.", "You can pop up and record anytime.")
+
+    @rumps.clicked("💤 AFK (disable)")
+    def onoff(self, sender):
+        if sender.state: # night mode is on
+            print("Turning off nighty mode")
+            sender.state = False
+            self.title = '✔ Dunnit'
+            if os.path.isfile(nightyfile): os.remove(nightyfile)
+            # os.system("~/dunnit/dunnit-goals")
+        else:
+            print("Turning on nighty mode")
+            self.title = '💤 Dunnit'
+            with open(nightyfile, 'a'): pass
+            sender.state = True
 
     # @rumps.clicked('On')
     # def button(self, sender):
