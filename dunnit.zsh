@@ -19,6 +19,7 @@ dunnit_summary=$dunnit_dir/$dt.md
 dunnit_ledger=$dunnit_dir/ledger-$dt.txt
 # dunnit_goals=~/dunnit/goals-$dt.txt
 dunnit_tmp=$dunnit_dir/$dt-tmp.md
+dunnit_nighty=/tmp/dunnit-nighty
 
 alerter=/usr/local/bin/alerter
 # alerter=~/contrib/bin/alerter
@@ -189,6 +190,14 @@ dunnit-alert-todoist() {
     /usr/local/bin/cliclick kd:cmd,ctrl t:a ku:cmd,ctrl
 }
 
+dunnit-nighty-off() { rm $dunnit_nighty }
+dunnit-nighty-on()  { touch $dunnit_nighty }
+
+dunnit-bod() {
+    dunnit-goals
+    dunnit-nighty-off
+}
+
 dunnit-eod() {
     ans=$($alerter -timeout 600 \
                    -appIcon ~/dunnit/dunnit-icon-yellow.png \
@@ -213,6 +222,7 @@ dunnit-eod() {
 	# Open todoist instead
 	# /usr/local/bin/cliclick kd:cmd,ctrl t:t ku:cmd,ctrl
     fi
+    dunnit-nighty-on
 }
 
 dunnit-autofinalize() {
@@ -369,16 +379,18 @@ dunnit-pull() {
 }
 
 dunnit-preferences() {
+    set -x
     source ~/dunnit/config.zsh
     dunnit_cfg=~/dunnit/config-templates
 
-    # for f in ~/dunnit/config-templates/*.plist; do
-    # done
-
-    if [[ -f $dunnit_cfg/dunnit-standup.plist ]]; then
+    if [[ -f $dunnit_cfg/dunnit-standup.plist &&
+	  -n $DUNNIT_STANDUP ]]; then
 	local hour=$DUNNIT_STANDUP[1] min=$DUNNIT_STANDUP[2]
-	gsed -r -e "s/STANDUP_HOUR/$hour/" -e "s/STANDUP_HOUR/$min/" \
+	gsed -r -e "s/STANDUP_HOUR/$hour/" -e "s/STANDUP_MINUTE/$min/" \
 	     $dunnit_cfg/dunnit-standup.plist \
 	     >|~/dunnit/dunnit-standup.plist
+	print "Reloading standup scheduler for time: $DUNNIT_STANDUP"
+	launchctl load -w ~/dunnit/dunnit-standup.plist
     fi
+    set +x
 }

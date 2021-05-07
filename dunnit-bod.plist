@@ -8,14 +8,14 @@
       <string>/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>
     <key>Label</key>
-    <string>com.micahelliott.dunnit-eod</string>
+    <string>com.micahelliott.dunnit-vod</string>
     <key>KeepAlive</key>
     <false/>
     <key>ProgramArguments</key>
     <array>
       <string>/bin/zsh</string>
       <string>-c</string>
-      <string>~/dunnit/dunnit-eod</string>
+      <string>~/dunnit/dunnit-bod</string>
     </array>
 
     <key>StartCalendarInterval</key>
@@ -24,41 +24,41 @@
 	<key>Weekday</key>
 	<integer>1</integer>
 	<key>Hour</key>
-	<integer>17</integer>
+	<integer>8</integer>
 	<key>Minute</key>
-	<integer>05</integer>
+	<integer>15</integer>
       </dict>
       <dict>
 	<key>Weekday</key>
 	<integer>2</integer>
 	<key>Hour</key>
-	<integer>17</integer>
+	<integer>8</integer>
 	<key>Minute</key>
-	<integer>05</integer>
+	<integer>15</integer>
       </dict>
       <dict>
 	<key>Weekday</key>
 	<integer>3</integer>
 	<key>Hour</key>
-	<integer>17</integer>
+	<integer>8</integer>
 	<key>Minute</key>
-	<integer>05</integer>
+	<integer>15</integer>
       </dict>
       <dict>
 	<key>Weekday</key>
 	<integer>4</integer>
 	<key>Hour</key>
-	<integer>17</integer>
+	<integer>8</integer>
 	<key>Minute</key>
-	<integer>05</integer>
+	<integer>15</integer>
       </dict>
       <dict>
 	<key>Weekday</key>
 	<integer>5</integer>
 	<key>Hour</key>
-	<integer>17</integer>
+	<integer>8</integer>
 	<key>Minute</key>
-	<integer>05</integer>
+	<integer>15</integer>
       </dict>
     </array>
     <key>StandardOutPath</key>

@@ -4,7 +4,7 @@
 
 # Approximately when your day starts and ends
 DUNNIT_DAY_START=(08 00)
-DUNNIT_DAY_END=(17 30)
+DUNNIT_DAY_END=(17 05)
 
 # The minute of every hour that popups present
 DUNNIT_HOURLY=58
