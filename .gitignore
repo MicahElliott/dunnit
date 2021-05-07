@@ -2,3 +2,4 @@ log
 tmp
 config.zsh
 reports/
+/*.plist
