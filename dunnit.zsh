@@ -367,3 +367,18 @@ dunnit-pull() {
     }
     set +x
 }
+
+dunnit-preferences() {
+    source ~/dunnit/config.zsh
+    dunnit_cfg=~/dunnit/config-templates
+
+    # for f in ~/dunnit/config-templates/*.plist; do
+    # done
+
+    if [[ -f $dunnit_cfg/dunnit-standup.plist ]]; then
+	local hour=$DUNNIT_STANDUP[1] min=$DUNNIT_STANDUP[2]
+	gsed -r -e "s/STANDUP_HOUR/$hour/" -e "s/STANDUP_HOUR/$min/" \
+	     $dunnit_cfg/dunnit-standup.plist \
+	     >|~/dunnit/dunnit-standup.plist
+    fi
+}
