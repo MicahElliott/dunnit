@@ -16,6 +16,11 @@ class DunnitStatusBarApp(rumps.App):
         # if not sender.state:
         os.system("~/dunnit/dunnit-bubble")
 
+    @rumps.clicked("🚧 Blocker")
+    def blocker(self, sender):
+        # if not sender.state:
+        os.system("~/dunnit/dunnit-blocker")
+
     @rumps.clicked("🗓 Planning", "💡 Todo")
     def todo(self, _):
         os.system("~/dunnit/dunnit-todo")

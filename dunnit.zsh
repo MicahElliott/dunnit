@@ -127,7 +127,7 @@ dunnit-alert() {
     # plus what's already been used today (should expand to week).
     # Cool thing about alerter is that when you open it to reply, it
     # puts the end of the long text into view.
-    suggs=( '#til' '#mtg' '#blocker' '#question' '#nts' '#personal' )
+    suggs=( '#til' '#mtg' '#question' '#nts' '#personal' )
     suggs+=( $(ggrep -E -o '#[0-9a-z]+' $dunnit_ledger) )
     suggs=$(print -l $suggs | sort | uniq)
     todos=$(ggrep ' TODO ' $dunnit_ledger)
@@ -301,6 +301,21 @@ dunnit-todo() {
 	fi
         print "($next) TODO $ans" >>$dunnit_ledger
 	echo "[$dt-$tm] Captured your TODO in dunnit file: $dunnit_ledger"
+    else
+	echo no-op
+    fi
+}
+
+dunnit-blocker() {
+    ans=$($alerter -reply \
+		   -appIcon ~/dunnit/dunnit-icon-red.png \
+		   -timeout 300 \
+                   -title "Dunnit Blocker/Question" \
+		   -subtitle "What are you hung up on?" \
+                   -sound 'Glass')
+    if [[ $ans != '@CLOSED' ]]; then
+        print "BLOCKER $ans" >>$dunnit_ledger
+	echo "[$dt-$tm] Captured your BLOCKER in dunnit file: $dunnit_ledger"
     else
 	echo no-op
     fi
