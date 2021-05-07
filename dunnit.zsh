@@ -283,7 +283,7 @@ dunnit-todo() {
 		   -appIcon ~/dunnit/dunnit-icon-blue.png \
 	 	   -timeout 300 \
                    -title "Dunnit TODO" \
-		   -subtitle "Whatcha gonna do next?" \
+		   -subtitle "What will you do next?" \
                    -sound 'Glass')
     tm=$(gdate +%H:%M)
     if [[ $ans != '@CLOSED' ]]; then
@@ -369,7 +369,7 @@ dunnit-pomodoro() {
 	sleep $duration
         terminal-notifier -sound Glass -title 'Dunnit Activity Time Over' \
 			  -appIcon ~/dunnit/dunnit-icon-brown.png \
-			  -subtitle 'Cutting you off now and recording as done.' \
+			  -subtitle 'We’re back! Recording as done.' \
 			  -message "$task"
 	tm=$(gdate +%H:%M)
 	print "[$tm] $task" >>$dunnit_ledger
