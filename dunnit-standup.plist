@@ -8,14 +8,14 @@
       <string>/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>
     <key>Label</key>
-    <string>com.micahelliott.dunnit-eod</string>
+    <string>com.micahelliott.dunnit-standup</string>
     <key>KeepAlive</key>
     <false/>
     <key>ProgramArguments</key>
     <array>
       <string>/bin/zsh</string>
       <string>-c</string>
-      <string>~/dunnit/dunnit-eod</string>
+      <string>~/dunnit/dunnit-standup</string>
     </array>
 
     <key>StartCalendarInterval</key>

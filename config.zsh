@@ -13,7 +13,7 @@ DUNNIT_HOURLY=58
 DUNNIT_LUNCHTIME=(11 30)
 
 # The base path to where you keep your sync'd trackables (ledgers and summaries)
-DUNNIT_MYDUNNITS_REPO='https://github.com/MicahElliott/mydunnits'
+DUNNIT_MYDUNNITS_REPO="https://github.com/$USER/mydunnits"
 
 # When your stand-up meeting happens each day, yesterday's report pops up then
 DUNNIT_STANDUP=(10 15)

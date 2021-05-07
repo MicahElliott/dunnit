@@ -9,9 +9,11 @@ mo=$(gdate -dsunday +%b) # Month of nearest Sunday
 wk=$(gdate +w%V-$mo) # w23-Jun
 yr=$(gdate +%Y)
 if [[ $(gdate +%a) == 'Mon' ]]; then
-    dunnit_ledger_yesterday=~/dunnit/ledger-$(gdate -d 'last friday' +%Y%m%d-%a).txt
+    dunnit_yesterday=$(gdate -d 'last friday' +%Y%m%d-%a)
+    dunnit_ledger_yesterday=~/dunnit/ledger-$dunnit_yesterday.txt
 else
-    dunnit_ledger_yesterday=~/dunnit/ledger-$(gdate -d 'yesterday' +%Y%m%d-%a).txt
+    dunnit_yesterday=$(gdate -d 'yesterday' +%Y%m%d-%a)
+    dunnit_ledger_yesterday=~/dunnit/ledger-$dunnit_yesterday.txt
 fi
 dunnit_dir=${DUNNIT_DIR:-~/dunnit/log/$yr/$wk}
 dunnit_summary=$dunnit_dir/$dt.md
@@ -21,6 +23,7 @@ dunnit_ledger=$dunnit_dir/ledger-$dt.txt
 dunnit_tmp=$dunnit_dir/$dt-tmp.md
 dunnit_nighty=/tmp/dunnit-nighty
 
+dunnit_browser=${BROWSER-/Applications/Safari.app/Contents/MacOS/Safari}
 alerter=/usr/local/bin/alerter
 # alerter=~/contrib/bin/alerter
 
@@ -28,6 +31,10 @@ if ! [[ -d $dunnit_dir ]]; then
     echo "Creating fresh new dunnit dir: $dunnit_dir"
     mkdir -p $dunnit_dir
 fi
+
+dunnit-edit() {
+    [[ -n $EDITOR ]] && $=EDITOR $1 || open -e $1 &
+}
 
 # Convert pieces of daily status working file into sections
 sectionize-ledger() {
@@ -77,15 +84,15 @@ create-summary-file() {
         echo "% $username" >$dunnit_summary
         echo "% Impact Report" >>$dunnit_summary
         echo "% $dt\n" >>$dunnit_summary
-	print -- '<!-- See instructions at end of file. They’ll be automatically removed for you, as will this section. -->'
+	print -- '<!-- See instructions at end of file. They’ll be automatically removed for you, as will this section. -->' >>$dunnit_summary
 	echo "# Overview\n"  >>$dunnit_summary
 	echo "### Sentiment: (bad, neutral, or good)\n"  >>$dunnit_summary
-	print -- '<!-- Write one short paragraph here summarizing the day. -->\n'
+	print -- '<!-- Write one short paragraph here summarizing the day. -->\n' >>$dunnit_summary
 	echo "## Summary"  >>$dunnit_summary
 	print '\n## Original Planned Goals\n' >>$dunnit_summary
 	ggrep 'GOAL' $dunnit_ledger | gsed 's/^GOAL/-/' >>$dunnit_summary
         echo "\n# Accomplishments"  >>$dunnit_summary
-	print -- '<!-- Combine bullets for each section into fewer and add a summary impact description and scores (replace N). -->'
+	print -- '<!-- Combine bullets for each section into fewer and add a summary impact description and scores (replace N). -->' >>$dunnit_summary
         echo "\n### Productivity Score: N"  >>$dunnit_summary
 	sectioned=$(sectionize-ledger)
 	# [[ $? -eq 0 ]] || return 1
@@ -119,7 +126,7 @@ dunnit-alert() {
     # plus what's already been used today (should expand to week).
     # Cool thing about alerter is that when you open it to reply, it
     # puts the end of the long text into view.
-    suggs=( '#til' '#mtg' '#blocker' '#question' '#nts' )
+    suggs=( '#til' '#mtg' '#blocker' '#question' '#nts' '#personal' )
     suggs+=( $(ggrep -E -o '#[0-9a-z]+' $dunnit_ledger) )
     suggs=$(print -l $suggs | sort | uniq)
     todos=$(ggrep ' TODO ' $dunnit_ledger)
@@ -176,10 +183,6 @@ dunnit-alert() {
     set +x
 }
 
-dunnit-editraw() {
-    [[ -n $EDITOR ]] && $=EDITOR $dunnit_ledger  || open -e $dunnit_ledger &
-}
-
 dunnit-alert-todoist() {
     if [[ -f /tmp/dunnit-nighty ]]; then
 	echo 'in nighty mode'
@@ -218,8 +221,8 @@ dunnit-eod() {
 	fi
 	echo "[$dt-$tm] Opening editor on $dunnit_summary"
         # emacsclient --create-frame $dunnit_summary &
-	[[ -n $EDITOR ]] && $=EDITOR $dunnit_summary  || open -e $dunnit_summary &
-	# Open todoist instead
+	dunnit-edit $dunnit_summary
+        # Open todoist instead
 	# /usr/local/bin/cliclick kd:cmd,ctrl t:t ku:cmd,ctrl
     fi
     dunnit-nighty-on
@@ -255,6 +258,7 @@ dunnit-goals() {
 }
 
 dunnit-report() {
+    set -x
     gsed -ir '/---- DELETE_TO_EOF /,$d' $dunnit_summary
     print 'Saving your day’s work'
     dunnit-push
@@ -264,12 +268,13 @@ dunnit-report() {
     html=~/dunnit/reports/$dt-report.html
     # preso=$dunnit_summary:r-preso.html
     preso=~/dunnit/reports/$dt-preso.html
-    pandoc -t html --self-contained --css reports/report.css -f markdown $dunnit_summary -o $html
+    pandoc -t html --self-contained --css ~/dunnit/reports/report.css -f markdown $dunnit_summary -o $html
     pandoc -s -t revealjs $dunnit_summary -o $preso
     # pandoc -t html --self-contained --css reports/report.css -f markdown log/2021/w16-Apr/20210420-Tue.md -o foo.html
     # /Applications/Firefox.app/Contents/MacOS/firefox $html
-    ${BROWSER-/Applications/Safari.app/Contents/MacOS/Safari} $html
-    ${BROWSER-/Applications/Safari.app/Contents/MacOS/Safari} $preso
+    $dunnit_browser $html
+    $dunnit_browser $preso
+    set +x
 }
 
 dunnit-todo() {
@@ -380,9 +385,9 @@ dunnit-pull() {
 
 dunnit-preferences() {
     set -x
+    dunnit-edit ~/dunnit/config.zsh
     source ~/dunnit/config.zsh
     dunnit_cfg=~/dunnit/config-templates
-
     if [[ -f $dunnit_cfg/dunnit-standup.plist &&
 	  -n $DUNNIT_STANDUP ]]; then
 	local hour=$DUNNIT_STANDUP[1] min=$DUNNIT_STANDUP[2]
@@ -393,4 +398,9 @@ dunnit-preferences() {
 	launchctl load -w ~/dunnit/dunnit-standup.plist
     fi
     set +x
+}
+
+dunnit-standup() {
+    print 'Time for standup!'
+    $dunnit_browser ~/dunnit/reports/$dunnit_yesterday-report.html
 }

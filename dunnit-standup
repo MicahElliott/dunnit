@@ -1,0 +1,5 @@
+#! /bin/zsh
+
+. ~/dunnit/dunnit.zsh
+
+dunnit-standup

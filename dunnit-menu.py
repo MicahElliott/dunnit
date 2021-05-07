@@ -79,10 +79,6 @@ class DunnitStatusBarApp(rumps.App):
         # ww = datetime.date(2010, 6, 16).isocalendar()[1]
         os.system(f"~/dunnit/dunnit-eowsummary w{ww}")
 
-    # @rumps.clicked("Preferences (NYI)")
-    # def prefs(self, _):
-    #     rumps.alert("jk! No preferences available yet.")
-
     @rumps.clicked("☁️ Sync", "⬆ Push")
     def push(self, _):
         rumps.notification("Pushing to remote", "...", "...")
