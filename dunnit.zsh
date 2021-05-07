@@ -114,14 +114,22 @@ dunnit-alert() {
 	exit
     fi
     set -x
+    # Gather and combine tag suggestions from these prescriptions,
+    # plus what's already been used today (should expand to week).
+    # Cool thing about alerter is that when you open it to reply, it
+    # puts the end of the long text into view.
+    suggs=( '#til' '#mtg' '#blocker' '#question' '#nts' )
+    suggs+=( $(ggrep -E -o '#[0-9a-z]+' $dunnit_ledger) )
+    suggs=$(print -l $suggs | sort | uniq)
+    todos=$(ggrep ' TODO ' $dunnit_ledger)
     ans=$($alerter -reply \
 		   -appIcon ~/dunnit/dunnit-icon-green.png \
 		   -timeout 600 \
-                   -title "Dunnit Activity Entry" \
-		   -subtitle "What did you work on? (blank to snooze)" \
                    -closeLabel 'Ignore' \
 		   -sound 'Glass' \
-		   -message "${last_update}")
+                   -title "Dunnit Activity Entry" \
+		   -subtitle "What did you work on? (blank to snooze)" \
+                   -message "${last_update} — TODOs: $todos — Tags: $suggs")
     maybe-create-ledger-file
     # Bail out if user pressed 'Cancel'.
     if [[ $ans == 'Ignore' || $ans == '@TIMEOUT' ]]; then
@@ -301,9 +309,9 @@ dunnit-lunchtime() {
 		       -closeLabel '😢')
     else
 	terminal-notifier -sound Glass \
-		       -title 'Dunnit Goals Reminder' \
-		       -appIcon ~/dunnit/dunnit-icon-red.png \
-		       -subtitle 'Umm, you have no goals set for today 😢'
+			  -title 'Dunnit Goals Reminder' \
+			  -appIcon ~/dunnit/dunnit-icon-red.png \
+			  -subtitle 'Umm, you have no goals set for today 😢'
 	dunnit-goals
     fi
 }
