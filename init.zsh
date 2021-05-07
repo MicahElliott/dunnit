@@ -19,6 +19,9 @@ print "Running Dunnit for the first time"
 cd ~/dunnit
 ./dunnit-bubble
 
+print 'Activating default settings'
+gcp --no-clobber config-templates/* .
+
 print "Loading background processes for hourly notifications"
 launchctl load -w dunnit.plist dunnit-eod.plist dunnit-swupdate.plist
 
