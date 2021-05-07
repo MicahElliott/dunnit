@@ -16,25 +16,25 @@ class DunnitStatusBarApp(rumps.App):
         # if not sender.state:
         os.system("~/dunnit/dunnit-bubble")
 
-    @rumps.clicked("📅 Planning", "💡 Todo")
+    @rumps.clicked("🗓 Planning", "💡 Todo")
     def todo(self, _):
         os.system("~/dunnit/dunnit-todo")
         # Use todoist instead
         # os.system('cliclick kd:cmd,ctrl t:a ku:cmd,ctrl')
 
-    @rumps.clicked("📅 Planning", "🍅 Timer")
+    @rumps.clicked("🗓 Planning", "🍅 Timer")
     def pomodoro(self, _):
         es = os.system("~/dunnit/dunnit-pomodoro")
 
-    @rumps.clicked("📅 Planning", "🥅 Set Goals")
+    @rumps.clicked("🗓 Planning", "🥅 Set Goals")
     def setgoals(self, _):
         os.system("~/dunnit/dunnit-goals")
 
-    @rumps.clicked("📅 Planning", "🎯 Weekly Objectives")
+    @rumps.clicked("🗓 Planning", "🎯 Weekly Objectives")
     def objectives(self, _):
         os.system("~/dunnit/dunnit-objectives")
 
-    @rumps.clicked("📅 Planning", "👀 All")
+    @rumps.clicked("🗓 Planning", "👀 All")
     def showtodos(self, _):
         with open('help.txt', 'r') as file: txt = file.read()
         prog = os.popen("~/dunnit/dunnit-showtodos").read()
@@ -89,7 +89,11 @@ class DunnitStatusBarApp(rumps.App):
         rumps.notification("Pulling from remote", "...", "...")
         os.system("~/dunnit/dunnit-pull")
 
-    @rumps.clicked("⚙️ Misc", "Full Tutorial")
+    @rumps.clicked("⚙️ Misc", "🛠 Preferences")
+    def preferences(self, _):
+        os.system("~/dunnit/dunnit-preferences")
+
+    @rumps.clicked("⚙️ Misc", "📖 Full Tutorial")
     def help(self, _):
         with open('help.txt', 'r') as file: txt = file.read()
         win = rumps.Window("foo", 'bar', dimensions=(500,600))
@@ -98,15 +102,15 @@ class DunnitStatusBarApp(rumps.App):
         win.default_text = txt
         resp = win.run()
 
-    @rumps.clicked("⚙️ Misc", "Preferences")
-    def preferences(self, _):
-        os.system("~/dunnit/dunnit-preferences")
-
-    @rumps.clicked("⚙️ Misc", "Version Info")
+    @rumps.clicked("⚙️ Misc", "ℹ️ Version")
     def verinfo(self, _):
         rumps.notification("Version", "0.0.1", "Something")
 
-    @rumps.clicked("⚙️ Misc", "Dunnit??")
+    @rumps.clicked("⚙️ Misc", "✨ Check for Update")
+    def swupdate(self, _):
+        os.system("~/dunnit/dunnit-swupdate")
+
+    @rumps.clicked("⚙️ Misc", "❓ What's Dunnit?")
     def about(self, _):
         rumps.notification("Dunnit is for tracking WTF you did", "Just write a sentence each hour.", "You can pop up and record anytime.")
 
