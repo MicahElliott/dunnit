@@ -36,6 +36,10 @@ dunnit-edit() {
     [[ -n $EDITOR ]] && $=EDITOR $1 || open -e $1 &
 }
 
+dunnit-editraw() {
+    dunnit-edit $dunnit_ledger
+}
+
 # Convert pieces of daily status working file into sections
 sectionize-ledger() {
     # FIXME losing all non-tagged dunnits!
@@ -84,16 +88,16 @@ create-summary-file() {
         echo "% $username" >$dunnit_summary
         echo "% Impact Report" >>$dunnit_summary
         echo "% $dt\n" >>$dunnit_summary
-	print -- '<!-- See instructions at end of file. They’ll be automatically removed for you, as will this section. -->' >>$dunnit_summary
+	print -- '<!-- See instructions at end of file. They’ll be automatically removed for you, as will this section. -->\n' >>$dunnit_summary
 	echo "# Overview\n"  >>$dunnit_summary
 	echo "### Sentiment: (bad, neutral, or good)\n"  >>$dunnit_summary
 	print -- '<!-- Write one short paragraph here summarizing the day. -->\n' >>$dunnit_summary
-	echo "## Summary"  >>$dunnit_summary
-	print 'XXX'
+	echo "## Summary" >>$dunnit_summary
+	print 'XXX' >>$dunnit_summary
 	print '\n## 🥅 Original Goals 🥅\n' >>$dunnit_summary
 	ggrep 'GOAL' $dunnit_ledger | gsed 's/^GOAL/-/' >>$dunnit_summary
         echo "\n# Accomplishments"  >>$dunnit_summary
-	print -- '<!-- Combine bullets for each section into fewer and add a summary impact description and scores (replace XXX). -->' >>$dunnit_summary
+	print -- '\n<!-- Combine bullets for each section into fewer and add a summary impact description and scores (replace XXX). -->' >>$dunnit_summary
         echo "\n### Productivity Score: XXX"  >>$dunnit_summary
 	sectioned=$(sectionize-ledger)
 	# [[ $? -eq 0 ]] || return 1
