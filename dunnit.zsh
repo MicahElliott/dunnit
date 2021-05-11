@@ -91,8 +91,8 @@ create-summary-file() {
 	print -- '<!-- See instructions at end of file. They’ll be automatically removed for you, as will this section. -->\n' >>$dunnit_summary
 	echo "# Overview\n"  >>$dunnit_summary
 	echo "### Sentiment: (bad, neutral, or good)\n"  >>$dunnit_summary
-	print -- '<!-- Write one short paragraph here summarizing the day. -->\n' >>$dunnit_summary
 	echo "## Summary" >>$dunnit_summary
+	print -- '\n<!-- Write one short paragraph here summarizing the day. -->\n' >>$dunnit_summary
 	print 'XXX' >>$dunnit_summary
 	print '\n## 🥅 Original Goals 🥅\n' >>$dunnit_summary
 	ggrep 'GOAL' $dunnit_ledger | gsed 's/^GOAL/-/' >>$dunnit_summary
@@ -239,6 +239,10 @@ dunnit-autofinalize() {
 }
 
 dunnit-goals() {
+    if ggrep -q GOAL $dunnit_ledger; then
+	print 'Already set goals today'
+        exit
+    fi
     ans=$($alerter -reply \
 		   -appIcon ~/dunnit/dunnit-icon-purple.png \
 	           -timeout 600 \

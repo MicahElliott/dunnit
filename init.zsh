@@ -3,14 +3,15 @@
 mkdir -p /tmp/dunnit
 cd /tmp/dunnit
 
+print "Installing brew packages"
+brew install direnv bat fzf coreutils git grep python wget gsed terminal-notifier the_silver_searcher pandoc
+
 print "Installing alerter for pop-up alerts"
 wget https://github.com/vjeantet/alerter/releases/download/004/alerter_v004_darwin_amd64.zip
 unzip alerter_v004_darwin_amd64.zip
+# FIXME mac might not have /usr/local yet??
 mv alerter /usr/local/bin/alerter
 alerter -message 'Congrats if you can see this!'
-
-print "Installing brew packages"
-brew install direnv bat fzf coreutils git grep python wget gsed terminal-notifier the_silver_searcher pandoc
 
 print "Installing python packages"
 pip3 install rumps
