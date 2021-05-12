@@ -122,7 +122,7 @@ dunnit-alert() {
 	fi
     fi
 
-    if [[ -f /tmp/dunnit-nighty ]]; then
+    if [[ -f $dunnit_nighty && $1 != 'frommenu' ]]; then
 	echo 'in nighty mode; exiting as no-op'
 	exit
     fi
@@ -188,13 +188,9 @@ dunnit-alert() {
     set +x
 }
 
-dunnit-alert-todoist() {
-    if [[ -f /tmp/dunnit-nighty ]]; then
-	echo 'in nighty mode'
-	exit
-    fi
+dunnit-alert-todoist() { 	# NIU
+    if [[ -f /tmp/dunnit-nighty ]]; then echo 'in nighty mode'; exit; fi
     terminal-notifier -sound Glass -message 'Whadja work on?' -title 'Dunnit Reminder'
-    # Pop up fast-entry for todoist
     /usr/local/bin/cliclick kd:cmd,ctrl t:a ku:cmd,ctrl
 }
 
@@ -252,16 +248,18 @@ dunnit-goals() {
     		   -closeLabel 'Ignore' \
 		   -sound 'Glass')
     # tm=$(gdate +%H:%M)
-    if [[ $ans != "Ignore" ]]; then
-       touch $dunnit_ledger
-       gsed "s/$(print -n '\u2028')/\n/g" <<<$ans | gsed 's/^/GOAL /' >>$dunnit_ledger
-       # Carry yesterday's unfinished TODOs into today
-       ggrep 'TODO ' $dunnit_ledger_yesterday >>$dunnit_ledger
-       terminal-notifier -sound Glass -title 'Dunnit Confirmation' \
-			 -appIcon ~/dunnit/dunnit-icon-purple.png \
-			 -subtitle 'Sounds great!' \
-			 -message 'You’re set up for a successful day!'
-    fi
+    # if [[ $ans != "Ignore" ]]; then
+    [[ $ans == 'Ignore' || $ans == '@TIMEOUT' ]] && exit
+
+    touch $dunnit_ledger
+    gsed "s/$(print -n '\u2028')/\n/g" <<<$ans | gsed 's/^/GOAL /' >>$dunnit_ledger
+    # Carry yesterday's unfinished TODOs into today
+    ggrep 'TODO ' $dunnit_ledger_yesterday >>$dunnit_ledger
+    terminal-notifier -sound Glass -title 'Dunnit Confirmation' \
+		      -appIcon ~/dunnit/dunnit-icon-purple.png \
+		      -subtitle 'Sounds great!' \
+		      -message 'You’re set up for a successful day!'
+
     # emacsclient --create-frame $dunnit_summary &
     # [[ -n $EDITOR ]] && $=EDITOR $dunnit_summary  || open -e $dunnit_summary &
 }

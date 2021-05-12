@@ -14,7 +14,7 @@ class DunnitStatusBarApp(rumps.App):
     @rumps.clicked("🚀 Dunnit (YAY!)")
     def bubble(self, sender):
         # if not sender.state:
-        os.system("~/dunnit/dunnit-bubble")
+        os.system("~/dunnit/dunnit-bubble frommenu")
 
     @rumps.clicked("🚧 Blocker")
     def blocker(self, sender):
@@ -48,6 +48,10 @@ class DunnitStatusBarApp(rumps.App):
         win.message = "These are all the things you planned to do."
         win.default_text = prog
         resp = win.run()
+
+    @rumps.clicked("🧍‍♀️ Standup")
+    def standup(self, _):
+        os.system("~/dunnit/dunnit-standup")
 
     @rumps.clicked("📒 Ledger", "👀 View")
     def progress(self, _):
