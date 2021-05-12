@@ -112,6 +112,16 @@ create-summary-file() {
 }
 
 dunnit-alert() {
+    set -x
+    # Don't pop if recently shown (15m)
+    stamp=$(ggrep -E '\[[0-9:]+' $dunnit_ledger | sort -n | tail -1 | gsed -r 's/\[([0-9:]+)\] .*/\1/g')
+    secs_last=$(gdate -d "$stamp" +%s)
+    secs_now=$(gdate +%s)
+    if (( (secs_now - secs_last) / 60 < 15 )); then
+	print 'Not popping since recently shown'
+	exit
+    fi
+
     # Get most recent entry, prefer a TODO
     if [[ -f $dunnit_ledger ]]; then
 	todo=$(tail -1 $dunnit_ledger | ggrep 'TODO ')
@@ -126,7 +136,7 @@ dunnit-alert() {
 	echo 'in nighty mode; exiting as no-op'
 	exit
     fi
-    set -x
+
     # Gather and combine tag suggestions from these prescriptions,
     # plus what's already been used today (should expand to week).
     # Cool thing about alerter is that when you open it to reply, it
