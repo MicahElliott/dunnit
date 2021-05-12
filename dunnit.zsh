@@ -185,6 +185,12 @@ dunnit-alert() {
 	echo "[$tm] $ans" >>$dunnit_ledger
     fi
     echo "[$dt-$tm] Captured your update in dunnit file: $dunnit_ledger"
+    if ! ggrep -q '#' <<<$ans; then
+	terminal-notifier -sound Glass \
+			  -title 'Did you know you can use "tags"?' \
+			  -subtitle 'They help with categorizing your daily report.' \
+			  -message 'Eg: Mowed the lawn #chore'
+    fi
     set +x
 }
 
