@@ -115,6 +115,7 @@ create-summary-file() {
 dunnit-alert() {
     set -x
     # Don't pop if recently shown (15m)
+    # OK if empty since will be midnight default
     stamp=$(ggrep -E '\[[0-9:]+' $dunnit_ledger | sort -n | tail -1 | gsed -r 's/\[([0-9:]+)\] .*/\1/g')
     secs_last=$(gdate -d "$stamp" +%s)
     secs_now=$(gdate +%s)
@@ -197,8 +198,7 @@ dunnit-alert() {
     fi
     echo "[$dt-$tm] Captured your update in dunnit file: $dunnit_ledger"
     if ! ggrep -q '#' <<<$ans; then
-	terminal-notifier -sound Glass \
-			  -title 'Did you know you can use "tags"?' \
+	terminal-notifier -title 'Did you know you can use "tags"?' \
 			  -subtitle 'They help with categorizing your daily report.' \
 			  -message 'Eg: Mowed the lawn #chore'
     fi
@@ -221,13 +221,13 @@ dunnit-bod() {
 
 dunnit-eod() {
     ans=$($alerter -timeout 600 \
+		   -sound 'Glass' \
                    -appIcon ~/dunnit/dunnit-icon-yellow.png \
 	           -title "Dunnit Daily Summary" \
 		   -subtitle "You completed $(ggrep -cE '\[[0-9:]+\]' $dunnit_ledger) today." \
 		   -message "Finalize your day’s work (#tags etc)" \
 		   -actions 'Finalize' \
-		   -closeLabel 'Too lazy today' \
-		   -sound 'Glass')
+		   -closeLabel 'Too lazy today')
     tm=$(gdate +%H:%M)
     if [[ $ans == 'Finalize' ]]; then
 	if [[ -f $dunnit_summary ]]; then
@@ -235,6 +235,26 @@ dunnit-eod() {
 	    print "Will not overwrite."
 	    exit 1
 	else
+	    summary=$(
+		alerter -reply \
+                  	-timeout 600 \
+			-appIcon ~/dunnit/dunnit-icon-yellow.png \
+                        -title 'Dunnit Wrap-Up' \
+			-message "Summarize your day in a sentence or two.")
+	    productivity=$(
+		alerter -title 'Dunnit Wrap-Up' \
+                        -timeout 600 \
+			-appIcon ~/dunnit/dunnit-icon-yellow.png \
+			-message "How productive was your day?" \
+			-actions 1,2,3,4,5 \
+			-dropdownLabel 'Score it!')
+	    sentiment=$(
+		alerter -title 'Dunnit Wrap-Up' \
+			-timeout 600 \
+			-appIcon ~/dunnit/dunnit-icon-yellow.png \
+			-message 'What was your sentiment for the day?' \
+			-actions 'Bad,Neutral,Good' \
+			-dropdownLabel 'Rate it!')
             create-summary-file
 	fi
 	echo "[$dt-$tm] Opening editor on $dunnit_summary"
@@ -272,7 +292,7 @@ dunnit-goals() {
     gsed "s/$(print -n '\u2028')/\n/g" <<<$ans | gsed 's/^/GOAL /' >>$dunnit_ledger
     # Carry yesterday's unfinished TODOs into today
     ggrep 'TODO ' $dunnit_ledger_yesterday >>$dunnit_ledger
-    terminal-notifier -sound Glass -title 'Dunnit Confirmation' \
+    terminal-notifier -title 'Dunnit Confirmation' \
 		      -appIcon ~/dunnit/dunnit-icon-purple.png \
 		      -subtitle 'Sounds great!' \
 		      -message 'You’re set up for a successful day!'
@@ -334,8 +354,7 @@ dunnit-blocker() {
 		   -appIcon ~/dunnit/dunnit-icon-red.png \
 		   -timeout 300 \
                    -title "Dunnit Blocker/Question" \
-		   -subtitle "What are you hung up on?" \
-                   -sound 'Glass')
+		   -subtitle "What are you hung up on?")
     if [[ $ans != '@CLOSED' ]]; then
         print "BLOCKER $ans" >>$dunnit_ledger
 	echo "[$dt-$tm] Captured your BLOCKER in dunnit file: $dunnit_ledger"
