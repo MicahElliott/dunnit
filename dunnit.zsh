@@ -172,7 +172,8 @@ dunnit-alert() {
 	exit
     elif [[ $ans == '@ACTIONCLICKED' || $ans == 'snooze' || $ans == 'zzz' ]]; then
 	# Support a SNOOZE hack by pressing 'Send' with an empty message.
-	terminal-notifier -appIcon ~/dunnit/dunnit-icon-yellow.png -message 'Snoozing for 5m...'
+	terminal-notifier -appIcon ~/dunnit/dunnit-icon-yellow.png \
+			  -message 'Snoozing for 5m...'
 	sleep 300
         # Recursive for snooze support!
 	dunnit-alert
@@ -210,6 +211,7 @@ dunnit-alert() {
     echo "[$dt-$tm] Captured your update in dunnit file: $dunnit_ledger"
     if ! ggrep -q '#' <<<$ans; then
 	terminal-notifier -title 'Did you know you can use "tags"?' \
+			  -appIcon ~/dunnit/dunnit-icon-yellow.png \
 			  -subtitle 'They help with categorizing your daily report.' \
 			  -message 'Eg: Mowed the lawn #chore'
     fi
@@ -276,7 +278,7 @@ dunnit-eod() {
 	    set -x
 	    for g in $groups; do
 		# Remove first dash so alerter doesn't blow up
-		bullets=$(get-bullets $g | gsed -r 's/^- //')
+		bullets=$(get-bullets $g | gsed -r '1s/^- //')
 		impact_statements+=$(
 		    alerter -reply \
 			    -appIcon ~/dunnit/dunnit-icon-yellow.png \
@@ -304,6 +306,7 @@ dunnit-autofinalize() {
 }
 
 dunnit-goals() {
+    touch $dunnit_ledger
     if ggrep -q GOAL $dunnit_ledger; then
 	print 'Already set goals today'
         exit
@@ -320,7 +323,6 @@ dunnit-goals() {
     # if [[ $ans != "Ignore" ]]; then
     [[ $ans == 'Ignore' || $ans == '@TIMEOUT' ]] && exit
 
-    touch $dunnit_ledger
     gsed "s/$(print -n '\u2028')/\n/g" <<<$ans | gsed 's/^/GOAL /' >>$dunnit_ledger
     # Carry yesterday's unfinished TODOs into today
     ggrep 'TODO ' $dunnit_ledger_yesterday >>$dunnit_ledger
