@@ -112,9 +112,9 @@ create-summary-file() {
 	sectioned=$(sectionize-ledger)
 	# [[ $? -eq 0 ]] || return 1
         echo $sectioned >> $dunnit_summary
-        echo "\n# Other"  >>$dunnit_summary
-	echo "\n## 🎉 Highlight\n"  >>$dunnit_summary
-	echo "## Today I Learned\n"  >>$dunnit_summary
+        # echo "\n# Other"  >>$dunnit_summary
+	# echo "\n## 🎉 Highlight\n"  >>$dunnit_summary
+	# echo "## Today I Learned\n"  >>$dunnit_summary
         # echo "\n## Plans/Problems\n" >>$dunnit_summary
 	print '\n---- DELETE_TO_EOF ----'  >>$dunnit_summary
 	[[ -z $1 ]] && cat ~/dunnit/summary-instructions.md >>$dunnit_summary
@@ -224,7 +224,7 @@ dunnit-alert-todoist() { 	# NIU
     /usr/local/bin/cliclick kd:cmd,ctrl t:a ku:cmd,ctrl
 }
 
-dunnit-nighty-off() { rm $dunnit_nighty }
+dunnit-nighty-off() { [[ -f $dunnit_nighty ]] && rm $dunnit_nighty }
 dunnit-nighty-on()  { touch $dunnit_nighty }
 
 dunnit-bod() {
@@ -307,6 +307,7 @@ dunnit-autofinalize() {
 
 dunnit-goals() {
     touch $dunnit_ledger
+    dunnit-nighty-off
     if ggrep -q GOAL $dunnit_ledger; then
 	print 'Already set goals today'
         exit
@@ -320,12 +321,12 @@ dunnit-goals() {
     		   -closeLabel 'Ignore' \
 		   -sound 'Glass')
     # tm=$(gdate +%H:%M)
-    # if [[ $ans != "Ignore" ]]; then
     [[ $ans == 'Ignore' || $ans == '@TIMEOUT' ]] && exit
 
     gsed "s/$(print -n '\u2028')/\n/g" <<<$ans | gsed 's/^/GOAL /' >>$dunnit_ledger
-    # Carry yesterday's unfinished TODOs into today
+    # Carry yesterday's unfinished TODOs and BLOCKERS into today
     ggrep 'TODO ' $dunnit_ledger_yesterday >>$dunnit_ledger
+    ggrep 'BLOCKER ' $dunnit_ledger_yesterday >>$dunnit_ledger
     terminal-notifier -title 'Dunnit Confirmation' \
 		      -appIcon ~/dunnit/dunnit-icon-purple.png \
 		      -subtitle 'Sounds great!' \
