@@ -40,6 +40,14 @@ dunnit-editraw() {
     dunnit-edit $dunnit_ledger
 }
 
+get-bullets() {
+    local tag=$1
+    ggrep -vE 'GOAL|TODO' $dunnit_ledger | ggrep $tag |
+	gsed -r -e "s/$tag //" -e 's/^/- /' \
+	     -e 's/ #[0-9a-z]+//g' \
+	     -e 's/ \[[0-9:]+\] / /'
+}
+
 # Convert pieces of daily status working file into sections
 sectionize-ledger() {
     # FIXME losing all non-tagged dunnits!
@@ -47,18 +55,19 @@ sectionize-ledger() {
     # gsed '/## Accomp/q' $dunnit_tmp 	# print only lines up to
     groups=( $(ggrep -vE 'GOAL|TODO' $dunnit_ledger |
 		   ggrep -E -o '#[0-9a-z]+' | sort | uniq) )
+    integer gcount=1
     for g in $groups; do
 	i2=$(sed 's/#//' <<<$g)
-	items=$(ggrep -vE 'GOAL|TODO' $dunnit_ledger | ggrep $g |
-	    gsed -r -e "s/$g //" -e 's/^/- /' \
-		 -e 's/ #[0-9a-z]+//g' \
-		 -e 's/ \[[0-9:]+\] / /')
+	items=$(get-bullets $g)
 	integer item_count=$(wc -l <<<$items)
 	print "\n## ${(C)i2} ($item_count)\n"
 	print -- $items
-        print '\n> IMPACT(XXX):'
+	stmt=$impact_statements[$gcount]
+	print "\n> IMPACT-$stmt"
+        # print '\n> IMPACT(XXX):'
 	# Multiple impacts if many items
-	(( item_count > 3 )) && print '\n> IMPACT(XXX):'
+	# (( item_count > 3 )) && print '\n> IMPACT(XXX):'
+	gcount+=1
     done
     ggrep -qvE '#[0-9a-z]+|GOAL|TODO' $dunnit_ledger && print '\n## Other\n'
     ggrep  -vE '#[0-9a-z]+|GOAL|TODO' $dunnit_ledger | gsed -r -e 's/^/- /'  -e 's/ \[[0-9:]+\] / /'
@@ -91,7 +100,7 @@ create-summary-file() {
 	# print -- '<!-- See instructions at end of file. They’ll be automatically removed for you, as will this section. -->\n' >>$dunnit_summary
 	echo "# Overview\n"  >>$dunnit_summary
 	echo "### Sentiment: $sentiment\n"  >>$dunnit_summary
-	echo "## Summary" >>$dunnit_summary
+	echo '## Summary\n' >>$dunnit_summary
 	# print -- '\n<!-- Write one short paragraph here summarizing the day. -->\n' >>$dunnit_summary
 	print "$summary" >>$dunnit_summary
         # print 'XXX' >>$dunnit_summary
@@ -114,14 +123,16 @@ create-summary-file() {
 
 dunnit-alert() {
     set -x
-    # Don't pop if recently shown (15m)
-    # OK if empty since will be midnight default
-    stamp=$(ggrep -E '\[[0-9:]+' $dunnit_ledger | sort -n | tail -1 | gsed -r 's/\[([0-9:]+)\] .*/\1/g')
-    secs_last=$(gdate -d "$stamp" +%s)
-    secs_now=$(gdate +%s)
-    if (( (secs_now - secs_last) / 60 < 15 )); then
-	print 'Not popping since recently shown'
-	exit
+    if [[ $1 != 'frommenu' ]]; then
+	# Don't pop if recently shown (15m)
+	# OK if empty since will be midnight default
+	stamp=$(ggrep -E '\[[0-9:]+' $dunnit_ledger | sort -n | tail -1 | gsed -r 's/\[([0-9:]+)\] .*/\1/g')
+	secs_last=$(gdate -d "$stamp" +%s)
+	secs_now=$(gdate +%s)
+	if (( (secs_now - secs_last) / 60 < 15 )); then
+	    print 'Not popping since recently shown'
+	    exit
+	fi
     fi
 
     # Get most recent entry, prefer a TODO
@@ -255,6 +266,27 @@ dunnit-eod() {
 			-message 'What was your sentiment for the day?' \
 			-actions 'Bad,Neutral,Good' \
 			-dropdownLabel 'Rate it!')
+	    groups=( $(ggrep -vE 'GOAL|TODO' $dunnit_ledger |
+			   ggrep -E -o '#[0-9a-z]+' | sort | uniq) )
+            terminal-notifier -title 'Dunnit Wrap-Up' \
+			      -appIcon ~/dunnit/dunnit-icon-yellow.png \
+			      -subtitle 'Let’s review your tag sections.' \
+			      -message 'Give a brief impact statement for each tag section.'
+	    impact_statements=()
+	    set -x
+	    for g in $groups; do
+		# Remove first dash so alerter doesn't blow up
+		bullets=$(get-bullets $g | gsed -r 's/^- //')
+		impact_statements+=$(
+		    alerter -reply \
+			    -appIcon ~/dunnit/dunnit-icon-yellow.png \
+			    -timeout 600 \
+			    -title 'Dunnit Wrap-Up' \
+			    -subtitle "What was the impact of $g?" \
+			    -message "$bullets")
+			    # -message 'Ex: 3: Team can integrate the kW validation now.')
+	    done
+	    set +x
             create-summary-file
 	fi
 	echo "[$dt-$tm] Opening editor on $dunnit_summary"
