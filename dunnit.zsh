@@ -418,13 +418,14 @@ dunnit-showtodos() {
 }
 
 dunnit-lunchtime() {
-    if ggrep -q GOAL $dunnit_ledger; then
+    goals=$(ggrep GOAL $dunnit_ledger | gsed -r -e 's/^GOAL /- /' -e '1s/^- //')
+    if [[ -n $goals ]]; then
 	ans=$($alerter -timeout 3000 \
 		       -sound Glass \
 		       -title 'Dunnit Goals Reminder' \
 		       -appIcon ~/dunnit/dunnit-icon-orange.png \
 		       -subtitle 'How are your goals coming along?' \
-                       -message "Click: Dunnit -> Planning -> View All" \
+                       -message "$goals" \
 		       -actions 'GREAT!! 🔥' \
 		       -closeLabel '😢')
     else
