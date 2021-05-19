@@ -83,10 +83,10 @@ with Dunnit, so please reach out to me for help with any of this.
 
    ```sh
    cd ~/dunnit
-   ./init.zsh
+   ./install.zsh
    ```
 
-1. Run Dunnit.
+1. Start the Dunnit menu.
 
    ```sh
    cd ~/dunnit

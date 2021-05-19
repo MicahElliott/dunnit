@@ -10,18 +10,21 @@ wk=$(gdate +w%V-$mo) # w23-Jun
 yr=$(gdate +%Y)
 if [[ $(gdate +%a) == 'Mon' ]]; then
     dunnit_yesterday=$(gdate -d 'last friday' +%Y%m%d-%a)
-    dunnit_ledger_yesterday=~/dunnit/ledger-$dunnit_yesterday.txt
 else
     dunnit_yesterday=$(gdate -d 'yesterday' +%Y%m%d-%a)
-    dunnit_ledger_yesterday=~/dunnit/ledger-$dunnit_yesterday.txt
 fi
+dunnit_ledger_yesterday=$dunnit_dir/ledger-$dunnit_yesterday.txt
 dunnit_dir=${DUNNIT_DIR:-~/dunnit/log/$yr/$wk}
 dunnit_summary=$dunnit_dir/$dt.md
+dunnit_summary_yesterday=$dunnit_dir/$dunnit_yesterday.txt
 # dunnit_ledger=~/dunnit/ledger-$dt.txt
 dunnit_ledger=$dunnit_dir/ledger-$dt.txt
 # dunnit_goals=~/dunnit/goals-$dt.txt
 dunnit_tmp=$dunnit_dir/$dt-tmp.md
 dunnit_nighty=/tmp/dunnit-nighty
+
+dunnit_cfg=~/dunnit/config-templates
+dunnit_plists=~/Library/LaunchAgents
 
 dunnit_browser=${BROWSER-/Applications/Safari.app/Contents/MacOS/Safari}
 alerter=/usr/local/bin/alerter
@@ -33,7 +36,11 @@ if ! [[ -d $dunnit_dir ]]; then
 fi
 
 dunnit-edit() {
+    set -x
+    # BUG: not popping up editor
+    print "EDITOR: $EDITOR"
     [[ -n $EDITOR ]] && $=EDITOR $1 || open -e $1 &
+    set +x
 }
 
 dunnit-editraw() {
@@ -75,9 +82,13 @@ sectionize-ledger() {
     if ggrep -q ' TODO ' $dunnit_ledger; then
        print '\n## Incomplete\n'
        ggrep ' TODO ' $dunnit_ledger | gsed 's/^([A-Z]) /- /'
-       # TODO Carry over tomorrow's goals
-       print '\n## Tomorrow’s Goals\n'
     fi
+    if [[ -n $tomorrow_goals ]]; then
+        # TODO Carry over tomorrow's goals
+	print '\n## Tomorrow’s Goals\n'
+	print $tomorrow_goals
+    fi
+
 }
 
 maybe-create-ledger-file() {
@@ -325,8 +336,9 @@ dunnit-goals() {
 
     gsed "s/$(print -n '\u2028')/\n/g" <<<$ans | gsed 's/^/GOAL /' >>$dunnit_ledger
     # Carry yesterday's unfinished TODOs and BLOCKERS into today
-    ggrep 'TODO ' $dunnit_ledger_yesterday >>$dunnit_ledger
-    ggrep 'BLOCKER ' $dunnit_ledger_yesterday >>$dunnit_ledger
+    # XXX Should this instead carry over from yesterday's report, not ledger?
+    ggrep 'TODO ' $dunnit_summary_yesterday >>$dunnit_ledger
+    ggrep 'BLOCKER ' $dunnit_summary_yesterday >>$dunnit_ledger
     terminal-notifier -title 'Dunnit Confirmation' \
 		      -appIcon ~/dunnit/dunnit-icon-purple.png \
 		      -subtitle 'Sounds great!' \
