@@ -16,7 +16,7 @@ fi
 dunnit_ledger_yesterday=$dunnit_dir/ledger-$dunnit_yesterday.txt
 dunnit_dir=${DUNNIT_DIR:-~/dunnit/log/$yr/$wk}
 dunnit_summary=$dunnit_dir/$dt.md
-dunnit_summary_yesterday=$dunnit_dir/$dunnit_yesterday.txt
+dunnit_summary_yesterday=$dunnit_dir/$dunnit_yesterday.md
 # dunnit_ledger=~/dunnit/ledger-$dt.txt
 dunnit_ledger=$dunnit_dir/ledger-$dt.txt
 # dunnit_goals=~/dunnit/goals-$dt.txt
@@ -259,28 +259,32 @@ dunnit-eod() {
 	    print "Will not overwrite."
 	    exit 1
 	else
+            groups=( $(ggrep -vE 'GOAL|TODO' $dunnit_ledger |
+			   ggrep -E -o '#[0-9a-z]+' | sort | uniq) )
 	    summary=$(
 		alerter -reply \
                   	-timeout 600 \
 			-appIcon ~/dunnit/dunnit-icon-yellow.png \
                         -title 'Dunnit Wrap-Up' \
-			-message "Summarize your day in a sentence or two.")
+			-subtitle "Summarize your day briefly." \
+			-closeLabel 'Skip' \
+			-message "Reminder: $groups")
 	    productivity=$(
 		alerter -title 'Dunnit Wrap-Up' \
                         -timeout 600 \
 			-appIcon ~/dunnit/dunnit-icon-yellow.png \
 			-message "How productive was your day?" \
 			-actions 1,2,3,4,5 \
+			-closeLabel 'Skip' \
 			-dropdownLabel 'Score it!')
 	    sentiment=$(
 		alerter -title 'Dunnit Wrap-Up' \
 			-timeout 600 \
 			-appIcon ~/dunnit/dunnit-icon-yellow.png \
 			-message 'What was your sentiment for the day?' \
-			-actions 'Bad,Neutral,Good' \
+			-actions 'Negative,Neutral,Positive' \
+			-closeLabel 'Skip' \
 			-dropdownLabel 'Rate it!')
-	    groups=( $(ggrep -vE 'GOAL|TODO' $dunnit_ledger |
-			   ggrep -E -o '#[0-9a-z]+' | sort | uniq) )
             terminal-notifier -title 'Dunnit Wrap-Up' \
 			      -appIcon ~/dunnit/dunnit-icon-yellow.png \
 			      -subtitle 'Let’s review your tag sections.' \
@@ -296,9 +300,19 @@ dunnit-eod() {
 			    -timeout 600 \
 			    -title 'Dunnit Wrap-Up' \
 			    -subtitle "What was the impact of $g?" \
-			    -message "$bullets")
+			    -message "$bullets" \
+			    -closeLabel 'Skip')
 			    # -message 'Ex: 3: Team can integrate the kW validation now.')
 	    done
+	    tomorrow_goals=$(
+		alerter -reply \
+			-title 'Dunnit Wrap-Up' \
+			-timeout 600 \
+			-appIcon ~/dunnit/dunnit-icon-yellow.png \
+			-closeLabel 'Skip' \
+			-message 'Got any goals for tomorrow yet?')
+	    # TODO multi-bullet for multiline entry
+
 	    set +x
             create-summary-file
 	fi
@@ -316,12 +330,23 @@ dunnit-autofinalize() {
     # TODO Maybe gen report, open browser, send email, etc
 }
 
+# This is really a beginning-of-day (BOD) routine
 dunnit-goals() {
+    set -x
     touch $dunnit_ledger
     dunnit-nighty-off
+    ggrep 'TODO ' $dunnit_summary_yesterday >>$dunnit_ledger
+    ggrep 'BLOCKER ' $dunnit_summary_yesterday >>$dunnit_ledger
+    ggrep 'GOAL ' $dunnit_summary_yesterday >>$dunnit_ledger
     if ggrep -q GOAL $dunnit_ledger; then
 	print 'Already set goals today'
-        exit
+	goals=$(ggrep 'GOAL ' $dunnit_ledger | gsed 's/GOAL /- /g')
+        terminal-notifier -title 'Dunnit Oops!' \
+			  -appIcon ~/dunnit/dunnit-icon-red.png \
+			  -subtitle 'Your goals for today are already set.' \
+			  -message "GOALS: $goals" \
+			  -subtitle 'Goals set; change in menu: Ledger -> Edit'
+	exit
     fi
     ans=$($alerter -reply \
 		   -appIcon ~/dunnit/dunnit-icon-purple.png \
@@ -335,10 +360,8 @@ dunnit-goals() {
     [[ $ans == 'Ignore' || $ans == '@TIMEOUT' ]] && exit
 
     gsed "s/$(print -n '\u2028')/\n/g" <<<$ans | gsed 's/^/GOAL /' >>$dunnit_ledger
-    # Carry yesterday's unfinished TODOs and BLOCKERS into today
+    # Carry yesterday's unfinished TODOs, BLOCKERs, GOALs into today
     # XXX Should this instead carry over from yesterday's report, not ledger?
-    ggrep 'TODO ' $dunnit_summary_yesterday >>$dunnit_ledger
-    ggrep 'BLOCKER ' $dunnit_summary_yesterday >>$dunnit_ledger
     terminal-notifier -title 'Dunnit Confirmation' \
 		      -appIcon ~/dunnit/dunnit-icon-purple.png \
 		      -subtitle 'Sounds great!' \
@@ -346,6 +369,7 @@ dunnit-goals() {
 
     # emacsclient --create-frame $dunnit_summary &
     # [[ -n $EDITOR ]] && $=EDITOR $dunnit_summary  || open -e $dunnit_summary &
+    set +x
 }
 
 dunnit-report() {
