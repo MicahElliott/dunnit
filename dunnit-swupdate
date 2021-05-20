@@ -4,6 +4,7 @@
 
 cd ~/dunnit
 
+print 'Looking for recent version update of Dunnit.'
 git fetch
 
 if [[ $(git rev-parse HEAD) != $(git rev-parse '@{u}') ]]; then
@@ -18,10 +19,10 @@ if [[ $(git rev-parse HEAD) != $(git rev-parse '@{u}') ]]; then
 		  -message 'Would you like to install it now?' \
 		  -sound 'Glass')
     if [[ $ans == 'Upgrade' ]]; then
-	pkill dunnit-menu
+	pkill -9 dunnit-menu
 	git rebase
-	launchctl unload dunnit.plist dunnit-eod.plist dunnit-swupdate.plist dunnit-lunchhtime.plist
-	launchctl load -w dunnit.plist dunnit-eod.plist dunnit-swupdate.plist dunnit-lunchhtime.plist
+	# launchctl unload dunnit.plist dunnit-eod.plist dunnit-swupdate.plist dunnit-lunchhtime.plist
+	launchctl load -w $dunnit_plists/dunnit*.plist
 	./dunnit-menu
     fi
 fi
