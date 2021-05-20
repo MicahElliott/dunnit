@@ -76,6 +76,7 @@ sectionize-ledger() {
 	# (( item_count > 3 )) && print '\n> IMPACT(XXX):'
 	gcount+=1
     done
+    # NOTE Other section does not get an Impact prompt; could instead auto-label as #misc
     ggrep -qvE '#[0-9a-z]+|GOAL|TODO' $dunnit_ledger && print '\n## Other\n'
     ggrep  -vE '#[0-9a-z]+|GOAL|TODO' $dunnit_ledger | gsed -r -e 's/^/- /'  -e 's/ \[[0-9:]+\] / /'
     # print '\n> IMPACT:'
@@ -164,7 +165,7 @@ dunnit-alert() {
     # Gather and combine tag suggestions from these prescriptions,
     # plus what's already been used today (should expand to week).
     # Cool thing about alerter is that when you open it to reply, it
-    # puts the end of the long text into view.
+    # puts the end of the long text into view, and is scrollable.
     suggs=( '#til' '#mtg' '#question' '#nts' '#personal' )
     suggs+=( $(ggrep -E -o '#[0-9a-z]+' $dunnit_ledger) )
     suggs=$(print -l $suggs | sort | uniq)
@@ -190,7 +191,7 @@ dunnit-alert() {
 	dunnit-alert
     fi
 
-    if [[ $ans == 'Ditto' ]]; then
+    if [[ $ans == 'Ditto' || $ans == 'Same' ]]; then
         # Determine if already a %N points indicator on last line
         if gsed -n '$p' $dunnit_ledger | ggrep -qE '%[0-9]+$'; then
 	    # Increment
@@ -210,14 +211,20 @@ dunnit-alert() {
     fi
 
     tm=$(gdate +%H:%M)
+    # Check to see if it's a TODO being checked off
     if ggrep -q '^[A-Z]$' <<<$ans ; then
 	item=$(ggrep "^($ans) " $dunnit_ledger | sed 's/([A-Z]) TODO //')
 	[[ -z $item ]] && return 1
 	gsed -i "/^($ans) /d" $dunnit_ledger # now remove the line
 	echo "[$tm] $item" >>$dunnit_ledger
     else
+	set -x
+	# Split into multiple entries (lines) if weird newlines
 	ans=$(gsed "s/$(print -n '\u2028')/\n[$tm] /g" <<<$ans)
+	# Add timestamp to first entry
 	echo "[$tm] $ans" >>$dunnit_ledger
+	# TODO Add #misc tag to any tagless entries
+	set +x
     fi
     echo "[$dt-$tm] Captured your update in dunnit file: $dunnit_ledger"
     if ! ggrep -q '#' <<<$ans; then
