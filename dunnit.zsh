@@ -70,7 +70,7 @@ sectionize-ledger() {
 	print "\n## ${(C)i2} ($item_count)\n"
 	print -- $items
 	stmt=$impact_statements[$gcount]
-	print "\n> IMPACT-$stmt"
+	[[ -n $stmt  ]] && print "\n> IMPACT-$stmt"
         # print '\n> IMPACT(XXX):'
 	# Multiple impacts if many items
 	# (( item_count > 3 )) && print '\n> IMPACT(XXX):'
@@ -83,7 +83,7 @@ sectionize-ledger() {
        print '\n## Incomplete\n'
        ggrep ' TODO ' $dunnit_ledger | gsed 's/^([A-Z]) /- /'
     fi
-    if [[ -n $tomorrow_goals ]]; then
+    if [[ $tomorrow_goals != 'Skip' ]]; then
         # TODO Carry over tomorrow's goals
 	print '\n## Tomorrow’s Goals\n'
 	print $tomorrow_goals
@@ -293,16 +293,28 @@ dunnit-eod() {
 	    set -x
 	    for g in $groups; do
 		# Remove first dash so alerter doesn't blow up
+		score=
 		bullets=$(get-bullets $g | gsed -r '1s/^- //')
-		impact_statements+=$(
-		    alerter -reply \
+		stmt=$(alerter -reply \
 			    -appIcon ~/dunnit/dunnit-icon-yellow.png \
 			    -timeout 600 \
-			    -title 'Dunnit Wrap-Up' \
-			    -subtitle "What was the impact of $g?" \
+			    -title "Dunnit Wrap-Up: Tag $g" \
+			    -subtitle "<Impact-score>: <Outcome> of $g?" \
 			    -message "$bullets" \
 			    -closeLabel 'Skip')
-			    # -message 'Ex: 3: Team can integrate the kW validation now.')
+		if [[ $stmt != 'Skip' ]]; then
+		    if ! ggrep -q '[0-5]:' <<<$stmt; then
+			score=$(alerter -title 'Dunnit Wrap-Up' \
+					-timeout 600 \
+					-appIcon ~/dunnit/dunnit-icon-yellow.png \
+					-message "What impact did that have?" \
+					-actions 1,2,3,4,5 \
+					-closeLabel '0' \
+					-dropdownLabel 'Score it!')
+			score+=': '
+		    fi
+                    impact_statements+="${score}$stmt"
+                fi
 	    done
 	    tomorrow_goals=$(
 		alerter -reply \
