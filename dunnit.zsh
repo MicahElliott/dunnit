@@ -37,9 +37,14 @@ fi
 
 dunnit-edit() {
     set -x
-    # BUG: not popping up editor
+    # FIXME sometimes not popping up editor
     print "EDITOR: $EDITOR"
+    terminal-notifier -title 'Dunnit: Popping up your editor' \
+		      -subtitle 'Save and close your editor when done!' \
+		      -appIcon ~/dunnit/dunnit-icon-yellow.png \
+		      -message 'DUNNIT IS LOCKED UNTIL EDITOR IS CLOSED.'
     [[ -n $EDITOR ]] && $=EDITOR $1 || open -e $1 &
+    # NOTE Dunnit will freeze until editor is closed!
     set +x
 }
 
@@ -184,7 +189,8 @@ dunnit-alert() {
 	exit
     elif [[ $ans == '@ACTIONCLICKED' || $ans == 'snooze' || $ans == 'zzz' ]]; then
 	# Support a SNOOZE hack by pressing 'Send' with an empty message.
-	terminal-notifier -appIcon ~/dunnit/dunnit-icon-yellow.png \
+	terminal-notifier -title 'Dunnit Snooze' \
+			  -appIcon ~/dunnit/dunnit-icon-yellow.png \
 			  -message 'Snoozing for 5m...'
 	sleep 300
         # Recursive for snooze support!
@@ -532,20 +538,32 @@ dunnit-pull() {
     set +x
 }
 
+### Configure preferences via plist files
+#   Must live in ~/Library/LaunchAgents to start at boot
 dunnit-preferences() {
     set -x
+    if ! [[ -f ~/dunnit/config.zsh ]]; then
+	print 'Copying a default configuration to ~/dunnit/config.zsh'
+	cp $dunnit_cfg/config-example.zsh ~/dunnit/config.zsh
+    fi
     dunnit-edit ~/dunnit/config.zsh
+    # Set some vars that will be interpolated in template(s)
     source ~/dunnit/config.zsh
-    dunnit_cfg=~/dunnit/config-templates
-    if [[ -f $dunnit_cfg/dunnit-standup.plist &&
+    # Need a block like this for each configurable file
+    if [[ -f $dunnit_cfg/dunnit-standup.plist.tmpl &&
 	  -n $DUNNIT_STANDUP ]]; then
 	local hour=$DUNNIT_STANDUP[1] min=$DUNNIT_STANDUP[2]
+	# Overwrite old config
 	gsed -r -e "s/STANDUP_HOUR/$hour/" -e "s/STANDUP_MINUTE/$min/" \
-	     $dunnit_cfg/dunnit-standup.plist \
-	     >|~/dunnit/dunnit-standup.plist
+	     $dunnit_cfg/dunnit-standup.plist.tmpl \
+	     >| $dunnit_plists/dunnit-standup.plist
 	print "Reloading standup scheduler for time: $DUNNIT_STANDUP"
-	launchctl load -w ~/dunnit/dunnit-standup.plist
+	# launchctl load -w $dunnit_plists/dunnit-standup.plist
     fi
+    # Copy remaining non-templates to Mac location
+    print 'Copying all other plist files to Mac-aware location.'
+    cp $dunnit_cfg/*.plist $dunnit_plists/
+    launchctl load -w $dunnit_plists/dunnit*.plist
     set +x
 }
 

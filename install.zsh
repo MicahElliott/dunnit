@@ -23,8 +23,12 @@ cd ~/dunnit
 print 'Activating default settings'
 gcp --no-clobber config-templates/* .
 
-print "Loading background processes for hourly notifications"
-launchctl load -w dunnit.plist dunnit-eod.plist dunnit-swupdate.plist
+print 'Set up your preferences'
+source dunnit.zsh
+dunnit-preferences
+
+# print "Loading background processes for hourly notifications"
+# launchctl load -w ~/Library/LaunchAgents/dunnit*.plist
 
 print "Starting the Dunnit menu"
 ./dunnit-menu
