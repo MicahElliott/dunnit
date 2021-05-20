@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+      <key>LC_ALL</key>
+      <string>en_US.UTF-8</string>
+      <key>LANG</key>
+      <string>en_US.UTF-8</string>
+    </dict>
+    <key>Label</key>
+    <string>com.micahelliott.dunnit</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/bin/zsh</string>
+      <string>-c</string>
+      <string>~/dunnit/dunnit-menu</string>
+    </array>
+    <!-- OR, from original example?? -->
+    <!-- <key>Program</key> -->
+    <!-- <string>/Users/admin/Scripts/startup/startup.sh</string> -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <false/>
+    <key>LaunchOnlyOnce</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/dunnit-launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/dunnit-launchd.log</string>
+  </dict>
+</plist>

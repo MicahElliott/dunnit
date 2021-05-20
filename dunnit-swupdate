@@ -19,9 +19,11 @@ if [[ $(git rev-parse HEAD) != $(git rev-parse '@{u}') ]]; then
 		  -message 'Would you like to install it now?' \
 		  -sound 'Glass')
     if [[ $ans == 'Upgrade' ]]; then
+	print 'Shutting down running Dunnit instance.'
 	pkill -9 dunnit-menu
 	git rebase
 	# launchctl unload dunnit.plist dunnit-eod.plist dunnit-swupdate.plist dunnit-lunchhtime.plist
+	print 'Reloading scheduled Dunnit prompt jobs.'
 	launchctl load -w $dunnit_plists/dunnit*.plist
 	./dunnit-menu
     fi
