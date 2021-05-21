@@ -1,6 +1,6 @@
 #! /bin/zsh
 
-print "Starting the Dunnit menu"
+# Intstaller contains the output messaging
+# print "Starting the Dunnit menu"
 python3 ./dunnit-menu.py &!
-
-print "You can close this terminal now"
+# print "You can close this terminal now"
