@@ -77,7 +77,10 @@ sectionize-ledger() {
 	print "\n## ${(C)i2} ($item_count)\n"
 	print -- $items
 	stmt=$impact_statements[$gcount]
-	[[ -n $stmt  ]] && print "\n> IMPACT-$stmt"
+	[[ -n $stmt  ]] && {
+	    print "\n> IMPACT-$stmt"
+	    print "IMPACT-$stmt $g" >>$dunnit_ledger
+	}
         # print '\n> IMPACT(XXX):'
 	# Multiple impacts if many items
 	# (( item_count > 3 )) && print '\n> IMPACT(XXX):'
@@ -119,15 +122,18 @@ create-summary-file() {
 	# print -- '<!-- See instructions at end of file. They’ll be automatically removed for you, as will this section. -->\n' >>$dunnit_summary
 	echo "# Overview\n"  >>$dunnit_summary
 	echo "### Sentiment: $sentiment\n"  >>$dunnit_summary
+	echo "SENTIMENT $sentiment"  >>$dunnit_ledger
 	echo '## Summary\n' >>$dunnit_summary
 	# print -- '\n<!-- Write one short paragraph here summarizing the day. -->\n' >>$dunnit_summary
 	print "$summary" >>$dunnit_summary
+	print "SUMMARY $summary" >>$dunnit_ledger
         # print 'XXX' >>$dunnit_summary
 	print '\n## 🥅 Original Goals 🥅\n' >>$dunnit_summary
 	ggrep 'GOAL' $dunnit_ledger | gsed 's/^GOAL/-/' >>$dunnit_summary
         echo "\n# Accomplishments"  >>$dunnit_summary
 	# print -- '\n<!-- Combine bullets for each section into fewer and add a summary impact description and scores (replace XXX). -->' >>$dunnit_summary
         echo "\n### Productivity Score: $productivity"  >>$dunnit_summary
+        print"PRODUCTIVITY $productivity"  >>$dunnit_ledger
 	sectioned=$(sectionize-ledger)
 	# [[ $? -eq 0 ]] || return 1
         echo $sectioned >> $dunnit_summary
@@ -370,11 +376,11 @@ dunnit-goals() {
     if ggrep -q GOAL $dunnit_ledger; then
 	print 'Already set goals today'
 	goals=$(ggrep 'GOAL ' $dunnit_ledger | gsed 's/GOAL /- /g')
-        terminal-notifier -title 'Dunnit Oops!' \
-			  -appIcon ~/dunnit/dunnit-icon-red.png \
-			  -subtitle 'Your goals for today are already set.' \
-			  -message "GOALS: $goals" \
-			  -subtitle 'Goals set; change in menu: Ledger -> Edit'
+        terminal-notifier \
+	    -title 'Dunnit Goals: Oops!' \
+	    -appIcon ~/dunnit/dunnit-icon-red.png \
+	    -subtitle 'Already set; use menu: Ledger -> Edit' \
+            -message "GOALS: $goals"
 	exit
     fi
     ans=$($alerter -reply \
