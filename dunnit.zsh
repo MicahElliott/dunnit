@@ -16,6 +16,7 @@ fi
 dunnit_ledger_yesterday=$dunnit_dir/ledger-$dunnit_yesterday.txt
 dunnit_dir=${DUNNIT_DIR:-~/dunnit/log/$yr/$wk}
 dunnit_summary=$dunnit_dir/$dt.md
+# No longer used since not relying on changes to summary
 dunnit_summary_yesterday=$dunnit_dir/$dunnit_yesterday.md
 # dunnit_ledger=~/dunnit/ledger-$dt.txt
 dunnit_ledger=$dunnit_dir/ledger-$dt.txt
@@ -370,9 +371,6 @@ dunnit-goals() {
     set -x
     touch $dunnit_ledger
     dunnit-nighty-off
-    ggrep 'TODO ' $dunnit_summary_yesterday >>$dunnit_ledger
-    ggrep 'BLOCKER ' $dunnit_summary_yesterday >>$dunnit_ledger
-    ggrep 'GOAL ' $dunnit_summary_yesterday >>$dunnit_ledger
     if ggrep -q GOAL $dunnit_ledger; then
 	print 'Already set goals today'
 	goals=$(ggrep 'GOAL ' $dunnit_ledger | gsed 's/GOAL /- /g')
@@ -382,7 +380,13 @@ dunnit-goals() {
 	    -subtitle 'Already set; use menu: Ledger -> Edit' \
             -message "GOALS: $goals"
 	exit
+
     fi
+    # Carry yesterday's unfinished TODOs, BLOCKERs into today
+    ggrep 'TODO ' $dunnit_ledger_yesterday >>$dunnit_ledger
+    # FIXME Treat BLOCKERS just like TODOs
+    ggrep 'BLOCKER ' $dunnit_ledger_yesterday >>$dunnit_ledger
+    # ggrep 'GOAL ' $dunnit_ledger_yesterday >>$dunnit_ledger
     ans=$($alerter -reply \
 		   -appIcon ~/dunnit/dunnit-icon-purple.png \
 	           -timeout 600 \
@@ -395,8 +399,6 @@ dunnit-goals() {
     [[ $ans == 'Ignore' || $ans == '@TIMEOUT' ]] && exit
 
     gsed "s/$(print -n '\u2028')/\n/g" <<<$ans | gsed 's/^/GOAL /' >>$dunnit_ledger
-    # Carry yesterday's unfinished TODOs, BLOCKERs, GOALs into today
-    # XXX Should this instead carry over from yesterday's report, not ledger?
     terminal-notifier -title 'Dunnit Confirmation' \
 		      -appIcon ~/dunnit/dunnit-icon-purple.png \
 		      -subtitle 'Sounds great!' \
