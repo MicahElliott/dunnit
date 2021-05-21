@@ -38,12 +38,14 @@ fi
 dunnit-edit() {
     set -x
     # FIXME sometimes not popping up editor
+    # FIXME Message: No application knows how to open foo.md
+    #       So just use TextEdit as default, not `open`.
     print "EDITOR: $EDITOR"
     terminal-notifier -title 'Dunnit: Popping up your editor' \
 		      -subtitle 'Save and close your editor when done!' \
 		      -appIcon ~/dunnit/dunnit-icon-yellow.png \
 		      -message 'DUNNIT IS LOCKED UNTIL EDITOR IS CLOSED.'
-    [[ -n $EDITOR ]] && $=EDITOR $1 || open -e $1 &
+    [[ -n $EDITOR ]] && $=EDITOR $1 || open -Wen $1
     # NOTE Dunnit will freeze until editor is closed!
     set +x
 }
@@ -150,6 +152,8 @@ dunnit-alert() {
 	    print 'Not popping since recently shown'
 	    exit
 	fi
+    else # frommenu, so manually clicked, so kill nighty mode
+	dunnit-nighty-off
     fi
 
     # Get most recent entry, prefer a TODO
@@ -252,8 +256,8 @@ dunnit-nighty-off() { [[ -f $dunnit_nighty ]] && rm $dunnit_nighty }
 dunnit-nighty-on()  { touch $dunnit_nighty }
 
 dunnit-bod() {
-    dunnit-goals
     dunnit-nighty-off
+    dunnit-goals
 }
 
 dunnit-eod() {
@@ -542,6 +546,7 @@ dunnit-pull() {
 #   Must live in ~/Library/LaunchAgents to start at boot
 dunnit-preferences() {
     set -x
+    mkdir -p $dunnit_plists
     if ! [[ -f ~/dunnit/config.zsh ]]; then
 	print 'Copying a default configuration to ~/dunnit/config.zsh'
 	cp $dunnit_cfg/config-example.zsh ~/dunnit/config.zsh

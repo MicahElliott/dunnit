@@ -23,15 +23,16 @@ categories.
 
 ## Caveat and request for feedback
 
-Dunnit is a proof of concept, not quite a real app. The UI is just a
-handful of scripts cobbled together into something that kinda works.
-The real version is getting started, and will run on at least Linux
-and Windows desktops, but the minimal functionality you’re seeing here
-is enough for you to get comfortable with the Dunnit workflow. Please
-try it out for a couple weeks, collect your thoughts, and send me
-anything (good, bad, ideas, whatever) you’re willing to share about
-your experience with it. Any feedback is so valuable to me, and I will
-buy or make you a very fancy drink of your choosing next time we meet.
+Dunnit is a proof of concept, not quite a real app (yet!). The UI is
+just a handful of scripts cobbled together into something that kinda
+works. The real version is getting started, and will run on at least
+Linux and Windows desktops, but the minimal functionality you’re
+seeing here is enough for you to get comfortable with the Dunnit
+workflow (on Mac only). Please try it out for a couple weeks, collect
+your thoughts, and send me anything (good, bad, ideas, whatever)
+you’re willing to share about your experience with it. Any feedback is
+so valuable to me, and I will buy or make you a very fancy drink of
+your choosing next time we meet.
 
 ## Install and Run
 
@@ -40,28 +41,26 @@ with Dunnit, so please reach out to me for help with any of this.
 
 1. Open a terminal: Open up spotlight (Cmd-Space) and type `terminal`
 
-1. Install [Homebrew](https://brew.sh/) if you haven’t already. This
-   and the next step will take several minutes.
+1. Type `git` and you will be prompted to install “developer tools”
+   (Xcode). Proceed with that. This will take a couple minutes.
+
+1. Install [Homebrew](https://brew.sh/). This will take several
+   ~4 minutes.
 
    ```sh
    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
    ```
 
-1. Install git
-
-   ```sh
-   brew install git
-   ```
-
 1. Clone this Dunnit repo to `~/dunnit` (this step is not flexible!)
 
    ```sh
-   cd # to your $HOME
+   # go to your $HOME
+   cd
    git clone https://github.com/MicahElliott/dunnit.git
    cd dunnit
    ```
 
-1. Sign up for a [Github](https://github.com/join) (or Gitlab) account.
+1. Sign in/up for a [Github](https://github.com/join) (or Gitlab) account.
 
 1. Set up a remote git repo to track your Dunnits: One common approach
    to this is
@@ -72,7 +71,20 @@ with Dunnit, so please reach out to me for help with any of this.
    - select the radio button “Private”
    - check the box “Add a README file”
 
-1. Clone your Dunnit daily activity repo for local tracking.
+1. Set up an ssh key. The following will create a pair of “key files”.
+
+   ```sh
+   ssh-keygen
+   cat ~/.ssh/id_rsa.pub
+   ```
+
+   The public key is now at `~/.ssh/id_rsa.pub` its contents were just
+   printed to your terminal. You should now paste those contents into
+   your [github settings](https://github.com/settings/keys). Click the
+   green “New SSH key” button, and paste it into the “Key” box.
+
+1. Clone your Dunnit daily activity repo for local tracking. Replace
+   `YOURUSERNAME` with _your_ github user name.
 
    ```sh
    cd ~/dunnit
@@ -80,20 +92,12 @@ with Dunnit, so please reach out to me for help with any of this.
    ```
 
 1. Finish the Dunnit setup by installing the remaining dependencies.
+   Be sure to accept all the notifications.
 
    ```sh
    cd ~/dunnit
    ./install.zsh
    ```
-
-1. Start the Dunnit menu.
-
-   ```sh
-   cd ~/dunnit
-   ./dunnit-menu
-   ```
-
-1. Feel free to close the terminal now.
 
 ## Usage
 
