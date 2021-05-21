@@ -27,4 +27,8 @@ if [[ $(git rev-parse HEAD) != $(git rev-parse '@{u}') ]]; then
 	launchctl load -w $dunnit_plists/dunnit*.plist
 	./dunnit-menu
     fi
+else
+    terminal-notifier -title 'Dunnit Notice' \
+		      -appIcon ~/dunnit/dunnit-icon-yellow.png \
+		      -message 'No update available at this time.'
 fi
