@@ -8,7 +8,7 @@
       <string>/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>
     <key>Label</key>
-    <string>com.micahelliott.dunnit-vod</string>
+    <string>com.micahelliott.dunnit-bod</string>
     <key>KeepAlive</key>
     <false/>
     <key>ProgramArguments</key>

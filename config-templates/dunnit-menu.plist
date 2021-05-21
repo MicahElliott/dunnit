@@ -12,7 +12,7 @@
       <string>en_US.UTF-8</string>
     </dict>
     <key>Label</key>
-    <string>com.micahelliott.dunnit</string>
+    <string>com.micahelliott.dunnit-menu</string>
 
     <key>ProgramArguments</key>
     <array>
