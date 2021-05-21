@@ -30,5 +30,5 @@ if [[ $(git rev-parse HEAD) != $(git rev-parse '@{u}') ]]; then
 else
     terminal-notifier -title 'Dunnit Notice' \
 		      -appIcon ~/dunnit/dunnit-icon-yellow.png \
-		      -message 'No update available at this time.'
+		      -message 'No software update available at this time.'
 fi

@@ -249,6 +249,8 @@ dunnit-alert() {
 			  -appIcon ~/dunnit/dunnit-icon-yellow.png \
 			  -subtitle 'They help with categorizing your daily report.' \
 			  -message 'Eg: Mowed the lawn #chore'
+    else
+	dunnit-dyk
     fi
     set +x
 }
@@ -375,9 +377,9 @@ dunnit-goals() {
 	print 'Already set goals today'
 	goals=$(ggrep 'GOAL ' $dunnit_ledger | gsed 's/GOAL /- /g')
         terminal-notifier \
-	    -title 'Dunnit Goals: Oops!' \
+	    -title 'Dunnit Goals: Already set!' \
 	    -appIcon ~/dunnit/dunnit-icon-red.png \
-	    -subtitle 'Already set; use menu: Ledger -> Edit' \
+	    -subtitle 'Use menu to change: Ledger -> Edit' \
             -message "GOALS: $goals"
 	exit
 
@@ -583,4 +585,22 @@ dunnit-preferences() {
 dunnit-standup() {
     print 'Time for standup!'
     $dunnit_browser ~/dunnit/reports/$dunnit_yesterday-report.html
+}
+
+dunnit-dyk() {
+    dunnit_dyk=(
+	'If you hold the mouse on a popup, it won’t disappear.'
+	'You can put any tag in a Dunnit to categorize it.'
+	'Popups are expandable (and sometimes scrollable); try looking at the top and bottom of this message with your mouse! You’ll often want to do this when GOALs and TODOs are listed.'
+	'You can set your preferences for things like standup time and day start and end.'
+	'Dunnit is a proof-of-concept. A more capable version is in the works.'
+    )
+    random_dyk=$(( RANDOM % $#dunnit_dyk + 1 ))
+    print "$dunnit_dyk[$random_dyk]"
+    $alerter -sound Glass \
+	     -title 'Dunnit: Did You Know??' \
+	     -appIcon ~/dunnit/dunnit-icon-purple.png \
+	     -message "$dunnit_dyk[$random_dyk]" \
+	     -closeLabel 'Got it' \
+	     -actions 'Neat!'
 }
