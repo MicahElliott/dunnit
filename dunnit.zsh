@@ -27,7 +27,21 @@ dunnit_nighty=/tmp/dunnit-nighty
 dunnit_cfg=~/dunnit/config-templates
 dunnit_plists=~/Library/LaunchAgents
 
-dunnit_browser=${BROWSER-/Applications/Safari.app/Contents/MacOS/Safari}
+firefox='/Applications/Firefox.app/Contents/MacOS/firefox'
+chrome='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+if [[ -n $BROWSER ]]; then
+    dunnit_browser=$BROWSER
+elif [[ -f $firefox ]]; then
+    dunnit_browser=$firefox
+elif [[ -f $chrome ]]; then
+    dunnit_browser=$chrome
+else
+    terminal-notifier -appIcon ~/dunnit/dunnit-icon-red.png \
+		      -title 'Dunnit Error: No good browser' \
+		      -subtitle 'Wow, you don’t have Firefox or Chrome installed.' \
+		      -message 'Please install a decent browser to see reports.'
+fi
+# dunnit_browser=${BROWSER-/Applications/Safari.app/Contents/MacOS/Safari}
 alerter=/usr/local/bin/alerter
 # alerter=~/contrib/bin/alerter
 
@@ -597,8 +611,7 @@ dunnit-dyk() {
     )
     random_dyk=$(( RANDOM % $#dunnit_dyk + 1 ))
     print "$dunnit_dyk[$random_dyk]"
-    $alerter -sound Glass \
-	     -title 'Dunnit: Did You Know??' \
+    $alerter -title 'Dunnit: Did You Know??' \
 	     -appIcon ~/dunnit/dunnit-icon-purple.png \
 	     -message "$dunnit_dyk[$random_dyk]" \
 	     -closeLabel 'Got it' \

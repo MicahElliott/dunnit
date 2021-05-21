@@ -31,7 +31,7 @@ class DunnitStatusBarApp(rumps.App):
     def pomodoro(self, _):
         es = os.system("~/dunnit/dunnit-pomodoro")
 
-    @rumps.clicked("🗓 Planning", "🥅 Set Goals")
+    @rumps.clicked("🗓 Planning", "🥅 Goals")
     def setgoals(self, _):
         os.system("~/dunnit/dunnit-goals")
 
