@@ -18,16 +18,5 @@ _fzf_complete_dunnit() {
 # Micah likes this as a shortcut.
 FZF_COMPLETION_TRIGGER=,
 
-dunnit-add() {
-    update=${1?must provide a status update}
-    source dunnit.zsh
-    tm=$(date +%H%M)
-    echo "[$tm] $@" >>$dunnit_file
-    echo "Captured your update in dunnit file: $dunnit_file"
-}
-
-di-g() { ag -it --nonumbers $1 log }
-alias di-discover="ag --nobreak --nocolor --nofilename --nonumbers -o -r '#[-a-z0-9]+' log |sort |uniq -c "
-
 # Open logs that are retrieved from fzf Ctrl-T
 alias -s log=$EDITOR

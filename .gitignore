@@ -3,3 +3,4 @@ tmp
 config.zsh
 reports/
 /*.plist
+.python-version
