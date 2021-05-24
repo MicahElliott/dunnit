@@ -14,12 +14,13 @@ else
     dunnit_yesterday=$(gdate -d 'yesterday' +%Y%m%d-%a)
 fi
 dunnit_ledger_yesterday=$dunnit_dir/ledger-$dunnit_yesterday.txt
-dunnit_dir=${DUNNIT_DIR:-~/dunnit/log/$yr/$wk}
+dunnit_dir=${DUNNIT_DIR-~/dunnit/log/$yr/$wk}
 dunnit_summary=$dunnit_dir/$dt.md
 # No longer used since not relying on changes to summary
 dunnit_summary_yesterday=$dunnit_dir/$dunnit_yesterday.md
 # dunnit_ledger=~/dunnit/ledger-$dt.txt
 dunnit_ledger=$dunnit_dir/ledger-$dt.txt
+dunnit_objectives=$dunnit_dir/objectives.txt
 # dunnit_goals=~/dunnit/goals-$dt.txt
 dunnit_tmp=$dunnit_dir/$dt-tmp.md
 dunnit_nighty=/tmp/dunnit-nighty
@@ -126,6 +127,10 @@ maybe-create-ledger-file() {
 
 # Create a new editable summary file from scratch
 create-summary-file() {
+    # FIXME Summary being created on timeout!
+    # TODO Ask about accomplishing each goal
+    # FIXME Don't write SENTIMENT, etc to summary
+    # TODO Closing summary should auto-run report generator
     if [[ -f $dunnit_summary ]]; then
 	print "Oops, summary file $dunnit_summary already exists."
     else
@@ -163,10 +168,10 @@ create-summary-file() {
 
 dunnit-alert() {
     set -x
-    if [[ $1 != 'frommenu' ]]; then
+    if [[ $1 != 'frommenu' ]]; then # from plist
 	# Don't pop if recently shown (15m)
 	# OK if empty since will be midnight default
-	stamp=$(ggrep -E '\[[0-9:]+' $dunnit_ledger | sort -n | tail -1 | gsed -r 's/\[([0-9:]+)\] .*/\1/g')
+	stamp=$(ggrep -E '\[[0-9:]+' $dunnit_ledger | sort -n | tail -1 | gsed -r 's/\[([0-9:]+)\] .*/\1/g' 2> /dev/null)
 	secs_last=$(gdate -d "$stamp" +%s)
 	secs_now=$(gdate +%s)
 	if (( (secs_now - secs_last) / 60 < 15 )); then
