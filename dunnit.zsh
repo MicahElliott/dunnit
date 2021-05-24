@@ -156,7 +156,8 @@ create-summary-file() {
         print"PRODUCTIVITY $productivity"  >>$dunnit_ledger
 	sectioned=$(sectionize-ledger)
 	# [[ $? -eq 0 ]] || return 1
-        echo $sectioned >> $dunnit_summary
+        echo $sectioned >>$dunnit_summary
+	print '# 🍻' >>$dunnit_summary
         # echo "\n# Other"  >>$dunnit_summary
 	# echo "\n## 🎉 Highlight\n"  >>$dunnit_summary
 	# echo "## Today I Learned\n"  >>$dunnit_summary
