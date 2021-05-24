@@ -22,8 +22,8 @@ if [[ $(git rev-parse HEAD) != $(git rev-parse '@{u}') ]]; then
 	print 'Shutting down running Dunnit instance.'
 	pkill -af dunnit-menu
 	git rebase
-	# launchctl unload dunnit.plist dunnit-eod.plist dunnit-swupdate.plist dunnit-lunchhtime.plist
-	print 'Reloading scheduled Dunnit prompt jobs.'
+        print 'Reloading scheduled Dunnit prompt jobs.'
+	launchctl unload -w $dunnit_plists/dunnit*.plist
 	launchctl load -w $dunnit_plists/dunnit*.plist
 	./dunnit-menu
     fi

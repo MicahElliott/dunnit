@@ -35,9 +35,9 @@ class DunnitStatusBarApp(rumps.App):
     def setgoals(self, _):
         os.system("~/dunnit/dunnit-goals")
 
-    @rumps.clicked("🗓 Planning", "🎯 Weekly Objectives")
-    def objectives(self, _):
-        os.system("~/dunnit/dunnit-objectives")
+    # @rumps.clicked("🗓 Planning", "🎯 Weekly Objectives")
+    # def objectives(self, _):
+    #     os.system("~/dunnit/dunnit-objectives")
 
     @rumps.clicked("🗓 Planning", "👀 All")
     def showtodos(self, _):

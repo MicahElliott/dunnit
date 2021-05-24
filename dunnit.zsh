@@ -382,21 +382,54 @@ dunnit-autofinalize() {
     # TODO Maybe gen report, open browser, send email, etc
 }
 
+# Each Mon prompt to set weekly objectives.
+# Each morning pop up reminder about them.
+dunnit-weekly() {
+    set -x
+    if [[ ! -f $dunnit_objectives ]]; then
+	touch $dunnit_objectives
+	ans=$($alerter -reply \
+		       -appIcon ~/dunnit/dunnit-icon-purple.png \
+	               -timeout 600 \
+                       -title "Dunnit Weekly Objectives" \
+		       -subtitle "Start your week with a few objectives." \
+		       -message "Use Ctrl-Return for each new objectives line." \
+    		       -closeLabel 'Ignore' \
+		       -sound 'Glass')
+	ans=$(gsed "s/$(print -n '\u2028')/\n/g" <<<$ans)
+	print -- "$ans" >$dunnit_objectives
+    else
+	objectives=$(cat $dunnit_objectives)
+	ans=$($alerter -appIcon ~/dunnit/dunnit-icon-purple.png \
+	               -timeout 600 \
+                       -title "Dunnit Weekly Objectives" \
+                       -message "$objectives" \
+    		       -closeLabel 'Cool cool' \
+		       -actions 'Edit' \
+		       -sound 'Glass')
+	if [[ $ans = 'Edit' ]]; then
+	    print 'editing...'
+	    dunnit-edit $dunnit_objectives
+	fi
+    fi
+    set +x
+}
+
 # This is really a beginning-of-day (BOD) routine
 dunnit-goals() {
     set -x
+    dunnit-weekly
     touch $dunnit_ledger
     dunnit-nighty-off
     if ggrep -q GOAL $dunnit_ledger; then
 	print 'Already set goals today'
 	goals=$(ggrep 'GOAL ' $dunnit_ledger | gsed 's/GOAL /- /g')
         terminal-notifier \
-	    -title 'Dunnit Goals: Already set!' \
+	    -title 'Dunnit Goals' \
 	    -appIcon ~/dunnit/dunnit-icon-red.png \
 	    -subtitle 'Use menu to change: Ledger -> Edit' \
             -message "GOALS: $goals"
 	exit
-
     fi
     # Carry yesterday's unfinished TODOs, BLOCKERs into today
     ggrep 'TODO ' $dunnit_ledger_yesterday >>$dunnit_ledger
@@ -614,6 +647,6 @@ dunnit-dyk() {
     $alerter -title 'Dunnit: Did You Know??' \
 	     -appIcon ~/dunnit/dunnit-icon-purple.png \
 	     -message "$dunnit_dyk[$random_dyk]" \
-	     -closeLabel 'Got it' \
-	     -actions 'Neat!'
+	     -closeLabel 'Got it!' \
+	     -actions 'Remind me'
 }
