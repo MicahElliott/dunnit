@@ -546,9 +546,11 @@ dunnit-blocker() {
 }
 
 dunnit-showtodos() {
-    print '## Goals'
+    print '## Weekly Objectives'
+    gsed 's/^/- /' $dunnit_objectives
+    print '\n## Daily Goals'
     ggrep 'GOAL' $dunnit_ledger | gsed 's/^GOAL/-/'
-    print '\n## Todos'
+    print '\n## Active Todos'
     ggrep 'TODO' $dunnit_ledger | gsed 's/^TODO/-/'
 }
 
