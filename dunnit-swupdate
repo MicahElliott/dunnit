@@ -1,5 +1,8 @@
 #! /bin/zsh
 
+# NOTE: Changes made to this script will not be reflected in new run
+# of it, because it can't self-update.
+
 . ~/dunnit/dunnit.zsh
 
 cd ~/dunnit
@@ -23,9 +26,18 @@ if [[ $(git rev-parse HEAD) != $(git rev-parse '@{u}') ]]; then
 	pkill -af dunnit-menu
 	git rebase
         print 'Reloading scheduled Dunnit prompt jobs.'
+	# This seems to cause error that I think can be safely ignored:
+	# Unload failed: 5: Input/output error
 	launchctl unload -w $dunnit_plists/dunnit*.plist
+	launchctl list | ggrep -q dunnit && { print 'Unable to stop Dunnit services.'}
 	launchctl load -w $dunnit_plists/dunnit*.plist
+	cnt=$(launchctl list | ggrep dunnit | gwc -l)
+	gsleep 1
+	(( cnt == 7 )) ||  { print "ERROR: Started $cnt services out of 7"}
 	./dunnit-menu
+	terminal-notifier -title 'Dunnit Notice' \
+		      -appIcon ~/dunnit/dunnit-icon-yellow.png \
+		      -message 'Successfully upgraded to new version.'
     fi
 else
     terminal-notifier -title 'Dunnit Notice' \
