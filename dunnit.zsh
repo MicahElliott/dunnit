@@ -13,7 +13,13 @@ if [[ $(gdate +%a) == 'Mon' ]]; then
 else
     dunnit_yesterday=$(gdate -d 'yesterday' +%Y%m%d-%a)
 fi
+if [[ $(gdate +%a) == 'Fri' ]]; then
+    dunnit_tomorrow=$(gdate -d 'next monday' +%Y%m%d-%a)
+else
+    dunnit_tomorrow=$(gdate -d 'tomorrow' +%Y%m%d-%a)
+fi
 dunnit_ledger_yesterday=$dunnit_dir/ledger-$dunnit_yesterday.txt
+dunnit_ledger_tomorrow=$dunnit_dir/ledger-$dunnit_tomorrow.txt
 dunnit_dir=${DUNNIT_DIR-~/dunnit/log/$yr/$wk}
 dunnit_summary=$dunnit_dir/$dt.md
 # No longer used since not relying on changes to summary
@@ -103,19 +109,13 @@ sectionize-ledger() {
 	gcount+=1
     done
     # NOTE Other section does not get an Impact prompt; could instead auto-label as #misc
-    ggrep -qvE '#[0-9a-z]+|GOAL|TODO' $dunnit_ledger && print '\n## Other\n'
-    ggrep  -vE '#[0-9a-z]+|GOAL|TODO' $dunnit_ledger | gsed -r -e 's/^/- /'  -e 's/ \[[0-9:]+\] / /'
+    ggrep -qvE '#[0-9a-z]+|GOAL|TODO|SENTIMENT|SUMMARY' $dunnit_ledger && print '\n## Other\n'
+    ggrep  -vE '#[0-9a-z]+|GOAL|TODO|SENTIMENT|SUMMARY' $dunnit_ledger | gsed -r -e 's/^/- /'  -e 's/ \[[0-9:]+\] / /'
     # print '\n> IMPACT:'
     if ggrep -q ' TODO ' $dunnit_ledger; then
        print '\n## Incomplete\n'
        ggrep ' TODO ' $dunnit_ledger | gsed 's/^([A-Z]) /- /'
     fi
-    if [[ $tomorrow_goals != 'Skip' ]]; then
-        # TODO Carry over tomorrow's goals
-	print '\n## Tomorrow’s Goals\n'
-	print $tomorrow_goals
-    fi
-
 }
 
 maybe-create-ledger-file() {
@@ -158,6 +158,7 @@ create-summary-file() {
 	# [[ $? -eq 0 ]] || return 1
         echo $sectioned >>$dunnit_summary
 	print '# 🍻' >>$dunnit_summary
+	print '### Now go relax!' >>$dunnit_summary
         # echo "\n# Other"  >>$dunnit_summary
 	# echo "\n## 🎉 Highlight\n"  >>$dunnit_summary
 	# echo "## Today I Learned\n"  >>$dunnit_summary
@@ -311,12 +312,12 @@ dunnit-eod() {
 		alerter -reply \
                   	-timeout 600 \
 			-appIcon ~/dunnit/dunnit-icon-yellow.png \
-                        -title 'Dunnit Wrap-Up' \
+                        -title 'Dunnit Wrap-Up (1 of 6)' \
 			-subtitle "Summarize your day briefly." \
 			-closeLabel 'Skip' \
 			-message "Reminder: $groups")
 	    productivity=$(
-		alerter -title 'Dunnit Wrap-Up' \
+		alerter -title 'Dunnit Wrap-Up (2 of 6)' \
                         -timeout 600 \
 			-appIcon ~/dunnit/dunnit-icon-yellow.png \
 			-message "How productive was your day?" \
@@ -324,14 +325,14 @@ dunnit-eod() {
 			-closeLabel 'Skip' \
 			-dropdownLabel 'Score it!')
 	    sentiment=$(
-		alerter -title 'Dunnit Wrap-Up' \
+		alerter -title 'Dunnit Wrap-Up (3 of 6)' \
 			-timeout 600 \
 			-appIcon ~/dunnit/dunnit-icon-yellow.png \
 			-message 'What was your sentiment for the day?' \
 			-actions 'Negative,Neutral,Positive' \
 			-closeLabel 'Skip' \
 			-dropdownLabel 'Rate it!')
-            terminal-notifier -title 'Dunnit Wrap-Up' \
+            terminal-notifier -title 'Dunnit Wrap-Up (4 of 6)' \
 			      -appIcon ~/dunnit/dunnit-icon-yellow.png \
 			      -subtitle 'Let’s review your tag sections.' \
 			      -message 'Give a brief impact statement for each tag section.'
@@ -350,7 +351,7 @@ dunnit-eod() {
 			    -closeLabel 'Skip')
 		if [[ $stmt != 'Skip' ]]; then
 		    if ! ggrep -q '[0-5]:' <<<$stmt; then
-			score=$(alerter -title 'Dunnit Wrap-Up' \
+			score=$(alerter -title 'Dunnit Wrap-Up (5 of 6)' \
 					-timeout 600 \
 					-appIcon ~/dunnit/dunnit-icon-yellow.png \
 					-message "What impact did that have?" \
@@ -362,14 +363,20 @@ dunnit-eod() {
                     impact_statements+="${score}$stmt"
                 fi
 	    done
-	    tomorrow_goals=$(
-		alerter -reply \
-			-title 'Dunnit Wrap-Up' \
-			-timeout 600 \
-			-appIcon ~/dunnit/dunnit-icon-yellow.png \
-			-closeLabel 'Skip' \
-			-message 'Got any goals for tomorrow yet?')
-	    # TODO multi-bullet for multiline entry
+	    # TODO Carry over tomorrow's TODOs
+	    touch $dunnit_ledger_tomorrow
+	    ggrep 'TODO ' $dunnit_ledger >>$dunnit_ledger_tomorrow
+	    ans=$(alerter -reply \
+			  -title 'Dunnit Wrap-Up (6 of 6)' \
+			  -message 'Got any goals for tomorrow yet?' \
+			  -timeout 600 \
+			  -appIcon ~/dunnit/dunnit-icon-yellow.png \
+			  -closeLabel 'Skip')
+	    if [[ $ans != 'Skip' ]]; then
+                # TODO multi-bullet for multiline entry
+		ans=$(gsed "s/$(print -n '\u2028')/\nGOAL /g" <<<$ans)
+		print $ans >>$dunnit_ledger_tomorrow
+	    fi
 
 	    set +x
             create-summary-file
@@ -379,6 +386,17 @@ dunnit-eod() {
 	dunnit-edit $dunnit_summary
         # Open todoist instead
 	# /usr/local/bin/cliclick kd:cmd,ctrl t:t ku:cmd,ctrl
+    fi
+    # XXX Will editor pause before showing this prompt?
+    # TODO Prompt here to generate html report
+    ans=$(alerter -title 'Dunnit Wrap-Up' \
+		  -timeout 600 \
+		  -appIcon ~/dunnit/dunnit-icon-yellow.png \
+		  -action 'Yes!' \
+		  -closeLabel 'Skip' \
+		  -message 'Wanna save/generate a report presentation?')
+    if [[ $ans == 'Yes!' ]]; then
+	dunnit-report
     fi
     dunnit-nighty-on
 }
