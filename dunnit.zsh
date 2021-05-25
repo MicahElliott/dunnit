@@ -20,7 +20,8 @@ else
 fi
 dunnit_ledger_yesterday=$dunnit_dir/ledger-$dunnit_yesterday.txt
 dunnit_ledger_tomorrow=$dunnit_dir/ledger-$dunnit_tomorrow.txt
-dunnit_dir=${DUNNIT_DIR-~/dunnit/log/$yr/$wk}
+# dunnit_dir=${DUNNIT_DIR-~/dunnit/log/$yr/$wk}
+dunnit_dir=~/dunnit/log/$yr/$wk
 dunnit_summary=$dunnit_dir/$dt.md
 # No longer used since not relying on changes to summary
 dunnit_summary_yesterday=$dunnit_dir/$dunnit_yesterday.md
