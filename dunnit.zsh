@@ -35,6 +35,8 @@ dunnit_nighty=/tmp/dunnit-nighty
 dunnit_cfg=~/dunnit/config-templates
 dunnit_plists=~/Library/LaunchAgents
 
+dunnit_dyks=/tmp/dyk-tips.txt
+
 firefox='/Applications/Firefox.app/Contents/MacOS/firefox'
 chrome='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 if [[ -n $BROWSER ]]; then
@@ -658,22 +660,21 @@ dunnit-preferences() {
 
 dunnit-standup() {
     print 'Time for standup!'
-    $dunnit_browser ~/dunnit/reports/$dunnit_yesterday-report.html
+    $dunnit_browser ~/dunnit/reports/$dunnit_yesterday-report.html &
 }
 
 dunnit-dyk() {
-    dunnit_dyk=(
-	'If you hold the mouse on a popup, it won’t disappear.'
-	'You can put any tag in a Dunnit to categorize it.'
-	'Popups are expandable (and sometimes scrollable); try looking at the top and bottom of this message with your mouse! You’ll often want to do this when GOALs and TODOs are listed.'
-	'You can set your preferences for things like standup time and day start and end.'
-	'Dunnit is a proof-of-concept. A more capable version is in the works.'
-    )
-    random_dyk=$(( RANDOM % $#dunnit_dyk + 1 ))
-    print "$dunnit_dyk[$random_dyk]"
-    $alerter -title 'Dunnit: Did You Know??' \
+    dyks=(); while read -r line; do x+=$line; done <$dunnit_dyks
+    $random_n=$(( RANDOM % $#dyks + 1 ))
+    msg="$dyks[$random_n]"
+    ans=$($alerter -title 'Dunnit: Did You Know??' \
+	     -timeout 8 \
 	     -appIcon ~/dunnit/dunnit-icon-purple.png \
-	     -message "$dunnit_dyk[$random_dyk]" \
+	     -message "$msg" \
 	     -closeLabel 'Got it!' \
-	     -actions 'Remind me'
+	     -actions 'Remind me')
+    if [[ $ans == 'Got it!' ]]; then
+	# In-place delet the line; probably won't work since various punctuation
+	gsed -i "/$msg/d"
+    fi
 }

@@ -1,0 +1,5 @@
+If you hold the mouse on a popup, it won’t disappear.
+You can put any tag in a Dunnit to categorize it.
+Popups are expandable (and sometimes scrollable); try looking at the top and bottom of this message with your mouse! You’ll often want to do this when GOALs and TODOs are listed.
+You can set your preferences for things like standup time and day start and end.
+Dunnit is a proof-of-concept. A more capable version is in the works.
