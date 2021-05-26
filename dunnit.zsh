@@ -81,10 +81,11 @@ dunnit-editraw() {
 
 get-bullets() {
     local tag=$1
-    ggrep -vE 'GOAL|TODO' $dunnit_ledger | ggrep $tag |
+    ggrep -vE 'GOAL ' $dunnit_ledger | ggrep $tag |
 	gsed -r -e "s/$tag //" -e 's/^/- /' \
 	     -e 's/ #[0-9a-z]+//g' \
-	     -e 's/ \[[0-9:]+\] / /'
+	     -e 's/ \[[0-9:]+\] / /' |
+	gsort
 }
 
 # Convert pieces of daily status working file into sections
