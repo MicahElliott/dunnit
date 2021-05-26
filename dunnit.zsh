@@ -112,13 +112,13 @@ sectionize-ledger() {
 	gcount+=1
     done
     # NOTE Other section does not get an Impact prompt; could instead auto-label as #misc
-    ggrep -qvE '#[0-9a-z]+|GOAL|TODO|SENTIMENT|SUMMARY' $dunnit_ledger && print '\n## Other\n'
-    ggrep  -vE '#[0-9a-z]+|GOAL|TODO|SENTIMENT|SUMMARY' $dunnit_ledger | gsed -r -e 's/^/- /'  -e 's/ \[[0-9:]+\] / /'
-    # print '\n> IMPACT:'
-    if ggrep -q ' TODO ' $dunnit_ledger; then
-       print '\n## Incomplete\n'
-       ggrep ' TODO ' $dunnit_ledger | gsed 's/^([A-Z]) /- /'
-    fi
+    ggrep -qvE '#[0-9a-z]+|GOAL|SENTIMENT|SUMMARY|PRODUCTIVITY' $dunnit_ledger && print '\n## Other\n'
+    ggrep  -vE '#[0-9a-z]+|GOAL|SENTIMENT|SUMMARY|PRODUCTIVITY' $dunnit_ledger | gsed -r -e 's/^/- /'  -e 's/ \[[0-9:]+\] / /'
+    # Actually, want TODOS/BLOCKERS in own sections
+    # if ggrep -q ' TODO ' $dunnit_ledger; then
+    #    print '\n## Incomplete\n'
+    #    ggrep ' TODO ' $dunnit_ledger | gsed 's/^([A-Z]) /- /'
+    # fi
 }
 
 maybe-create-ledger-file() {
@@ -395,7 +395,7 @@ dunnit-eod() {
     ans=$(alerter -title 'Dunnit Wrap-Up' \
 		  -timeout 600 \
 		  -appIcon ~/dunnit/dunnit-icon-yellow.png \
-		  -action 'Yes!' \
+		  -actions 'Yes!' \
 		  -closeLabel 'Skip' \
 		  -message 'Wanna save/generate a report presentation?')
     if [[ $ans == 'Yes!' ]]; then
