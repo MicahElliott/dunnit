@@ -9,6 +9,7 @@ brew install direnv bat fzf coreutils git grep python wget gsed terminal-notifie
 print "Installing alerter for pop-up alerts"
 wget https://github.com/vjeantet/alerter/releases/download/004/alerter_v004_darwin_amd64.zip
 unzip alerter_v004_darwin_amd64.zip
+rm alerter_v004_darwin_amd64.zip
 # FIXME mac might not have /usr/local yet??
 mv alerter /usr/local/bin/alerter
 alerter -message 'Congrats if you can see this!'
@@ -17,8 +18,12 @@ alerter -message 'Congrats if you can see this!'
 print "Installing python packages"
 pip3 install rumps
 
-print "Running Dunnit for the first time"
 cd ~/dunnit
+
+print 'Setting up did-you-know tips.'
+cp dyk-tips.txt /tmp/
+
+print "Running Dunnit for the first time"
 ./dunnit-bubble
 
 print 'Activating default settings'

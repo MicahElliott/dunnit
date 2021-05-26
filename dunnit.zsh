@@ -156,12 +156,12 @@ create-summary-file() {
         echo "\n# Accomplishments"  >>$dunnit_summary
 	# print -- '\n<!-- Combine bullets for each section into fewer and add a summary impact description and scores (replace XXX). -->' >>$dunnit_summary
         echo "\n### Productivity Score: $productivity"  >>$dunnit_summary
-        print"PRODUCTIVITY $productivity"  >>$dunnit_ledger
+        print "PRODUCTIVITY $productivity"  >>$dunnit_ledger
 	sectioned=$(sectionize-ledger)
 	# [[ $? -eq 0 ]] || return 1
         echo $sectioned >>$dunnit_summary
-	print '# 🍻' >>$dunnit_summary
-	print '### Now go relax!' >>$dunnit_summary
+	print '\n# 🍻' >>$dunnit_summary
+	print '\n### Now go relax!' >>$dunnit_summary
         # echo "\n# Other"  >>$dunnit_summary
 	# echo "\n## 🎉 Highlight\n"  >>$dunnit_summary
 	# echo "## Today I Learned\n"  >>$dunnit_summary
@@ -500,8 +500,8 @@ dunnit-report() {
     pandoc -s -t revealjs $dunnit_summary -o $preso
     # pandoc -t html --self-contained --css reports/report.css -f markdown log/2021/w16-Apr/20210420-Tue.md -o foo.html
     # /Applications/Firefox.app/Contents/MacOS/firefox $html
-    $dunnit_browser $html
-    $dunnit_browser $preso
+    $dunnit_browser $html &
+    $dunnit_browser $preso &
     set +x
 }
 
@@ -551,9 +551,11 @@ dunnit-showtodos() {
     print '## Weekly Objectives'
     gsed 's/^/- /' $dunnit_objectives
     print '\n## Daily Goals'
-    ggrep 'GOAL' $dunnit_ledger | gsed 's/^GOAL/-/'
+    ggrep 'GOAL' $dunnit_ledger | gsed 's/^GOAL /- /'
     print '\n## Active Todos'
-    ggrep 'TODO' $dunnit_ledger | gsed 's/^TODO/-/'
+    ggrep 'TODO' $dunnit_ledger | gsed 's/^TODO /- /'
+    print '\n## Blockers/Questions'
+    ggrep 'BLOCKER' $dunnit_ledger | gsed 's/^BLOCKER /- /'
 }
 
 dunnit-lunchtime() {
