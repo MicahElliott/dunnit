@@ -62,9 +62,6 @@ fi
 
 dunnit-edit() {
     set -x
-    # FIXME sometimes not popping up editor
-    # FIXME Message: No application knows how to open foo.md
-    #       So just use TextEdit as default, not `open`.
     print "EDITOR: $EDITOR"
     terminal-notifier -title 'Dunnit: Popping up your editor' \
 		      -subtitle 'Save and close your editor when done!' \
@@ -86,6 +83,7 @@ get-bullets() {
 	     -e 's/ #[0-9a-z]+//g' \
 	     -e 's/ \[[0-9:]+\] / /' |
 	gsort
+    # FIXME Not enough to sort: blockers should be last, but don't lose orig order of others
 }
 
 # Convert pieces of daily status working file into sections
@@ -133,8 +131,6 @@ maybe-create-ledger-file() {
 create-summary-file() {
     # FIXME Summary being created on timeout!
     # TODO Ask about accomplishing each goal
-    # FIXME Don't write SENTIMENT, etc to summary
-    # TODO Closing summary should auto-run report generator
     if [[ -f $dunnit_summary ]]; then
 	print "Oops, summary file $dunnit_summary already exists."
     else
@@ -304,7 +300,10 @@ dunnit-eod() {
 		   -actions 'Finalize' \
 		   -closeLabel 'Too lazy today')
     tm=$(gdate +%H:%M)
-    if [[ $ans == 'Finalize' ]]; then
+    if [[ $ans == '@TIMEOUT' ]]; then
+	print 'EOD timeout'
+	exit 0
+    elif [[ $ans == 'Finalize' ]]; then
 	if [[ -f $dunnit_summary ]]; then
 	    print "Summary file already exists and may have been finessed already."
 	    print "Will not overwrite."
@@ -461,9 +460,7 @@ dunnit-goals() {
     fi
     # Carry yesterday's unfinished TODOs, BLOCKERs into today
     ggrep 'TODO ' $dunnit_ledger_yesterday >>$dunnit_ledger
-    # FIXME Treat BLOCKERS just like TODOs
     ggrep 'BLOCKER ' $dunnit_ledger_yesterday >>$dunnit_ledger
-    # ggrep 'GOAL ' $dunnit_ledger_yesterday >>$dunnit_ledger
     ans=$($alerter -reply \
 		   -appIcon ~/dunnit/dunnit-icon-purple.png \
 	           -timeout 600 \
@@ -488,7 +485,7 @@ dunnit-goals() {
 
 dunnit-report() {
     set -x
-    gsed -ir '/---- DELETE_TO_EOF /,$d' $dunnit_summary
+    gsed -i -r '/---- DELETE_TO_EOF /,$d' $dunnit_summary
     print 'Saving your day’s work'
     dunnit-push
     mkdir -p ~/dunnit/reports/

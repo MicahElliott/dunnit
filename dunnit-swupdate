@@ -33,7 +33,7 @@ if [[ $(git rev-parse HEAD) != $(git rev-parse '@{u}') ]]; then
 	launchctl load -w $dunnit_plists/dunnit*.plist
 	cnt=$(launchctl list | ggrep dunnit | gwc -l)
 	gsleep 1
-	(( cnt == 7 )) ||  { print "ERROR: Started $cnt services out of 7"}
+	(( cnt == 8 )) ||  { print "ERROR: Started $cnt services out of 8"}
 	./dunnit-menu
 	terminal-notifier -title 'Dunnit Notice' \
 		      -appIcon ~/dunnit/dunnit-icon-yellow.png \
