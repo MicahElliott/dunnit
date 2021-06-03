@@ -295,10 +295,11 @@ dunnit-eod() {
 		   -sound 'Glass' \
                    -appIcon ~/dunnit/dunnit-icon-yellow.png \
 	           -title "Dunnit Daily Summary" \
-		   -subtitle "You completed $(ggrep -cE '\[[0-9:]+\]' $dunnit_ledger) today." \
+		   -subtitle "You recorded $(ggrep -cE '\[[0-9:]+\]' $dunnit_ledger) Dunnits today." \
 		   -message "Finalize your day’s work (#tags etc)" \
 		   -actions 'Finalize' \
 		   -closeLabel 'Too lazy today')
+    # TODO Ask to record some more Dunnits now
     tm=$(gdate +%H:%M)
     if [[ $ans == '@TIMEOUT' ]]; then
 	print 'EOD timeout'

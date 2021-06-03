@@ -36,11 +36,9 @@ if [[ $(git rev-parse HEAD) != $(git rev-parse '@{u}') ]]; then
 	(( cnt == 8 )) ||  { print "ERROR: Started $cnt services out of 8"}
 	./dunnit-menu
 	terminal-notifier -title 'Dunnit Notice' \
-		      -appIcon ~/dunnit/dunnit-icon-yellow.png \
-		      -message 'Successfully upgraded to new version.'
+			  -appIcon ~/dunnit/dunnit-icon-yellow.png \
+			  -message 'Successfully upgraded to new version.'
     fi
 else
-    terminal-notifier -title 'Dunnit Notice' \
-		      -appIcon ~/dunnit/dunnit-icon-yellow.png \
-		      -message 'No software update available at this time.'
+    print 'No software update available at this time.'
 fi
