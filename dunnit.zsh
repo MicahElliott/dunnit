@@ -291,7 +291,7 @@ dunnit-bod() {
 }
 
 dunnit-eod() {
-    ans=$($alerter -timeout 600 \
+    ans=$($alerter -timeout 3600 \
 		   -sound 'Glass' \
                    -appIcon ~/dunnit/dunnit-icon-yellow.png \
 	           -title "Dunnit Daily Summary" \
@@ -301,10 +301,7 @@ dunnit-eod() {
 		   -closeLabel 'Too lazy today')
     # TODO Ask to record some more Dunnits now
     tm=$(gdate +%H:%M)
-    if [[ $ans == '@TIMEOUT' ]]; then
-	print 'EOD timeout'
-	exit 0
-    elif [[ $ans == 'Finalize' ]]; then
+    if [[ $ans == 'Finalize' ]]; then
 	if [[ -f $dunnit_summary ]]; then
 	    print "Summary file already exists and may have been finessed already."
 	    print "Will not overwrite."
@@ -390,18 +387,11 @@ dunnit-eod() {
 	dunnit-edit $dunnit_summary
         # Open todoist instead
 	# /usr/local/bin/cliclick kd:cmd,ctrl t:t ku:cmd,ctrl
+    elif [[ $ans == '@TIMEOUT' || $ans == 'Too lazy today' ]]; then
+	print 'EOD timeout or lazy'
     fi
-    # XXX Will editor pause before showing this prompt?
-    # TODO Prompt here to generate html report
-    ans=$(alerter -title 'Dunnit Wrap-Up' \
-		  -timeout 600 \
-		  -appIcon ~/dunnit/dunnit-icon-yellow.png \
-		  -actions 'Yes!' \
-		  -closeLabel 'Skip' \
-		  -message 'Wanna save/generate a report presentation?')
-    if [[ $ans == 'Yes!' ]]; then
-	dunnit-report
-    fi
+    create-summary-file
+    dunnit-report
     dunnit-nighty-on
 }
 
