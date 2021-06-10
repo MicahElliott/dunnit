@@ -19,7 +19,7 @@ class DunnitStatusBarApp(rumps.App):
     @rumps.clicked("🚧 Blocker")
     def blocker(self, sender):
         # if not sender.state:
-        os.system("~/dunnit/dunnit-blocker")
+        os.system("~/dunnit/dunnit-blocker frommenu")
 
     @rumps.clicked("🗓 Planning", "💡 Todo")
     def todo(self, _):
@@ -33,7 +33,7 @@ class DunnitStatusBarApp(rumps.App):
 
     @rumps.clicked("🗓 Planning", "🥅 Goals")
     def setgoals(self, _):
-        os.system("~/dunnit/dunnit-goals")
+        os.system("~/dunnit/dunnit-goals frommenu")
 
     # @rumps.clicked("🗓 Planning", "🎯 Weekly Objectives")
     # def objectives(self, _):
@@ -42,7 +42,7 @@ class DunnitStatusBarApp(rumps.App):
     @rumps.clicked("🗓 Planning", "👀 All")
     def showtodos(self, _):
         with open('help.txt', 'r') as file: txt = file.read()
-        prog = os.popen("~/dunnit/dunnit-showtodos").read()
+        prog = os.popen("~/dunnit/dunnit-showtodos frommenu").read()
         win = rumps.Window("foo", 'bar', dimensions=(500,600))
         win.title = 'Dunnit Todos'
         win.message = "These are all the things you planned to do."
@@ -51,11 +51,11 @@ class DunnitStatusBarApp(rumps.App):
 
     @rumps.clicked("🧍‍♀️ Standup")
     def standup(self, _):
-        os.system("~/dunnit/dunnit-standup")
+        os.system("~/dunnit/dunnit-standup frommenu")
 
     @rumps.clicked("📒 Ledger", "👀 View")
     def progress(self, _):
-        prog = os.popen("~/dunnit/dunnit-progress").read()
+        prog = os.popen("~/dunnit/dunnit-progress frommenu").read()
         win = rumps.Window("foo", 'bar', dimensions=(500,600))
         win.title = 'Dunnit Progress Today'
         win.message = "This is an in-flight view of your day so far. It's just a ledger of raw entries; you'll have a chance to edit it in a better format when you close the day."
@@ -65,11 +65,11 @@ class DunnitStatusBarApp(rumps.App):
 
     @rumps.clicked("📒 Ledger", "✏️ Edit (careful!)")
     def raw(self, _):
-        es = os.system("~/dunnit/dunnit-editraw")
+        es = os.system("~/dunnit/dunnit-editraw frommenu")
 
     @rumps.clicked("🌯 Wrap Up", "🏁 Finalize and Edit Today")
     def eod(self, _):
-        es = os.system("~/dunnit/dunnit-eod")
+        es = os.system("~/dunnit/dunnit-eod frommenu")
         if es != 0: rumps.alert('Summary file already exists! Delete it and try again.')
 
     @rumps.clicked("🌯 Wrap Up", "📓 Daily Report (html)")
@@ -91,12 +91,12 @@ class DunnitStatusBarApp(rumps.App):
     @rumps.clicked("☁️ Sync", "⬆ Push")
     def push(self, _):
         rumps.notification("Pushing to remote", "...", "...")
-        os.system("~/dunnit/dunnit-push")
+        os.system("~/dunnit/dunnit-push frommenu")
 
     @rumps.clicked("☁️ Sync", "⬇ Pull")
     def pull(self, _):
         rumps.notification("Pulling from remote", "...", "...")
-        os.system("~/dunnit/dunnit-pull")
+        os.system("~/dunnit/dunnit-pull frommenu")
 
     @rumps.clicked("⚙️ Misc", "🛠 Preferences")
     def preferences(self, _):
@@ -117,11 +117,13 @@ class DunnitStatusBarApp(rumps.App):
 
     @rumps.clicked("⚙️ Misc", "✨ Check for Update")
     def swupdate(self, _):
-        os.system("~/dunnit/dunnit-swupdate")
+        os.system("~/dunnit/dunnit-swupdate frommenu")
 
     @rumps.clicked("⚙️ Misc", "❓ What's Dunnit?")
     def about(self, _):
-        rumps.notification("Dunnit is for tracking WTF you did", "Just write a sentence each hour.", "You can pop up and record anytime.")
+        rumps.notification("Dunnit is for tracking WTF you did",
+                           "Just write a sentence each hour.",
+                           "You can pop up and record anytime.")
 
     @rumps.clicked("💤 AFK (disable)")
     def onoff(self, sender):
