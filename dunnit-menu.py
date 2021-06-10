@@ -16,16 +16,16 @@ class DunnitStatusBarApp(rumps.App):
         # if not sender.state:
         os.system("~/dunnit/dunnit-bubble frommenu")
 
-    @rumps.clicked("🚧 Blocker")
-    def blocker(self, sender):
-        # if not sender.state:
-        os.system("~/dunnit/dunnit-blocker frommenu")
-
-    @rumps.clicked("🗓 Planning", "💡 Todo")
+    @rumps.clicked("💡 Todo")
     def todo(self, _):
         os.system("~/dunnit/dunnit-todo")
         # Use todoist instead
         # os.system('cliclick kd:cmd,ctrl t:a ku:cmd,ctrl')
+
+    @rumps.clicked("🚧 Blocker")
+    def blocker(self, sender):
+        # if not sender.state:
+        os.system("~/dunnit/dunnit-blocker frommenu")
 
     @rumps.clicked("🗓 Planning", "🍅 Timer")
     def pomodoro(self, _):

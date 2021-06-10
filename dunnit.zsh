@@ -171,7 +171,8 @@ create-summary-file() {
 dunnit-alert() {
     set -x
     if [[ $1 != 'frommenu' ]]; then # from plist
-	# Don't pop if recently shown (15m)
+	sound='-sound Glass'
+        # Don't pop if recently shown (15m)
 	# OK if empty since will be midnight default
 	stamp=$(ggrep -E '\[[0-9:]+' $dunnit_ledger | sort -n | tail -1 | gsed -r 's/\[([0-9:]+)\] .*/\1/g' 2> /dev/null)
 	secs_last=$(gdate -d "$stamp" +%s)
@@ -181,7 +182,7 @@ dunnit-alert() {
 	    exit
 	fi
     else # frommenu, so manually clicked, so kill nighty mode
-	dunnit-nighty-off
+        dunnit-nighty-off
     fi
 
     # Get most recent entry, prefer a TODO
@@ -211,7 +212,7 @@ dunnit-alert() {
 		   -appIcon ~/dunnit/dunnit-icon-green.png \
 		   -timeout 600 \
                    -closeLabel 'Ignore' \
-		   -sound 'Glass' \
+		   $=sound \
                    -title "Dunnit Activity Entry" \
 		   -subtitle "What did you work on? (blank to snooze)" \
                    -message "${last_update} — TODOs: $todos — Tags: $suggs")
@@ -499,8 +500,7 @@ dunnit-todo() {
 		   -appIcon ~/dunnit/dunnit-icon-blue.png \
 	 	   -timeout 300 \
                    -title "Dunnit TODO" \
-		   -subtitle "What will you do next?" \
-                   -sound 'Glass')
+		   -subtitle "What will you do next?")
     tm=$(gdate +%H:%M)
     if [[ $ans != '@CLOSED' ]]; then
 	touch $dunnit_ledger
@@ -577,8 +577,7 @@ dunnit-pomodoro() {
 	 	   -timeout 300 \
                    -title "Dunnit New Activity" \
 		   -subtitle "Time and create a new running Dunnit" \
-		   -message 'Ex: 25m Build reactor monitor #fission' \
-                   -sound 'Glass')
+		   -message 'Ex: 25m Build reactor monitor #fission')
     set -x
     if ! ggrep -q '^@' <<<$ans; then
 	print $ans
