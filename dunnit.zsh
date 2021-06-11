@@ -292,8 +292,9 @@ dunnit-bod() {
 }
 
 dunnit-eod() {
+    [[ $1 != 'frommenu' ]] && sound='-sound Glass'
     ans=$($alerter -timeout 3600 \
-		   -sound 'Glass' \
+		   $=sound \
                    -appIcon ~/dunnit/dunnit-icon-yellow.png \
 	           -title "Dunnit Daily Summary" \
 		   -subtitle "You recorded $(ggrep -cE '\[[0-9:]+\]' $dunnit_ledger) Dunnits today." \
@@ -302,6 +303,9 @@ dunnit-eod() {
 		   -closeLabel 'Too lazy today')
     # TODO Ask to record some more Dunnits now
     tm=$(gdate +%H:%M)
+    # Carry over tomorrow's TODOs
+    touch $dunnit_ledger_tomorrow
+    ggrep 'TODO ' $dunnit_ledger >>$dunnit_ledger_tomorrow
     if [[ $ans == 'Finalize' ]]; then
 	if [[ -f $dunnit_summary ]]; then
 	    print "Summary file already exists and may have been finessed already."
@@ -365,9 +369,6 @@ dunnit-eod() {
                     impact_statements+="${score}$stmt"
                 fi
 	    done
-	    # TODO Carry over tomorrow's TODOs
-	    touch $dunnit_ledger_tomorrow
-	    ggrep 'TODO ' $dunnit_ledger >>$dunnit_ledger_tomorrow
 	    ans=$(alerter -reply \
 			  -title 'Dunnit Wrap-Up (6 of 6)' \
 			  -message 'Got any goals for tomorrow yet?' \
@@ -385,13 +386,17 @@ dunnit-eod() {
 	fi
 	echo "[$dt-$tm] Opening editor on $dunnit_summary"
         # emacsclient --create-frame $dunnit_summary &
-	dunnit-edit $dunnit_summary
-        # Open todoist instead
-	# /usr/local/bin/cliclick kd:cmd,ctrl t:t ku:cmd,ctrl
+	ans=$(alerter -actions Edit \
+		      -closeLabel 'Skip'
+		      -title 'Dunnit Report Edit'
+		      -message 'Wanna massage the report before generating?' \
+                      -timeout 300 \
+		      -appIcon ~/dunnit/dunnit-icon-yellow.png)
+	[[ $ans == 'Edit' ]] && dunnit-edit $dunnit_summary
     elif [[ $ans == '@TIMEOUT' || $ans == 'Too lazy today' ]]; then
 	print 'EOD timeout or lazy'
+	create-summary-file
     fi
-    create-summary-file
     dunnit-report
     dunnit-nighty-on
 }
@@ -406,7 +411,7 @@ dunnit-autofinalize() {
 dunnit-weekly() {
     set -x
     if [[ ! -f $dunnit_objectives ]]; then
-	touch $dunnit_objectives
+        touch $dunnit_objectives
 	ans=$($alerter -reply \
 		       -appIcon ~/dunnit/dunnit-icon-purple.png \
 	               -timeout 600 \
@@ -415,6 +420,7 @@ dunnit-weekly() {
 		       -message "Use Ctrl-Return for each new objectives line." \
     		       -closeLabel 'Ignore' \
 		       -sound 'Glass')
+	# TODO Only create if not skip
 	ans=$(gsed "s/$(print -n '\u2028')/\n/g" <<<$ans)
 	print -- "$ans" >$dunnit_objectives
     else
