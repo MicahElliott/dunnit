@@ -18,10 +18,10 @@ if [[ $(gdate +%a) == 'Fri' ]]; then
 else
     dunnit_tomorrow=$(gdate -d 'tomorrow' +%Y%m%d-%a)
 fi
+dunnit_dir=~/dunnit/log/$yr/$wk
 dunnit_ledger_yesterday=$dunnit_dir/ledger-$dunnit_yesterday.txt
 dunnit_ledger_tomorrow=$dunnit_dir/ledger-$dunnit_tomorrow.txt
 # dunnit_dir=${DUNNIT_DIR-~/dunnit/log/$yr/$wk}
-dunnit_dir=~/dunnit/log/$yr/$wk
 dunnit_summary=$dunnit_dir/$dt.md
 # No longer used since not relying on changes to summary
 dunnit_summary_yesterday=$dunnit_dir/$dunnit_yesterday.md
@@ -434,7 +434,7 @@ dunnit-weekly() {
                        -message "$objectives" \
     		       -closeLabel 'Cool cool' \
 		       -actions 'Edit' \
-		       -sound 'Glass')
+		       $=sound)
 	if [[ $ans = 'Edit' ]]; then
 	    print 'editing...'
 	    dunnit-edit $dunnit_objectives
@@ -448,7 +448,7 @@ dunnit-goals() {
     set -x
     dunnit-nighty-off
     [[ $1 != 'frommenu' ]] && sound='-sound Glass'
-    dunnit-weekly
+    dunnit-weekly $@
     touch $dunnit_ledger
     if ggrep -q GOAL $dunnit_ledger; then
 	print 'Already set goals today'
