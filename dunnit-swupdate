@@ -22,6 +22,8 @@ if [[ $(git rev-parse HEAD) != $(git rev-parse '@{u}') ]]; then
 		  -message 'Would you like to install it now?' \
 		  -sound 'Glass')
     if [[ $ans == 'Upgrade' ]]; then
+	print 'Looking for new DYKs'
+	cp dyk-tips.txt dyk-tips.txt.bak
 	print 'Shutting down running Dunnit instance.'
 	pkill -af dunnit-menu
 	git rebase
@@ -31,6 +33,9 @@ if [[ $(git rev-parse HEAD) != $(git rev-parse '@{u}') ]]; then
 	launchctl unload -w $dunnit_plists/dunnit*.plist
 	launchctl list | ggrep -q dunnit && { print 'Unable to stop Dunnit services.'}
 	launchctl load -w $dunnit_plists/dunnit*.plist
+	# Put just the new DYKs into active file
+	gcomm -23 <(sort dyk-tips.txt) <(sort dyk-tips.txt.bak) >>/tmp/dyk-tips.txt
+	rm dyk-tips.txt.bak
 	cnt=$(launchctl list | ggrep dunnit | gwc -l)
 	gsleep 1
 	(( cnt == 8 )) ||  { print "ERROR: Started $cnt services out of 8"}
