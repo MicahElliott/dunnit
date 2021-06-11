@@ -2,4 +2,4 @@
 
 . ~/dunnit/dunnit.zsh
 
-dunnit-pull
+dunnit-pull $@

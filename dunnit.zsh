@@ -672,9 +672,9 @@ dunnit-dyk() {
 	     -appIcon ~/dunnit/dunnit-icon-purple.png \
 	     -message "$msg" \
 	     -closeLabel 'Got it!' \
-	     -actions 'Remind me')
+	     -actions 'Again')
     if [[ $ans == 'Got it!' ]]; then
-	# In-place delet the line; probably won't work since various punctuation
+	# In-place delete the line; probably won't work since various punctuation
 	gsed -i "/$msg/d"
     fi
 }
