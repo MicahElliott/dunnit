@@ -27,6 +27,20 @@ class DunnitStatusBarApp(rumps.App):
         # if not sender.state:
         os.system("~/dunnit/dunnit-blocker frommenu")
 
+    @rumps.clicked("🤔 Retro")
+    def blocker(self, sender):
+        # if not sender.state:
+        os.system("~/dunnit/dunnit-retro frommenu")
+
+    @rumps.clicked("🧍‍♀️ Standup")
+    def standup(self, _):
+        os.system("~/dunnit/dunnit-standup frommenu")
+
+    @rumps.clicked("🏁 EOD")
+    def eod(self, _):
+        es = os.system("~/dunnit/dunnit-eod frommenu")
+        if es != 0: rumps.alert('Summary file already exists! Delete it and try again.')
+
     @rumps.clicked("🗓 Planning", "🍅 Timer")
     def pomodoro(self, _):
         es = os.system("~/dunnit/dunnit-pomodoro")
@@ -49,10 +63,6 @@ class DunnitStatusBarApp(rumps.App):
         win.default_text = prog
         resp = win.run()
 
-    @rumps.clicked("🧍‍♀️ Standup")
-    def standup(self, _):
-        os.system("~/dunnit/dunnit-standup frommenu")
-
     @rumps.clicked("📒 Ledger", "👀 View")
     def progress(self, _):
         prog = os.popen("~/dunnit/dunnit-progress frommenu").read()
@@ -67,33 +77,28 @@ class DunnitStatusBarApp(rumps.App):
     def raw(self, _):
         es = os.system("~/dunnit/dunnit-editraw frommenu")
 
-    @rumps.clicked("🌯 Wrap Up", "🏁 Finalize and Edit Today")
-    def eod(self, _):
-        es = os.system("~/dunnit/dunnit-eod frommenu")
-        if es != 0: rumps.alert('Summary file already exists! Delete it and try again.')
-
-    @rumps.clicked("🌯 Wrap Up", "📓 Daily Report (html)")
+    @rumps.clicked("📝 Reports", "📓 Daily Report (html)")
     def report(self, _):
         os.system("~/dunnit/dunnit-report")
 
-    @rumps.clicked("🌯 Wrap Up", "📧 Daily Report (email)")
+    @rumps.clicked("📝 Reports", "📧 Daily Report (email)")
     def email(self, _):
         os.system("~/dunnit/dunnit-email")
 
     # TODO
-    @rumps.clicked("🌯 Wrap Up", "🎉 Weekly Report")
+    @rumps.clicked("📝 Reports", "🎉 Weekly Report")
     def weeklyreport(self, _):
         today = datetime.datetime.today()
         ww = today.strftime("%U")
         # ww = datetime.date(2010, 6, 16).isocalendar()[1]
         os.system(f"~/dunnit/dunnit-eowsummary w{ww}")
 
-    @rumps.clicked("☁️ Sync", "⬆ Push")
+    @rumps.clicked("⚙️ Misc", "⬆ Push MyDunnits")
     def push(self, _):
         rumps.notification("Pushing to remote", "...", "...")
         os.system("~/dunnit/dunnit-push frommenu")
 
-    @rumps.clicked("☁️ Sync", "⬇ Pull")
+    @rumps.clicked("⚙️ Misc", "⬇ Pull MyDunnits")
     def pull(self, _):
         rumps.notification("Pulling from remote", "...", "...")
         os.system("~/dunnit/dunnit-pull frommenu")

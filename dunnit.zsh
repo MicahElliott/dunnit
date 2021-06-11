@@ -60,6 +60,9 @@ if ! [[ -d $dunnit_dir ]]; then
     mkdir -p $dunnit_dir
 fi
 
+dunnit-nighty-off() { [[ -f $dunnit_nighty ]] && rm $dunnit_nighty }
+dunnit-nighty-on()  { touch $dunnit_nighty }
+
 dunnit-edit() {
     set -x
     print "EDITOR: $EDITOR"
@@ -185,6 +188,11 @@ dunnit-alert() {
         dunnit-nighty-off
     fi
 
+    if [[ -f $dunnit_nighty && $1 != 'frommenu' ]]; then
+	echo 'in nighty mode; exiting as no-op'
+	exit
+    fi
+
     # Get most recent entry, prefer a TODO
     if [[ -f $dunnit_ledger ]]; then
 	todo=$(tail -1 $dunnit_ledger | ggrep 'TODO ')
@@ -193,11 +201,6 @@ dunnit-alert() {
 	else
 	    last_update="TODO: $todo"
 	fi
-    fi
-
-    if [[ -f $dunnit_nighty && $1 != 'frommenu' ]]; then
-	echo 'in nighty mode; exiting as no-op'
-	exit
     fi
 
     # Gather and combine tag suggestions from these prescriptions,
@@ -215,7 +218,7 @@ dunnit-alert() {
 		   $=sound \
                    -title "Dunnit Activity Entry" \
 		   -subtitle "What did you work on? (blank to snooze)" \
-                   -message "${last_update} — TODOs: $todos — Tags: $suggs")
+                   -message "${last_update} — $todos — Tags: $suggs")
     maybe-create-ledger-file
     # Bail out if user pressed 'Cancel'.
     if [[ $ans == 'Ignore' || $ans == '@TIMEOUT' ]]; then
@@ -282,9 +285,6 @@ dunnit-alert-todoist() { 	# NIU
     terminal-notifier -sound Glass -message 'Whadja work on?' -title 'Dunnit Reminder'
     /usr/local/bin/cliclick kd:cmd,ctrl t:a ku:cmd,ctrl
 }
-
-dunnit-nighty-off() { [[ -f $dunnit_nighty ]] && rm $dunnit_nighty }
-dunnit-nighty-on()  { touch $dunnit_nighty }
 
 dunnit-bod() {
     dunnit-nighty-off
@@ -541,6 +541,20 @@ dunnit-blocker() {
     if [[ $ans != '@CLOSED' ]]; then
         print "BLOCKER $ans" >>$dunnit_ledger
 	echo "[$dt-$tm] Captured your BLOCKER in dunnit file: $dunnit_ledger"
+    else
+	echo no-op
+    fi
+}
+
+dunnit-retro() {
+    ans=$($alerter -reply \
+		   -appIcon ~/dunnit/dunnit-icon-blue.png \
+		   -timeout 300 \
+                   -title "Dunnit Retro Note" \
+		   -subtitle "Use: GOOD, BAD, ACTION")
+    if [[ $ans != '@CLOSED' ]]; then
+        print "RETRO $ans" >>$dunnit_ledger
+	echo "[$dt-$tm] Captured your RETRO in dunnit file: $dunnit_ledger"
     else
 	echo no-op
     fi
