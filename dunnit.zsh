@@ -410,17 +410,20 @@ dunnit-autofinalize() {
 # Each morning pop up reminder about them.
 dunnit-weekly() {
     set -x
+    [[ $1 != 'frommenu' ]] && sound='-sound Glass'
     if [[ ! -f $dunnit_objectives ]]; then
-        touch $dunnit_objectives
-	ans=$($alerter -reply \
+        ans=$($alerter -reply \
 		       -appIcon ~/dunnit/dunnit-icon-purple.png \
 	               -timeout 600 \
                        -title "Dunnit Weekly Objectives" \
 		       -subtitle "Start your week with a few objectives." \
 		       -message "Use Ctrl-Return for each new objectives line." \
     		       -closeLabel 'Ignore' \
-		       -sound 'Glass')
-	# TODO Only create if not skip
+		       $=sound)
+	if [[ $ans == 'Ignore' || $ans == '@TIMEOUT' ]]; then
+	    exit
+	fi
+        touch $dunnit_objectives
 	ans=$(gsed "s/$(print -n '\u2028')/\n/g" <<<$ans)
 	print -- "$ans" >$dunnit_objectives
     else
@@ -443,9 +446,10 @@ dunnit-weekly() {
 # This is really a beginning-of-day (BOD) routine
 dunnit-goals() {
     set -x
+    dunnit-nighty-off
+    [[ $1 != 'frommenu' ]] && sound='-sound Glass'
     dunnit-weekly
     touch $dunnit_ledger
-    dunnit-nighty-off
     if ggrep -q GOAL $dunnit_ledger; then
 	print 'Already set goals today'
 	goals=$(ggrep 'GOAL ' $dunnit_ledger | gsed 's/GOAL /- /g')
@@ -466,7 +470,7 @@ dunnit-goals() {
 		   -subtitle "Start your day with 3 high-level goals." \
 		   -message "Use Ctrl-Return for each new goal line." \
     		   -closeLabel 'Ignore' \
-		   -sound 'Glass')
+		   $=sound)
     # tm=$(gdate +%H:%M)
     [[ $ans == 'Ignore' || $ans == '@TIMEOUT' ]] && exit
 
@@ -662,7 +666,6 @@ dunnit-standup() {
 dunnit-dyk() {
     dyks=(); while read -r line; do dyks+=$line; done <$dunnit_dyks
     random_n=$(( RANDOM % $#dyks + 1 ))
-    print got here
     msg="$dyks[$random_n]"
     ans=$($alerter -title 'Dunnit: Did You Know??' \
 	     -timeout 8 \
