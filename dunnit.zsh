@@ -388,7 +388,7 @@ dunnit-eod() {
         # emacsclient --create-frame $dunnit_summary &
 	ans=$(alerter -actions Edit \
 		      -closeLabel 'Skip'
-		      -title 'Dunnit Report Edit'
+		      -title 'Dunnit Report Edit' \
 		      -message 'Wanna massage the report before generating?' \
                       -timeout 300 \
 		      -appIcon ~/dunnit/dunnit-icon-yellow.png)
