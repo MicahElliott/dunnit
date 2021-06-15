@@ -682,13 +682,13 @@ dunnit-dyk() {
     random_n=$(( RANDOM % $#dyks + 1 ))
     msg="$dyks[$random_n]"
     ans=$($alerter -title 'Dunnit: Did You Know??' \
-	     -timeout 8 \
-	     -appIcon ~/dunnit/dunnit-icon-purple.png \
-	     -message "$msg" \
-	     -closeLabel 'Got it!' \
-	     -actions 'Again')
+		   -timeout 20 \
+		   -appIcon ~/dunnit/dunnit-icon-purple.png \
+		   -message "$msg" \
+		   -closeLabel 'Got it!' \
+		   -actions 'Again')
     if [[ $ans == 'Got it!' ]]; then
 	# In-place delete the line; probably won't work since various punctuation
-	gsed -i "/$msg/d"
+	gsed -i "/$msg/d" $dunnit_dyks
     fi
 }
