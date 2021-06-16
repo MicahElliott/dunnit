@@ -60,6 +60,9 @@ if ! [[ -d $dunnit_dir ]]; then
     mkdir -p $dunnit_dir
 fi
 
+tm() { gdate +%H:%M }
+msg() { print "[$(tm)] $@" }
+
 dunnit-nighty-off() { [[ -f $dunnit_nighty ]] && rm $dunnit_nighty }
 dunnit-nighty-on()  { touch $dunnit_nighty }
 
@@ -125,7 +128,7 @@ sectionize-ledger() {
 
 maybe-create-ledger-file() {
     if ! [[ -f $dunnit_ledger ]]; then
-	echo "[$dt-$tm] Creating new dunnit ledger file for today's work: $dunnit_ledger"
+	msg "Creating new dunnit ledger file for today's work: $dunnit_ledger"
         touch $dunnit_ledger
     fi
 }
@@ -137,7 +140,7 @@ create-summary-file() {
     if [[ -f $dunnit_summary ]]; then
 	print "Oops, summary file $dunnit_summary already exists."
     else
-	echo "[$dt-$tm] Creating new dunnit summary file for today's work: $dunnit_summary"
+	msg "Creating new dunnit summary file for today's work: $dunnit_summary"
         # Create the file anew
         echo "% $username" >$dunnit_summary
         echo "% Impact Report" >>$dunnit_summary
@@ -252,23 +255,22 @@ dunnit-alert() {
 	exit
     fi
 
-    tm=$(gdate +%H:%M)
     # Check to see if it's a TODO being checked off
     if ggrep -q '^[A-Z]$' <<<$ans ; then
 	item=$(ggrep "^($ans) " $dunnit_ledger | sed 's/([A-Z]) TODO //')
 	[[ -z $item ]] && return 1
 	gsed -i "/^($ans) /d" $dunnit_ledger # now remove the line
-	echo "[$tm] $item" >>$dunnit_ledger
+	print "[$(tm)] $item" >>$dunnit_ledger
     else
 	set -x
 	# Split into multiple entries (lines) if weird newlines
-	ans=$(gsed "s/$(print -n '\u2028')/\n[$tm] /g" <<<$ans)
+	ans=$(gsed "s/$(print -n '\u2028')/\n[$(tm)] /g" <<<$ans)
 	# Add timestamp to first entry
-	echo "[$tm] $ans" >>$dunnit_ledger
+	echo "[$(tm)] $ans" >>$dunnit_ledger
 	# TODO Add #misc tag to any tagless entries
 	set +x
     fi
-    echo "[$dt-$tm] Captured your update in dunnit file: $dunnit_ledger"
+    msg "Captured your update in dunnit file: $dunnit_ledger"
     if ! ggrep -q '#' <<<$ans; then
 	terminal-notifier -title 'Did you know you can use "tags"?' \
 			  -appIcon ~/dunnit/dunnit-icon-yellow.png \
@@ -302,7 +304,6 @@ dunnit-eod() {
 		   -actions 'Finalize' \
 		   -closeLabel 'Too lazy today')
     # TODO Ask to record some more Dunnits now
-    tm=$(gdate +%H:%M)
     # Carry over tomorrow's TODOs
     touch $dunnit_ledger_tomorrow
     ggrep 'TODO ' $dunnit_ledger >>$dunnit_ledger_tomorrow
@@ -384,7 +385,7 @@ dunnit-eod() {
 	    set +x
             create-summary-file
 	fi
-	echo "[$dt-$tm] Opening editor on $dunnit_summary"
+	msg "Opening editor on $dunnit_summary"
         # emacsclient --create-frame $dunnit_summary &
 	ans=$(alerter -actions Edit \
 		      -closeLabel 'Skip'
@@ -471,7 +472,6 @@ dunnit-goals() {
 		   -message "Use Ctrl-Return for each new goal line." \
     		   -closeLabel 'Ignore' \
 		   $=sound)
-    # tm=$(gdate +%H:%M)
     [[ $ans == 'Ignore' || $ans == '@TIMEOUT' ]] && exit
 
     gsed "s/$(print -n '\u2028')/\n/g" <<<$ans | gsed 's/^/GOAL /' >>$dunnit_ledger
@@ -511,7 +511,6 @@ dunnit-todo() {
 	 	   -timeout 300 \
                    -title "Dunnit TODO" \
 		   -subtitle "What will you do next?")
-    tm=$(gdate +%H:%M)
     if [[ $ans != '@CLOSED' ]]; then
 	touch $dunnit_ledger
 	# Generate a random letter
@@ -526,7 +525,7 @@ dunnit-todo() {
             # echo "($alpha[i]) TODO $ans" >>$dunnit_ledger
 	fi
         print "($next) TODO $ans" >>$dunnit_ledger
-	echo "[$dt-$tm] Captured your TODO in dunnit file: $dunnit_ledger"
+	msg "Captured your TODO in dunnit file: $dunnit_ledger"
     else
 	echo no-op
     fi
@@ -540,7 +539,7 @@ dunnit-blocker() {
 		   -subtitle "What are you hung up on?")
     if [[ $ans != '@CLOSED' ]]; then
         print "BLOCKER $ans" >>$dunnit_ledger
-	echo "[$dt-$tm] Captured your BLOCKER in dunnit file: $dunnit_ledger"
+	msg "Captured your BLOCKER in dunnit file: $dunnit_ledger"
     else
 	echo no-op
     fi
@@ -554,7 +553,7 @@ dunnit-retro() {
 		   -subtitle "Use: GOOD, BAD, ACTION")
     if [[ $ans != '@CLOSED' ]]; then
         print "RETRO $ans" >>$dunnit_ledger
-	echo "[$dt-$tm] Captured your RETRO in dunnit file: $dunnit_ledger"
+	msg "Captured your RETRO in dunnit file: $dunnit_ledger"
     else
 	echo no-op
     fi
@@ -614,8 +613,7 @@ dunnit-pomodoro() {
 			  -appIcon ~/dunnit/dunnit-icon-brown.png \
 			  -subtitle 'We’re back! Recording as done.' \
 			  -message "$task"
-	tm=$(gdate +%H:%M)
-	print "[$tm] $task" >>$dunnit_ledger
+        print "[$(tm)] $task" >>$dunnit_ledger
     fi
     set +x
 }
@@ -673,7 +671,7 @@ dunnit-preferences() {
 }
 
 dunnit-standup() {
-    print 'Time for standup!'
+    msg "Time for standup!"
     $dunnit_browser ~/dunnit/reports/$dunnit_yesterday-report.html &
 }
 
