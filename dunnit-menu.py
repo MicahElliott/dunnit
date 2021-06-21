@@ -32,15 +32,6 @@ class DunnitStatusBarApp(rumps.App):
         # if not sender.state:
         os.system("~/dunnit/dunnit-blocker frommenu")
 
-    @rumps.clicked("🤔 Retro")
-    def retro(self, sender):
-        # if not sender.state:
-        os.system("~/dunnit/dunnit-retro frommenu")
-
-    @rumps.clicked("🧍‍♀️ Standup")
-    def standup(self, _):
-        os.system("~/dunnit/dunnit-standup frommenu")
-
     @rumps.clicked("🏁 EOD")
     def eod(self, _):
         es = os.system("~/dunnit/dunnit-eod frommenu")
@@ -89,6 +80,15 @@ class DunnitStatusBarApp(rumps.App):
         ww = today.strftime("%U")
         # ww = datetime.date(2010, 6, 16).isocalendar()[1]
         os.system(f"~/dunnit/dunnit-eowsummary w{ww}")
+
+    @rumps.clicked("📝 Reports", "🧍‍♀️ Standup")
+    def standup(self, _):
+        os.system("~/dunnit/dunnit-standup frommenu")
+
+    @rumps.clicked("📝 Reports", "🤔 Retro")
+    def retro(self, sender):
+        # if not sender.state:
+        os.system("~/dunnit/dunnit-retro frommenu")
 
     @rumps.clicked("⚙️ Misc", "⬆ Push MyDunnits")
     def push(self, _):
