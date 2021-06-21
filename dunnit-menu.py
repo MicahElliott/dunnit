@@ -11,10 +11,15 @@ if os.path.isfile(nightyfile): os.remove(nightyfile)
 class DunnitStatusBarApp(rumps.App):
 
     # @rumps.clicked("✅🚀 Dunnit (YAY!)")
+
     @rumps.clicked("🚀 Dunnit (YAY!)")
     def bubble(self, sender):
         # if not sender.state:
         os.system("~/dunnit/dunnit-bubble frommenu")
+
+    @rumps.clicked("🥅 Goals")
+    def setgoals(self, _):
+        os.system("~/dunnit/dunnit-goals frommenu")
 
     @rumps.clicked("💡 Todo")
     def todo(self, _):
@@ -28,7 +33,7 @@ class DunnitStatusBarApp(rumps.App):
         os.system("~/dunnit/dunnit-blocker frommenu")
 
     @rumps.clicked("🤔 Retro")
-    def blocker(self, sender):
+    def retro(self, sender):
         # if not sender.state:
         os.system("~/dunnit/dunnit-retro frommenu")
 
@@ -40,14 +45,6 @@ class DunnitStatusBarApp(rumps.App):
     def eod(self, _):
         es = os.system("~/dunnit/dunnit-eod frommenu")
         if es != 0: rumps.alert('Summary file already exists! Delete it and try again.')
-
-    @rumps.clicked("🗓 Planning", "🍅 Timer")
-    def pomodoro(self, _):
-        es = os.system("~/dunnit/dunnit-pomodoro")
-
-    @rumps.clicked("🗓 Planning", "🥅 Goals")
-    def setgoals(self, _):
-        os.system("~/dunnit/dunnit-goals frommenu")
 
     # @rumps.clicked("🗓 Planning", "🎯 Weekly Objectives")
     # def objectives(self, _):
@@ -102,6 +99,10 @@ class DunnitStatusBarApp(rumps.App):
     def pull(self, _):
         rumps.notification("Pulling from remote", "...", "...")
         os.system("~/dunnit/dunnit-pull frommenu")
+
+    @rumps.clicked("⚙️ Misc", "🍅 Timer")
+    def pomodoro(self, _):
+        es = os.system("~/dunnit/dunnit-pomodoro")
 
     @rumps.clicked("⚙️ Misc", "🛠 Preferences")
     def preferences(self, _):
