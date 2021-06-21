@@ -677,6 +677,7 @@ dunnit-standup() {
 
 dunnit-dyk() {
     dyks=(); while read -r line; do dyks+=$line; done <$dunnit_dyks
+    (( $#dyks = 0 )) && exit
     random_n=$(( RANDOM % $#dyks + 1 ))
     msg="$dyks[$random_n]"
     ans=$($alerter -title 'Dunnit: Did You Know??' \
