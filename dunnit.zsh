@@ -210,7 +210,7 @@ dunnit-alert() {
     # plus what's already been used today (should expand to week).
     # Cool thing about alerter is that when you open it to reply, it
     # puts the end of the long text into view, and is scrollable.
-    suggs=( 'TIL' 'BLOCKER' 'MTG' 'QUESTION' 'NTS' 'PERSONAL' 'MILESTONE' 'RETRO' )
+    suggs=( 'TIL' 'BLOCKER' 'MTG' 'QUESTION' 'MILESTONE' 'RETRO' )
     suggs+=( $(ggrep -E -o '#[0-9a-z]+' $dunnit_ledger) )
     suggs=$(print -l $suggs | sort | uniq)
     todos=$(ggrep ' TODO ' $dunnit_ledger)
@@ -271,7 +271,8 @@ dunnit-alert() {
 	set +x
     fi
     msg "Captured your update in dunnit file: $dunnit_ledger"
-    if ! ggrep -q '#' && ! ggrep -qE '^(TIL|BLOCKER|MTG|QUESTION|NTS|PERSONAL|MILESTONE|RETRO)' <<<$ans; then
+    if  ! ggrep -q '#' <<<$ans &&
+	    ! ggrep -qE '^(TIL|BLOCKER|MTG|QUESTION|MILESTONE|RETRO)' <<<$ans; then
 	terminal-notifier -title 'Did you know you can use "tags"?' \
 			  -appIcon ~/dunnit/dunnit-icon-yellow.png \
 			  -subtitle 'They help with categorizing your daily report.' \

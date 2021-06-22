@@ -41,7 +41,7 @@ class DunnitStatusBarApp(rumps.App):
     # def objectives(self, _):
     #     os.system("~/dunnit/dunnit-objectives")
 
-    @rumps.clicked("🗓 Planning", "👀 All")
+    @rumps.clicked("🗓 Plans")
     def showtodos(self, _):
         with open('help.txt', 'r') as file: txt = file.read()
         prog = os.popen("~/dunnit/dunnit-showtodos frommenu").read()
