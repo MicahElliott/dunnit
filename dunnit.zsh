@@ -175,7 +175,7 @@ create-summary-file() {
 }
 
 dunnit-alert() {
-    set -x
+    msg 'Starting Dunnit Alert'
     if [[ $1 != 'frommenu' ]]; then # from plist
 	sound='-sound Glass'
         # Don't pop if recently shown (15m)
@@ -280,7 +280,6 @@ dunnit-alert() {
     else
 	dunnit-dyk
     fi
-    set +x
 }
 
 dunnit-alert-todoist() { 	# NIU
@@ -290,11 +289,13 @@ dunnit-alert-todoist() { 	# NIU
 }
 
 dunnit-bod() {
+    msg 'Starting BOD'
     dunnit-nighty-off
     dunnit-goals
 }
 
 dunnit-eod() {
+    msg 'Starting EOD'
     [[ $1 != 'frommenu' ]] && sound='-sound Glass'
     ans=$($alerter -timeout 3600 \
 		   $=sound \
@@ -403,6 +404,7 @@ dunnit-eod() {
     dunnit-nighty-on
 }
 
+# Run late every day as a backup plan in case EOD was never responded to.
 dunnit-autofinalize() {
     create-summary-file noinstructions
     # TODO Maybe gen report, open browser, send email, etc
@@ -411,6 +413,7 @@ dunnit-autofinalize() {
 # Each Mon prompt to set weekly objectives.
 # Each morning pop up reminder about them.
 dunnit-weekly() {
+    msg 'Starting Weekly Objectives'
     set -x
     [[ $1 != 'frommenu' ]] && sound='-sound Glass'
     if [[ ! -f $dunnit_objectives ]]; then
@@ -447,6 +450,7 @@ dunnit-weekly() {
 
 # This is really a beginning-of-day (BOD) routine
 dunnit-goals() {
+    msg 'Starting Goals'
     set -x
     dunnit-nighty-off
     [[ $1 != 'frommenu' ]] && sound='-sound Glass'
@@ -487,6 +491,7 @@ dunnit-goals() {
 }
 
 dunnit-report() {
+    msg 'Starting Daily Report'
     set -x
     gsed -i -r '/---- DELETE_TO_EOF /,$d' $dunnit_summary
     print 'Saving your day’s work'
@@ -572,6 +577,7 @@ dunnit-showtodos() {
 }
 
 dunnit-lunchtime() {
+    msg 'Starting Lunchtime'
     goals=$(ggrep GOAL $dunnit_ledger | gsed -r -e 's/^GOAL /- /' -e '1s/^- //')
     if [[ -n $goals ]]; then
 	ans=$($alerter -timeout 3000 \
