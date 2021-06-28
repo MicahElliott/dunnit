@@ -196,14 +196,9 @@ dunnit-alert() {
 	exit
     fi
 
-    # Get most recent entry, prefer a TODO
+    # Get most recent entry
     if [[ -f $dunnit_ledger ]]; then
-	todo=$(tail -1 $dunnit_ledger | ggrep 'TODO')
-	if [[ $? -ne 0 ]]; then
-	    last_update="LAST: $(sed -n '$p' $dunnit_ledger | sed 's/^\[[0-9]*\] //')"
-	else
-	    last_update="TODO: $todo"
-	fi
+        last_update="LAST: $(ggrep DONE $dunnit_ledger | tail -1 | gsed -e 's/^\[..:..\] DONE //')"
     fi
 
     # Gather and combine tag suggestions from these prescriptions,
@@ -261,19 +256,19 @@ dunnit-alert() {
 	item=$(ggrep " TODO($ans) " $dunnit_ledger | gsed -r 's/^.* TODO\([A-Z]\) //')
 	[[ -z $item ]] && return 1
 	gsed -i "/ TODO($ans) /d" $dunnit_ledger # now remove the line
-	print "[$(tm)] $item" >>$dunnit_ledger
+	print "[$(tm)] DONE $item" >>$dunnit_ledger
     else
 	set -x
 	# Split into multiple entries (lines) if weird newlines
-	ans=$(gsed "s/$(print -n '\u2028')/\n[$(tm)] /g" <<<$ans)
+	ans=$(gsed "s/$(print -n '\u2028')/\n[$(tm)] DONE/g" <<<$ans)
 	# Add timestamp to first entry
-	echo "[$(tm)] $ans" >>$dunnit_ledger
+	echo "[$(tm)] DONE $ans" >>$dunnit_ledger
 	# TODO Add #misc tag to any tagless entries
 	set +x
     fi
     msg "Captured your update in dunnit file: $dunnit_ledger"
     if  ! ggrep -q '#' <<<$ans &&
-	    ! ggrep -qE '^(TIL|BLOCKER|BLK|MTG|MILESTONE|MSN|RETRO|RTO|TODO|GOAL)' <<<$ans; then
+	    ! ggrep -qE '(TIL|BLOCKER|BLK|MTG|MILESTONE|MSN|RETRO|RTO|TODO|GOAL)' <<<$ans; then
 	terminal-notifier -title 'Did you know you can use "tags"?' \
 			  -appIcon ~/dunnit/dunnit-icon-yellow.png \
 			  -subtitle 'They help with categorizing your daily report.' \
@@ -619,7 +614,7 @@ dunnit-pomodoro() {
 			  -appIcon ~/dunnit/dunnit-icon-brown.png \
 			  -subtitle 'We’re back! Recording as done.' \
 			  -message "$task"
-        print "[$(tm)] $task" >>$dunnit_ledger
+        print "[$(tm)] DONE $task" >>$dunnit_ledger
     fi
     set +x
 }
