@@ -120,9 +120,9 @@ sectionize-ledger() {
     ggrep -qvE '#[0-9a-z]+|GOAL|SENTIMENT|SUMMARY|PRODUCTIVITY' $dunnit_ledger && print '\n## Other\n'
     ggrep  -vE '#[0-9a-z]+|GOAL|SENTIMENT|SUMMARY|PRODUCTIVITY' $dunnit_ledger | gsed -r -e 's/^/- /'  -e 's/ \[[0-9:]+\] / /'
     # Actually, want TODOS/BLOCKERS in own sections
-    # if ggrep -q ' TODO ' $dunnit_ledger; then
+    # if ggrep -q ' TODO' $dunnit_ledger; then
     #    print '\n## Incomplete\n'
-    #    ggrep ' TODO ' $dunnit_ledger | gsed 's/^([A-Z]) /- /'
+    #    ggrep ' TODO' $dunnit_ledger | gsed 's/^([A-Z]) /- /'
     # fi
 }
 
@@ -198,7 +198,7 @@ dunnit-alert() {
 
     # Get most recent entry, prefer a TODO
     if [[ -f $dunnit_ledger ]]; then
-	todo=$(tail -1 $dunnit_ledger | ggrep 'TODO ')
+	todo=$(tail -1 $dunnit_ledger | ggrep 'TODO')
 	if [[ $? -ne 0 ]]; then
 	    last_update="LAST: $(sed -n '$p' $dunnit_ledger | sed 's/^\[[0-9]*\] //')"
 	else
@@ -214,7 +214,7 @@ dunnit-alert() {
     suggs=( 'TIL' 'BLOCKER' 'MTG' 'MILESTONE' 'RETRO' )
     suggs+=( $(ggrep -E -o '#[0-9a-z]+' $dunnit_ledger) )
     suggs=$(print -l $suggs | sort | uniq)
-    todos=$(ggrep ' TODO ' $dunnit_ledger)
+    todos=$(ggrep ' TODO' $dunnit_ledger)
     ans=$($alerter -reply \
 		   -appIcon ~/dunnit/dunnit-icon-green.png \
 		   -timeout 600 \
@@ -258,9 +258,9 @@ dunnit-alert() {
 
     # Check to see if it's a TODO being checked off
     if ggrep -q '^[A-Z]$' <<<$ans ; then
-	item=$(ggrep "^($ans) " $dunnit_ledger | sed 's/TODO ([A-Z]) //')
+	item=$(ggrep " TODO($ans) " $dunnit_ledger | gsed -r 's/^.* TODO\([A-Z]\) //')
 	[[ -z $item ]] && return 1
-	gsed -i "/^($ans) /d" $dunnit_ledger # now remove the line
+	gsed -i "/ TODO($ans) /d" $dunnit_ledger # now remove the line
 	print "[$(tm)] $item" >>$dunnit_ledger
     else
 	set -x
@@ -273,7 +273,7 @@ dunnit-alert() {
     fi
     msg "Captured your update in dunnit file: $dunnit_ledger"
     if  ! ggrep -q '#' <<<$ans &&
-	    ! ggrep -qE '^(TIL|BLOCKER|BLK|MTG|MILESTONE|MSN|RETRO|RTO)' <<<$ans; then
+	    ! ggrep -qE '^(TIL|BLOCKER|BLK|MTG|MILESTONE|MSN|RETRO|RTO|TODO|GOAL)' <<<$ans; then
 	terminal-notifier -title 'Did you know you can use "tags"?' \
 			  -appIcon ~/dunnit/dunnit-icon-yellow.png \
 			  -subtitle 'They help with categorizing your daily report.' \
@@ -309,7 +309,7 @@ dunnit-eod() {
     # TODO Ask to record some more Dunnits now
     # Carry over tomorrow's TODOs
     touch $dunnit_ledger_tomorrow
-    ggrep 'TODO ' $dunnit_ledger >>$dunnit_ledger_tomorrow
+    ggrep 'TODO' $dunnit_ledger >>$dunnit_ledger_tomorrow
     if [[ $ans == 'Finalize' ]]; then
 	if [[ -f $dunnit_summary ]]; then
 	    print "Summary file already exists and may have been finessed already."
@@ -469,8 +469,8 @@ dunnit-goals() {
 	exit
     fi
     # Carry yesterday's unfinished TODOs, BLOCKERs into today
-    ggrep 'TODO ' $dunnit_ledger_yesterday >>$dunnit_ledger
-    ggrep 'BLOCKER ' $dunnit_ledger_yesterday >>$dunnit_ledger
+    ggrep 'TODO' $dunnit_ledger_yesterday >>$dunnit_ledger
+    ggrep 'BLOCKER' $dunnit_ledger_yesterday >>$dunnit_ledger
     ans=$($alerter -reply \
 		   -appIcon ~/dunnit/dunnit-icon-purple.png \
 	           -timeout 1200 \
@@ -521,18 +521,15 @@ dunnit-todo() {
 		   -subtitle "What will you do next?")
     if [[ $ans != '@CLOSED' ]]; then
 	touch $dunnit_ledger
-	# Generate a random letter
-	# alpha=(); for c in {A..Z}; alpha+=$c; i=$(( RANDOM % 26 ))
 	# Get highest letter todo
-	if ! ggrep -E '^\[..:..] TODO \([A-Z]\)' $dunnit_ledger; then
+	if ! ggrep -E '^\[..:..] TODO\([A-Z]\)' $dunnit_ledger; then
 	    next='A'
 	else
-	    next=$(ggrep 'TODO ' $dunnit_ledger | sort | tail -1 |
-		    gsed -E -e 's/[()]//g' -e 's/ .*//' |
-		    gtr "0-9A-z" "1-9A-z_")
-            # echo "($alpha[i]) TODO $ans" >>$dunnit_ledger
-	fi
-        print "[$(tm)] TODO ($next) $ans" >>$dunnit_ledger
+	    next=$(ggrep ' TODO' $dunnit_ledger | sort | tail -1 |
+		       gsed -r 's/^.*\(([A-Z])\) .*/\1/g' |
+                       gtr "0-9A-z" "1-9A-z_")
+        fi
+        print "[$(tm)] TODO($next) $ans" >>$dunnit_ledger
 	msg "Captured your TODO in dunnit file: $dunnit_ledger"
     else
 	echo no-op
@@ -573,7 +570,7 @@ dunnit-showtodos() {
     print '\n## Daily Goals'
     ggrep 'GOAL' $dunnit_ledger | gsed 's/.* GOAL /- /'
     print '\n## Active Todos'
-    ggrep 'TODO' $dunnit_ledger | gsed 's/.* TODO /- /'
+    ggrep 'TODO' $dunnit_ledger | gsed 's/.* TODO/- /'
     print '\n## Blockers/Questions'
     ggrep 'BLOCKER' $dunnit_ledger | gsed 's/.* BLOCKER /- /'
 }
