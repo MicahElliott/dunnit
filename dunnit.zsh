@@ -258,7 +258,7 @@ dunnit-alert() {
 
     # Check to see if it's a TODO being checked off
     if ggrep -q '^[A-Z]$' <<<$ans ; then
-	item=$(ggrep "^($ans) " $dunnit_ledger | sed 's/([A-Z]) TODO //')
+	item=$(ggrep "^($ans) " $dunnit_ledger | sed 's/TODO ([A-Z]) //')
 	[[ -z $item ]] && return 1
 	gsed -i "/^($ans) /d" $dunnit_ledger # now remove the line
 	print "[$(tm)] $item" >>$dunnit_ledger
@@ -381,7 +381,7 @@ dunnit-eod() {
 			  -closeLabel 'Skip')
 	    if [[ $ans != 'Skip' ]]; then
                 # TODO multi-bullet for multiline entry
-		ans=$(gsed "s/$(print -n '\u2028')/\nGOAL /g" <<<$ans)
+		ans=$(gsed "s/$(print -n '\u2028')/\n[$(tm)] GOAL /g" <<<$ans)
 		print $ans >>$dunnit_ledger_tomorrow
 	    fi
 
@@ -427,6 +427,7 @@ dunnit-weekly() {
     		       -closeLabel 'Ignore' \
 		       $=sound)
 	if [[ $ans == 'Ignore' || $ans == '@TIMEOUT' ]]; then
+	    print "weekly answer: $ans"
 	    exit
 	fi
         touch $dunnit_objectives
@@ -472,7 +473,7 @@ dunnit-goals() {
     ggrep 'BLOCKER ' $dunnit_ledger_yesterday >>$dunnit_ledger
     ans=$($alerter -reply \
 		   -appIcon ~/dunnit/dunnit-icon-purple.png \
-	           -timeout 600 \
+	           -timeout 1200 \
                    -title "Dunnit Daily Goals" \
 		   -subtitle "Start your day with 3 high-level goals." \
 		   -message "Use Ctrl-Return for each new goal line." \
@@ -480,7 +481,7 @@ dunnit-goals() {
 		   $=sound)
     [[ $ans == 'Ignore' || $ans == '@TIMEOUT' ]] && exit
 
-    gsed "s/$(print -n '\u2028')/\n/g" <<<$ans | gsed 's/^/GOAL /' >>$dunnit_ledger
+    gsed "s/$(print -n '\u2028')/\n/g" <<<$ans | gsed "s/^/[$(tm)] GOAL /" >>$dunnit_ledger
     terminal-notifier -title 'Dunnit Confirmation' \
 		      -appIcon ~/dunnit/dunnit-icon-purple.png \
 		      -subtitle 'Sounds great!' \
@@ -523,7 +524,7 @@ dunnit-todo() {
 	# Generate a random letter
 	# alpha=(); for c in {A..Z}; alpha+=$c; i=$(( RANDOM % 26 ))
 	# Get highest letter todo
-	if ! ggrep '^([A-Z]) TODO' $dunnit_ledger; then
+	if ! ggrep -E '^\[..:..] TODO \([A-Z]\)' $dunnit_ledger; then
 	    next='A'
 	else
 	    next=$(ggrep 'TODO ' $dunnit_ledger | sort | tail -1 |
@@ -531,7 +532,7 @@ dunnit-todo() {
 		    gtr "0-9A-z" "1-9A-z_")
             # echo "($alpha[i]) TODO $ans" >>$dunnit_ledger
 	fi
-        print "($next) TODO $ans" >>$dunnit_ledger
+        print "[$(tm)] TODO ($next) $ans" >>$dunnit_ledger
 	msg "Captured your TODO in dunnit file: $dunnit_ledger"
     else
 	echo no-op
