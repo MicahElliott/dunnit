@@ -546,7 +546,7 @@ dunnit-blocker() {
                    -title "Dunnit Blocker/Question" \
 		   -subtitle "What are you hung up on?")
     if [[ $ans != '@CLOSED' ]]; then
-        print "BLOCKER $ans" >>$dunnit_ledger
+        print "[$(tm)] BLOCKER $ans" >>$dunnit_ledger
 	msg "Captured your BLOCKER in dunnit file: $dunnit_ledger"
     else
 	echo no-op
@@ -571,11 +571,11 @@ dunnit-showtodos() {
     print '## Weekly Objectives'
     gsed 's/^/- /' $dunnit_objectives
     print '\n## Daily Goals'
-    ggrep 'GOAL' $dunnit_ledger | gsed 's/^GOAL /- /'
+    ggrep 'GOAL' $dunnit_ledger | gsed 's/.* GOAL /- /'
     print '\n## Active Todos'
-    ggrep 'TODO' $dunnit_ledger | gsed 's/^TODO /- /'
+    ggrep 'TODO' $dunnit_ledger | gsed 's/.* TODO /- /'
     print '\n## Blockers/Questions'
-    ggrep 'BLOCKER' $dunnit_ledger | gsed 's/^BLOCKER /- /'
+    ggrep 'BLOCKER' $dunnit_ledger | gsed 's/.* BLOCKER /- /'
 }
 
 dunnit-lunchtime() {
