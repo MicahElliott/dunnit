@@ -304,7 +304,7 @@ dunnit-eod() {
     # TODO Ask to record some more Dunnits now
     # Carry over tomorrow's TODOs
     touch $dunnit_ledger_tomorrow
-    ggrep 'TODO' $dunnit_ledger >>$dunnit_ledger_tomorrow
+    ggrep 'TODO' $dunnit_ledger | gsed -r 's/^\[..:..\] /[05:00] /' >>$dunnit_ledger_tomorrow
     if [[ $ans == 'Finalize' ]]; then
 	if [[ -f $dunnit_summary ]]; then
 	    print "Summary file already exists and may have been finessed already."
@@ -374,10 +374,8 @@ dunnit-eod() {
 			  -timeout 600 \
 			  -appIcon ~/dunnit/dunnit-icon-yellow.png \
 			  -closeLabel 'Skip')
-	    if [[ $ans != 'Skip' ]]; then
-                # TODO multi-bullet for multiline entry
-		ans=$(gsed "s/$(print -n '\u2028')/\n[$(tm)] GOAL /g" <<<$ans)
-		print $ans >>$dunnit_ledger_tomorrow
+	    if ! [[ $ans = 'Skip' || $ans = '@TIMEOUT' ]]; then
+                gsed "s/$(print -n '\u2028')/\n[05:00] GOAL /g" <<<$ans >>$dunnit_ledger_tomorrow
 	    fi
 
 	    set +x
@@ -670,6 +668,7 @@ dunnit-preferences() {
 
 dunnit-standup() {
     msg "Time for standup!"
+    # FIXME Can't seem to open browser from plist
     $dunnit_browser ~/dunnit/reports/$dunnit_yesterday-report.html &
 }
 
