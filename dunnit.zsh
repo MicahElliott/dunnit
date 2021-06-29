@@ -147,19 +147,23 @@ create-summary-file() {
         echo "% $dt\n" >>$dunnit_summary
 	# print -- '<!-- See instructions at end of file. They’ll be automatically removed for you, as will this section. -->\n' >>$dunnit_summary
 	echo "# Overview\n"  >>$dunnit_summary
-	echo "### Sentiment: $sentiment\n"  >>$dunnit_summary
-	echo "SENTIMENT $sentiment"  >>$dunnit_ledger
-	echo '## Summary\n' >>$dunnit_summary
-	# print -- '\n<!-- Write one short paragraph here summarizing the day. -->\n' >>$dunnit_summary
-	print "$summary" >>$dunnit_summary
-	print "SUMMARY $summary" >>$dunnit_ledger
+	if [[ $1 != 'toolazy' ]]; then
+	   echo "### Sentiment: $sentiment\n"  >>$dunnit_summary
+	   echo "SENTIMENT $sentiment"  >>$dunnit_ledger
+	   echo '## Summary\n' >>$dunnit_summary
+	   # print -- '\n<!-- Write one short paragraph here summarizing the day. -->\n' >>$dunnit_summary
+	   print "$summary" >>$dunnit_summary
+	   print "SUMMARY $summary" >>$dunnit_ledger
+	fi
         # print 'XXX' >>$dunnit_summary
 	print '\n## 🥅 Original Goals 🥅\n' >>$dunnit_summary
-	ggrep 'GOAL' $dunnit_ledger | gsed 's/^GOAL/-/' >>$dunnit_summary
+	ggrep 'GOAL' $dunnit_ledger | gsed -r 's/^\[..:..\] GOAL/-/' >>$dunnit_summary
         echo "\n# Accomplishments"  >>$dunnit_summary
 	# print -- '\n<!-- Combine bullets for each section into fewer and add a summary impact description and scores (replace XXX). -->' >>$dunnit_summary
-        echo "\n### Productivity Score: $productivity"  >>$dunnit_summary
-        print "PRODUCTIVITY $productivity"  >>$dunnit_ledger
+	if [[ $1 != 'toolazy' ]]; then
+            print "\n### Productivity Score: $productivity"  >>$dunnit_summary
+            print "[$(tm)] PRODUCTIVITY $productivity"  >>$dunnit_ledger
+	fi
 	sectioned=$(sectionize-ledger)
 	# [[ $? -eq 0 ]] || return 1
         echo $sectioned >>$dunnit_summary
@@ -180,7 +184,7 @@ dunnit-alert() {
 	sound='-sound Glass'
         # Don't pop if recently shown (15m)
 	# OK if empty since will be midnight default
-	stamp=$(ggrep -E '\[[0-9:]+' $dunnit_ledger | sort -n | tail -1 | gsed -r 's/\[([0-9:]+)\] .*/\1/g' 2> /dev/null)
+	stamp=$(ggrep -E '\[[0-9:]+ DONE' $dunnit_ledger | sort -n | tail -1 | gsed -r 's/\[([0-9:]+)\] .*/\1/g' 2> /dev/null)
 	secs_last=$(gdate -d "$stamp" +%s)
 	secs_now=$(gdate +%s)
 	if (( (secs_now - secs_last) / 60 < 15 )); then
@@ -392,7 +396,7 @@ dunnit-eod() {
 	[[ $ans == 'Edit' ]] && dunnit-edit $dunnit_summary
     elif [[ $ans == '@TIMEOUT' || $ans == 'Too lazy today' ]]; then
 	print 'EOD timeout or lazy'
-	create-summary-file
+	create-summary-file toolazy
     fi
     dunnit-report
     dunnit-nighty-on
