@@ -429,12 +429,12 @@ dunnit-weekly() {
 	ans=$(gsed "s/$(print -n '\u2028')/\n/g" <<<$ans)
 	print -- "$ans" >$dunnit_objectives
     else
-	objectives=$(cat $dunnit_objectives)
+	# https://stackoverflow.com/a/1252191/326516
 	ans=$($alerter -appIcon ~/dunnit/dunnit-icon-purple.png \
 	               -timeout 600 \
                        -title "Dunnit Weekly Objectives" \
-                       -message "$objectives" \
-    		       -closeLabel 'Cool cool' \
+                       -message "$(gsed -r ':a;N;$!ba;s/\n/\n— /g' $dunnit_objectives)" \
+		       -closeLabel 'Cool cool' \
 		       -actions 'Edit' \
 		       $=sound)
 	if [[ $ans = 'Edit' ]]; then
@@ -455,17 +455,14 @@ dunnit-goals() {
     touch $dunnit_ledger
     if ggrep -q GOAL $dunnit_ledger; then
 	print 'Already set goals today'
-	goals=$(ggrep 'GOAL ' $dunnit_ledger | gsed 's/GOAL /- /g')
+	goals=$(ggrep 'GOAL ' $dunnit_ledger | gsed -r 's/^\[..:..\] GOAL /— /g')
         terminal-notifier \
 	    -title 'Dunnit Goals' \
 	    -appIcon ~/dunnit/dunnit-icon-red.png \
 	    -subtitle 'Use menu to change: Ledger -> Edit' \
-            -message "GOALS: $goals"
+            -message "$goals"
 	exit
     fi
-    # Carry yesterday's unfinished TODOs, BLOCKERs into today
-    ggrep 'TODO' $dunnit_ledger_yesterday >>$dunnit_ledger
-    ggrep 'BLOCKER' $dunnit_ledger_yesterday >>$dunnit_ledger
     ans=$($alerter -reply \
 		   -appIcon ~/dunnit/dunnit-icon-purple.png \
 	           -timeout 1200 \
@@ -475,15 +472,15 @@ dunnit-goals() {
     		   -closeLabel 'Ignore' \
 		   $=sound)
     [[ $ans == 'Ignore' || $ans == '@TIMEOUT' ]] && exit
+    # Carry yesterday's unfinished TODOs, BLOCKERs into today
+    ggrep 'TODO' $dunnit_ledger_yesterday >>$dunnit_ledger
+    ggrep 'BLOCKER' $dunnit_ledger_yesterday >>$dunnit_ledger
 
     gsed "s/$(print -n '\u2028')/\n/g" <<<$ans | gsed "s/^/[$(tm)] GOAL /" >>$dunnit_ledger
     terminal-notifier -title 'Dunnit Confirmation' \
 		      -appIcon ~/dunnit/dunnit-icon-purple.png \
 		      -subtitle 'Sounds great!' \
 		      -message 'You’re set up for a successful day!'
-
-    # emacsclient --create-frame $dunnit_summary &
-    # [[ -n $EDITOR ]] && $=EDITOR $dunnit_summary  || open -e $dunnit_summary &
     set +x
 }
 
