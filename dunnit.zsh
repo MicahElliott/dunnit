@@ -107,9 +107,10 @@ sectionize-ledger() {
 	print "\n## ${(C)i2} ($item_count)\n"
 	print -- $items
 	stmt=$impact_statements[$gcount]
+	ipair=( ${(s.: .)stmt} )
 	[[ -n $stmt  ]] && {
 	    print "\n> IMPACT-$stmt"
-	    print "IMPACT-$stmt $g" >>$dunnit_ledger
+	    print "IMPACT($ipair[1]) $ipair[2] $g" >>$dunnit_ledger
 	}
         # print '\n> IMPACT(XXX):'
 	# Multiple impacts if many items

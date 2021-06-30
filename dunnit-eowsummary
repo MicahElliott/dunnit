@@ -4,19 +4,25 @@
 
 wk=${1?provide week}
 
-files=( ~/dunnit/log/$yr/${wk}*/*.md )
+files=( ~/dunnit/log/$yr/${wk}*/ledger*.txt )
+
+smz() { gsed -nr "s/\[..:..\] $1 /- /p" $files }
 
 print -- "% $username"
 print -- "% Week $wk\n"
 
 print '## Summaries\n'
-for f in $files; do
-    pcre2grep -hM '## Summary\n\n(.|\n)*?\n\n' $f |
-	gsed -n '3,$p'
-done
+# for f in $files; do
+#     # pcre2grep -hM '## Summary\n\n(.|\n)*?\n\n' $f | gsed -n '3,$p'
+# done
+# gsed -nr 's/\[..:..\] DONE /- /p' $files
+smz DONE
 
-print -- '## Impacts\n'
-ggrep -E -h 'IMPACT\([0-9]\):' ~/dunnit/log/$yr/${wk}*/*.md
+print -- '\n## Impacts\n'
+smz IMPACT
 
 print -- '\n## Sentiments\n'
-gsed -n -r 's/### Sentiment: //p' ~/dunnit/log/$yr/${wk}*/*.md
+smz SENTIMENT
+
+print -- '\n## Productivity\n'
+smz PRODUCTIVITY
