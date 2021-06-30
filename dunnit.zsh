@@ -571,7 +571,7 @@ dunnit-showtodos() {
 
 dunnit-lunchtime() {
     msg 'Starting Lunchtime'
-    goals=$(ggrep GOAL $dunnit_ledger | gsed -r -e 's/^GOAL /- /' -e '1s/^- //')
+    goals=$(ggrep GOAL $dunnit_ledger | gsed -r -e 's/^\[..:..\] GOAL /- /' -e '1s/^- //')
     if [[ -n $goals ]]; then
 	ans=$($alerter -timeout 3000 \
 		       -sound Glass \
