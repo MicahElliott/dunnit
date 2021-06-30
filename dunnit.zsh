@@ -82,13 +82,10 @@ dunnit-editraw() {
     dunnit-edit $dunnit_ledger
 }
 
+# Convert ledger items into presentable bullets by tag (#1234) and style (DONE)
 get-bullets() {
-    local tag=$1
-    ggrep -vE 'GOAL ' $dunnit_ledger | ggrep $tag |
-	gsed -r -e "s/$tag //" -e 's/^/- /' \
-	     -e 's/ #[0-9a-z]+//g' \
-	     -e 's/ \[[0-9:]+\] / /' |
-	gsort
+    local tag=$1 style=$2
+    gsed -rn "s/^\[..:..\] $style (.*) #$tag/\1/p" $dunnit_ledger | gsort
     # FIXME Not enough to sort: blockers should be last, but don't lose orig order of others
 }
 
@@ -102,7 +99,7 @@ sectionize-ledger() {
     integer gcount=1
     for g in $groups; do
 	i2=$(sed 's/#//' <<<$g)
-	items=$(get-bullets $g)
+	items=$(get-bullets $g DONE)
 	integer item_count=$(wc -l <<<$items)
 	print "\n## ${(C)i2} ($item_count)\n"
 	print -- $items
@@ -110,7 +107,7 @@ sectionize-ledger() {
 	ipair=( ${(s.: .)stmt} )
 	[[ -n $stmt  ]] && {
 	    print "\n> IMPACT-$stmt"
-	    print "IMPACT($ipair[1]) $ipair[2] $g" >>$dunnit_ledger
+	    print "[$(tm)] IMPACT($ipair[1]) $ipair[2] $g" >>$dunnit_ledger
 	}
         # print '\n> IMPACT(XXX):'
 	# Multiple impacts if many items
@@ -150,11 +147,11 @@ create-summary-file() {
 	echo "# Overview\n"  >>$dunnit_summary
 	if [[ $1 != 'toolazy' ]]; then
 	   echo "### Sentiment: $sentiment\n"  >>$dunnit_summary
-	   echo "SENTIMENT $sentiment"  >>$dunnit_ledger
+	   echo "[$(tm)] SENTIMENT $sentiment"  >>$dunnit_ledger
 	   echo '## Summary\n' >>$dunnit_summary
 	   # print -- '\n<!-- Write one short paragraph here summarizing the day. -->\n' >>$dunnit_summary
 	   print "$summary" >>$dunnit_summary
-	   print "SUMMARY $summary" >>$dunnit_ledger
+	   print "[$(tm)] SUMMARY $summary" >>$dunnit_ledger
 	fi
         # print 'XXX' >>$dunnit_summary
 	print '\n## 🥅 Original Goals 🥅\n' >>$dunnit_summary
@@ -351,7 +348,7 @@ dunnit-eod() {
 	    for g in $groups; do
 		# Remove first dash so alerter doesn't blow up
 		score=
-		bullets=$(get-bullets $g | gsed -r '1s/^- //')
+		bullets=$(get-bullets $g DONE | gsed -r '1s/^- //')
 		stmt=$(alerter -reply \
 			    -appIcon ~/dunnit/dunnit-icon-yellow.png \
 			    -timeout 600 \
