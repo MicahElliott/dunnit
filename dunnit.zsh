@@ -35,6 +35,8 @@ dunnit_nighty=/tmp/dunnit-nighty
 dunnit_cfg=~/dunnit/config-templates
 dunnit_plists=~/Library/LaunchAgents
 
+dunnit_styles='(TIL|BLOCKER|BLK|MTG|PAIR|MILESTONE|MSN|RETRO|RTO|TODO|GOAL)'
+
 dunnit_dyks=/tmp/dyk-tips.txt
 
 firefox='/Applications/Firefox.app/Contents/MacOS/firefox'
@@ -191,7 +193,7 @@ dunnit-alert() {
 	sound='-sound Glass'
         # Don't pop if recently shown (15m)
 	# OK if empty since will be midnight default
-	stamp=$(ggrep -E '\[[0-9:]+ DONE' $dunnit_ledger | sort -n | tail -1 | gsed -r 's/\[([0-9:]+)\] .*/\1/g' 2> /dev/null)
+	stamp=$(ggrep -E '\[[0-9:]+\] DONE' $dunnit_ledger | sort -n | tail -1 | gsed -r 's/\[([0-9:]+)\] .*/\1/g'  2> /dev/null)
 	secs_last=$(gdate -d "$stamp" +%s)
 	secs_now=$(gdate +%s)
 	if (( (secs_now - secs_last) / 60 < 15 )); then
@@ -216,8 +218,8 @@ dunnit-alert() {
     # plus what's already been used today (should expand to week).
     # Cool thing about alerter is that when you open it to reply, it
     # puts the end of the long text into view, and is scrollable.
-    suggs=( 'TIL' 'BLK'     'MTG' 'MSN'       'RTO' )
-    suggs=( 'TIL' 'BLOCKER' 'MTG' 'MILESTONE' 'RETRO' )
+    suggs=( 'TIL' 'BLK'     'MTG'     'MSN'       'RTO' )
+    suggs=( 'TIL' 'BLOCKER' 'MEETING' 'MILESTONE' 'RETRO' 'PAIR')
     suggs+=( $(ggrep -E -o '#[0-9a-z]+' $dunnit_ledger) )
     suggs=$(print -l $suggs | sort | uniq)
     todos=$(ggrep ' TODO' $dunnit_ledger)
@@ -267,15 +269,16 @@ dunnit-alert() {
 	item=$(ggrep " TODO($ans) " $dunnit_ledger | gsed -r 's/^.* TODO\([A-Z]\) //')
 	[[ -z $item ]] && return 1
 	gsed -i "/ TODO($ans) /d" $dunnit_ledger # now remove the line
-	# FIXME Don't put DONE for cases like MTG
-	print "[$(tm)] DONE $item" >>$dunnit_ledger
+        # Don't put DONE for cases like MTG
+	ggrep -Eq $dunnit_styles $item && style= || style='DONE '
+	print "[$(tm)] $style$item" >>$dunnit_ledger
     else
 	split-unibreaks $ans 'DONE' >>$dunnit_ledger
         # TODO Add #misc tag to any tagless entries
     fi
     msg "Captured your update in dunnit file: $dunnit_ledger"
     if  ! ggrep -q '#' <<<$ans &&
-	    ! ggrep -qE '(TIL|BLOCKER|BLK|MTG|MILESTONE|MSN|RETRO|RTO|TODO|GOAL)' <<<$ans; then
+	    ! ggrep -qE $dunnit_styles <<<$ans; then
 	terminal-notifier -title 'Did you know you can use "tags"?' \
 			  -appIcon ~/dunnit/dunnit-icon-yellow.png \
 			  -subtitle 'They help with categorizing your daily report.' \
