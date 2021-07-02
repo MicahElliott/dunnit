@@ -303,7 +303,7 @@ dunnit-eod() {
     ans=$($alerter -timeout 3600 \
 		   $=sound \
                    -appIcon ~/dunnit/dunnit-icon-yellow.png \
-	           -title "Dunnit Daily Summary" \
+	           -title "Daily Summary" \
 		   -subtitle "You recorded $(ggrep -cE '\[[0-9:]+\]' $dunnit_ledger) Dunnits today." \
 		   -message "Finalize your day’s work (#tags etc)" \
 		   -actions 'Finalize' \
@@ -313,6 +313,7 @@ dunnit-eod() {
     touch $dunnit_ledger_tomorrow
     ggrep 'TODO' $dunnit_ledger | gsed -r 's/^\[..:..\] /[05:00] /' >>$dunnit_ledger_tomorrow
     if [[ $ans == 'Finalize' ]]; then
+	# FIXME Move to top since don't even want to be propted if done manually already
 	if [[ -f $dunnit_summary ]]; then
 	    print "Summary file already exists and may have been finessed already."
 	    print "Will not overwrite."
@@ -324,12 +325,12 @@ dunnit-eod() {
 		alerter -reply \
                   	-timeout 600 \
 			-appIcon ~/dunnit/dunnit-icon-yellow.png \
-                        -title 'Dunnit Wrap-Up (1 of 6)' \
-			-subtitle "Summarize your day briefly." \
+                        -title 'SUMMARIZE (Wrap-Up 1 of 6)' \
+			-subtitle "Your day in a couple sentences." \
 			-closeLabel 'Skip' \
 			-message "Reminder: $groups")
 	    productivity=$(
-		alerter -title 'Dunnit Wrap-Up (2 of 6)' \
+		alerter -title 'PRODUCTIVITY (Wrap-Up 2 of 6)' \
                         -timeout 600 \
 			-appIcon ~/dunnit/dunnit-icon-yellow.png \
 			-message "How productive was your day?" \
@@ -337,7 +338,7 @@ dunnit-eod() {
 			-closeLabel 'Skip' \
 			-dropdownLabel 'Score it!')
 	    sentiment=$(
-		alerter -title 'Dunnit Wrap-Up (3 of 6)' \
+		alerter -title 'SENTIMENT (Wrap-Up 3 of 6)' \
 			-timeout 600 \
 			-appIcon ~/dunnit/dunnit-icon-yellow.png \
 			-message 'What was your sentiment for the day?' \
@@ -357,7 +358,7 @@ dunnit-eod() {
 		stmt=$(alerter -reply \
 			    -appIcon ~/dunnit/dunnit-icon-yellow.png \
 			    -timeout 600 \
-			    -title "Dunnit Wrap-Up: Tag $g" \
+			    -title "Wrap-Up: Tag $g" \
 			    -subtitle "<Impact-score>: <Outcome> of $g?" \
 			    -message "$bullets" \
 			    -closeLabel 'Skip')
@@ -422,7 +423,7 @@ dunnit-weekly() {
         ans=$($alerter -reply \
 		       -appIcon ~/dunnit/dunnit-icon-purple.png \
 	               -timeout 600 \
-                       -title "Dunnit Weekly Objectives" \
+                       -title "WEEKLY Objectives" \
 		       -subtitle "Start your week with a few objectives." \
 		       -message "Use Ctrl-Return for each new objectives line." \
     		       -closeLabel 'Ignore' \
@@ -473,7 +474,7 @@ dunnit-goals() {
     ans=$($alerter -reply \
 		   -appIcon ~/dunnit/dunnit-icon-purple.png \
 	           -timeout 1200 \
-                   -title "Dunnit Daily Goals" \
+                   -title "DAILY Goals" \
 		   -subtitle "Start your day with 3 high-level goals." \
 		   -message "Use Ctrl-Return for each new goal line." \
     		   -closeLabel 'Ignore' \
