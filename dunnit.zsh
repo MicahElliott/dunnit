@@ -66,6 +66,15 @@ msg() { print "[$(tm)] $@" }
 dunnit-nighty-off() { [[ -f $dunnit_nighty ]] && rm $dunnit_nighty }
 dunnit-nighty-on()  { touch $dunnit_nighty }
 
+# Remove weird-ass unicode C-RET line-breaks and trim whitespace
+split-unibreaks() {
+    msg=$1 style=$2 tstamp=${3:-$(tm)}
+    gsed "s/$(print -n '\u2028')/\n/g" <<<$msg |
+	gsed -r -e 's/^ +//' -e 's/ +$//' |
+	gsed "s/^/[$tstamp] $style /" # >>$dunnit_ledger
+}
+# split-unibreaks 'Did something #great\u2028Another thing #decent' DONE '[06:00]'
+
 dunnit-edit() {
     set -x
     print "EDITOR: $EDITOR"
@@ -258,15 +267,11 @@ dunnit-alert() {
 	item=$(ggrep " TODO($ans) " $dunnit_ledger | gsed -r 's/^.* TODO\([A-Z]\) //')
 	[[ -z $item ]] && return 1
 	gsed -i "/ TODO($ans) /d" $dunnit_ledger # now remove the line
+	# FIXME Don't put DONE for cases like MTG
 	print "[$(tm)] DONE $item" >>$dunnit_ledger
     else
-	set -x
-	# Split into multiple entries (lines) if weird newlines
-	ans=$(gsed "s/$(print -n '\u2028')/\n[$(tm)] DONE/g" <<<$ans)
-	# Add timestamp to first entry
-	echo "[$(tm)] DONE $ans" >>$dunnit_ledger
-	# TODO Add #misc tag to any tagless entries
-	set +x
+	split-unibreaks $ans 'DONE' >>$dunnit_ledger
+        # TODO Add #misc tag to any tagless entries
     fi
     msg "Captured your update in dunnit file: $dunnit_ledger"
     if  ! ggrep -q '#' <<<$ans &&
@@ -371,13 +376,14 @@ dunnit-eod() {
                 fi
 	    done
 	    ans=$(alerter -reply \
-			  -title 'Dunnit Wrap-Up (6 of 6)' \
+			  -title 'GOALS (Wrap-Up 6 of 6)' \
 			  -message 'Got any goals for tomorrow yet?' \
 			  -timeout 600 \
 			  -appIcon ~/dunnit/dunnit-icon-yellow.png \
 			  -closeLabel 'Skip')
 	    if ! [[ $ans = 'Skip' || $ans = '@TIMEOUT' ]]; then
-                gsed "s/$(print -n '\u2028')/\n[05:00] GOAL /g" <<<$ans >>$dunnit_ledger_tomorrow
+                # gsed "s/$(print -n '\u2028')/\n[05:00] GOAL /g" <<<$ans >>$dunnit_ledger_tomorrow
+		split-unibreaks $ans 'GOAL' '[05:00]' >>$dunnit_ledger_tomorrow
 	    fi
 
 	    set +x
@@ -426,13 +432,14 @@ dunnit-weekly() {
 	    exit
 	fi
         touch $dunnit_objectives
-	ans=$(gsed "s/$(print -n '\u2028')/\n/g" <<<$ans)
-	print -- "$ans" >$dunnit_objectives
+	# ans=$(gsed "s/$(print -n '\u2028')/\n/g" <<<$ans)
+	# print -- "$ans" >$dunnit_objectives
+	split-unibreaks $ans '' >>$dunnit_objectives
     else
 	# https://stackoverflow.com/a/1252191/326516
 	ans=$($alerter -appIcon ~/dunnit/dunnit-icon-purple.png \
 	               -timeout 600 \
-                       -title "Dunnit Weekly Objectives" \
+                       -title "WEEKLY Objectives" \
                        -message "$(gsed -r ':a;N;$!ba;s/\n/\n— /g' $dunnit_objectives)" \
 		       -closeLabel 'Cool cool' \
 		       -actions 'Edit' \
