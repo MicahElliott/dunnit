@@ -33,7 +33,7 @@ jobs:
 
       - name: Install Linux Fyne dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install --yes libgl1-mesa-dev libwayland-dev xorg-dev
+        run: sudo apt-get update && sudo apt-get install --yes libgl1-mesa-dev libwayland-dev libxkbcommon-dev xorg-dev
 
       - name: Install Windows C compiler
         if: runner.os == 'Windows'
