@@ -70,7 +70,7 @@ jobs:
           fyne package -os windows -name Dunnit -icon Icon.png -appID com.micahelliott.dunnit -appVersion $appVersion -release
           Compress-Archive -Path Dunnit.exe -DestinationPath "${{ matrix.artifact }}"
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.artifact }}
@@ -81,7 +81,7 @@ jobs:
     needs: package
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           path: release-assets
           merge-multiple: true
