@@ -29,14 +29,14 @@ and much smaller in scope.
 Early and rough. The core loop (record an entry, browse today's
 entries, edit the raw ledger, see goals) works. The scheduled hourly
 popup and day-start/day-end prompts are not yet wired up — see
-`dunnit/sched.go` for the scaffolding.
+`dun/sched.go` for the scaffolding.
 
 ## Building & Running
 
 Requires Go 1.23+.
 
 ```sh
-make build   # -> ./dunnit
+make build   # -> ./dun
 make run     # build + run directly (shows in terminal, generic icon)
 make vet
 ```
@@ -65,6 +65,14 @@ native Linux, macOS, and Windows packages on GitHub-hosted runners and
 publishes all three artifacts to a GitHub Release. GoReleaser is not required;
 the workflow uses Fyne's CLI directly so the native cgo and GUI toolchains
 remain visible in the build jobs.
+
+The macOS workflow signs and notarizes the app before publishing it. One time,
+configure these GitHub Actions secrets: `APPLE_CERTIFICATE_P12_BASE64` (a
+base64-encoded Developer ID Application certificate),
+`APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`,
+`APPLE_TEAM_ID`, and `APPLE_APP_PASSWORD` (an Apple app-specific password for
+notarytool). After that, each release only requires pushing a new `v*` tag;
+the workflow performs the signing, notarization, and packaging automatically.
 
 To validate and publish a release tag in one step, after committing your
 changes run:

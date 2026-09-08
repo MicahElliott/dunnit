@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"gsd/dunnit"
+	"dun/dun"
 	"os"
 )
 
@@ -22,16 +22,16 @@ func main() {
 
 	fmt.Println("Starting Dunnit")
 
-	a := dunnit.MakeUI()
-	w := dunnit.BuildMainWindow(*a)
-	s := dunnit.Schedule(*a, w)
+	a := dun.MakeUI()
+	w := dun.BuildMainWindow(*a)
+	s := dun.Schedule(*a, w)
 	defer s.Shutdown()
 
 	(*a).Run()
 }
 
 // runCLI validates args and, if valid, appends the message to today's
-// ledger exactly as Daybook's Save button would (dunnit.RecordActivity),
+// ledger exactly as Daybook's Save button would (dun.RecordActivity),
 // then returns a process exit code (0 on success, 1 on bad usage).
 // Kept deliberately dumb/tiny per design: no optional flags, just
 // "were exactly 2 args given, does the category exist" -- everything
@@ -43,11 +43,11 @@ func runCLI(args []string) int {
 		return 1
 	}
 	category, message := args[0], args[1]
-	if !dunnit.CategoryExists(category) {
+	if !dun.CategoryExists(category) {
 		fmt.Fprintf(os.Stderr, "dunnit: unknown category %q\n", category)
 		fmt.Fprintln(os.Stderr, "usage: dunnit CATEGORY 'message to record'")
 		return 1
 	}
-	dunnit.RecordActivity(message, category)
+	dun.RecordActivity(message, category)
 	return 0
 }

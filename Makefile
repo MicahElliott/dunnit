@@ -1,8 +1,8 @@
-.PHONY: run build package clean vet release tag-release dunnit
+.PHONY: run build package clean vet release tag-release dun
 
 TARGET_OS ?= $(shell go env GOOS)
 
-build: dunnit
+build: dun
 
 # dunnit is deliberately unconditional (.PHONY, no file-based
 # prerequisites) rather than depending on `$(shell find . -name
@@ -17,8 +17,8 @@ build: dunnit
 # already near-instant when nothing changed (its own content-hash
 # based cache), so always invoking it here costs essentially nothing
 # and removes the whole class of tie/staleness bugs.
-dunnit:
-	go build -o dunnit .
+dun:
+	go build -trimpath -ldflags "-s -w" -o dunnit .
 
 run: build
 	./dunnit

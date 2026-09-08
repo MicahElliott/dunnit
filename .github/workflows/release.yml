@@ -57,10 +57,53 @@ jobs:
 
       - name: Package macOS
         if: runner.os == 'macOS'
+        env:
+          APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         run: |
+          set -euo pipefail
+          test -n "$APPLE_CERTIFICATE_P12_BASE64" || { echo "Missing APPLE_CERTIFICATE_P12_BASE64"; exit 1; }
+          test -n "$APPLE_CERTIFICATE_PASSWORD" || { echo "Missing APPLE_CERTIFICATE_PASSWORD"; exit 1; }
+          test -n "$APPLE_SIGNING_IDENTITY" || { echo "Missing APPLE_SIGNING_IDENTITY"; exit 1; }
+          test -n "$APPLE_ID" || { echo "Missing APPLE_ID"; exit 1; }
+          test -n "$APPLE_TEAM_ID" || { echo "Missing APPLE_TEAM_ID"; exit 1; }
+          test -n "$APPLE_APP_PASSWORD" || { echo "Missing APPLE_APP_PASSWORD"; exit 1; }
+
           APP_VERSION="${GITHUB_REF_NAME#v}"
           fyne package -os darwin -name Dunnit -icon Icon.png -appVersion "$APP_VERSION" -release
-          zip -r -X "${{ matrix.artifact }}" Dunnit.app
+
+          KEYCHAIN_PATH="$RUNNER_TEMP/dunnit-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 8)"
+          CERTIFICATE_PATH="$RUNNER_TEMP/dunnit-signing.p12"
+          echo "$APPLE_CERTIFICATE_P12_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERTIFICATE_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH"
+          security default-keychain -s "$KEYCHAIN_PATH"
+          codesign --force --deep --options runtime --timestamp --sign "$APPLE_SIGNING_IDENTITY" Dunnit.app
+          codesign --verify --deep --strict --verbose=2 Dunnit.app
+
+          NOTARIZE_ZIP="$RUNNER_TEMP/Dunnit-notarize.zip"
+          ditto -c -k --keepParent Dunnit.app "$NOTARIZE_ZIP"
+          xcrun notarytool submit "$NOTARIZE_ZIP" \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --wait
+          xcrun stapler staple Dunnit.app
+          xcrun stapler validate Dunnit.app
+          ditto -c -k --keepParent Dunnit.app "${{ matrix.artifact }}"
+
+      - name: Clean up signing keychain
+        if: always() && runner.os == 'macOS'
+        run: |
+          security delete-keychain "$RUNNER_TEMP/dunnit-signing.keychain-db" || true
 
       - name: Package Windows
         if: runner.os == 'Windows'

@@ -1,4 +1,4 @@
-module gsd
+module dun
 
 go 1.23.7
 
