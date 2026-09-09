@@ -2,6 +2,7 @@ package dun
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -20,6 +21,11 @@ func SetThings() {
 func showSettings(a fyne.App) {
 	cfg := LoadConfig()
 	w := a.NewWindow("Dunnit Settings")
+	dunnitDir := widget.NewEntry()
+	dunnitDir.SetText(cfg.DunnitDir)
+	dunnitDir.SetPlaceHolder("Leave blank for default")
+	gitSync := widget.NewCheck("", nil)
+	gitSync.SetChecked(cfg.GitSyncEnabled)
 
 	dayStart := widget.NewEntry()
 	dayStart.SetText(cfg.DayStart)
@@ -85,6 +91,8 @@ func showSettings(a fyne.App) {
 	excludeTagsEntry.SetPlaceHolder("#home, #personal, #buy, #shop")
 
 	form := widget.NewForm(
+		widget.NewFormItem("Dunnit Data Directory", dunnitDir),
+		widget.NewFormItem("Enable Git Sync", gitSync),
 		widget.NewFormItem("Day Start (HH:MM)", dayStart),
 		widget.NewFormItem("Day End (HH:MM)", dayEnd),
 		widget.NewFormItem("Nudge Interval (minutes)", nudgeInterval),
@@ -146,6 +154,8 @@ func showSettings(a fyne.App) {
 		// so fields not represented in this form (e.g.
 		// RecurringMeetings, FR-15) aren't silently wiped out on save.
 		newCfg := cfg
+		newCfg.DunnitDir = strings.TrimSpace(dunnitDir.Text)
+		newCfg.GitSyncEnabled = gitSync.Checked
 		newCfg.DayStart = dayStart.Text
 		newCfg.DayEnd = dayEnd.Text
 		newCfg.NudgeIntervalMinutes = minutes
@@ -177,6 +187,9 @@ func showSettings(a fyne.App) {
 		if err := writeConfig(newCfg); err != nil {
 			dialog.ShowError(err, w)
 			return
+		}
+		if os.Getenv("DUNNIT_DIR") == "" && os.Getenv("DUNZO_DIR") == "" {
+			configuredDunnitDir = newCfg.DunnitDir
 		}
 		RebuildTrayMenu()
 		w.Close()

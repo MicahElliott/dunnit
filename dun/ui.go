@@ -1163,6 +1163,15 @@ func buildTrayMenu(a fyne.App, w4 fyne.Window) *fyne.Menu {
 	)
 	ledgerItem := fyne.NewMenuItem("Ledger", nil)
 	ledgerItem.ChildMenu = ledgerMenu
+	var syncItem *fyne.MenuItem
+	if cfg.GitSyncEnabled {
+		syncMenu := fyne.NewMenu("Sync",
+			fyne.NewMenuItem("Push", func() { runGitSyncAction(a, "push") }),
+			fyne.NewMenuItem("Pull", func() { runGitSyncAction(a, "pull") }),
+		)
+		syncItem = fyne.NewMenuItem("Sync", nil)
+		syncItem.ChildMenu = syncMenu
+	}
 
 	snoozeMenu := fyne.NewMenu("Snooze",
 		fyne.NewMenuItem("15 min", func() { Snooze(15 * time.Minute) }),
@@ -1207,6 +1216,7 @@ func buildTrayMenu(a fyne.App, w4 fyne.Window) *fyne.Menu {
 		meetingsItem,
 		reportsItem,
 		ledgerItem,
+		syncItem,
 		fyne.NewMenuItemSeparator(),
 		fyne.NewMenuItem("Help...", func() { showHelp(a) }),
 		fyne.NewMenuItem("Settings...", func() { showSettings(a) }),

@@ -13,6 +13,13 @@ import (
 // config-example.zsh (minus dunnits_dir, which is now just DunnitDir()
 // itself -- everything dunnit owns lives under one root directory).
 type Config struct {
+	// DunnitDir is the directory containing ledgers and related data. The
+	// DUNNIT_DIR environment variable still takes precedence.
+	DunnitDir string `toml:"dunnit_dir"`
+
+	// GitSyncEnabled exposes the optional system-git Push/Pull menu items.
+	GitSyncEnabled bool `toml:"git_sync_enabled"`
+
 	// DayStart/DayEnd mark roughly when your working day runs, as
 	// "HH:MM" 24-hour strings. Used to decide whether hourly popups
 	// should fire at all.
@@ -236,12 +243,24 @@ func DunnitDir() string {
 	if dir := os.Getenv("DUNZO_DIR"); dir != "" {
 		return dir
 	}
+	if dir := configuredDunnitDir; dir != "" {
+		return dir
+	}
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".config", "dunnit")
 }
 
+var configuredDunnitDir string
+
 func configPath() string {
-	return filepath.Join(DunnitDir(), "config.toml")
+	home, _ := os.UserHomeDir()
+	root := filepath.Join(home, ".config", "dunnit")
+	if dir := os.Getenv("DUNNIT_DIR"); dir != "" {
+		root = dir
+	} else if dir := os.Getenv("DUNZO_DIR"); dir != "" {
+		root = dir
+	}
+	return filepath.Join(root, "config.toml")
 }
 
 // LoadConfig reads config.toml, creating it with defaults on first run
@@ -264,6 +283,9 @@ func LoadConfig() Config {
 	if _, err := toml.DecodeFile(path, &cfg); err != nil {
 		log.Println("Error reading config, using defaults:", err)
 		return defaultConfig()
+	}
+	if os.Getenv("DUNNIT_DIR") == "" && os.Getenv("DUNZO_DIR") == "" && cfg.DunnitDir != "" {
+		configuredDunnitDir = cfg.DunnitDir
 	}
 	return cfg
 }
