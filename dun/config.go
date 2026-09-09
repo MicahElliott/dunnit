@@ -238,11 +238,6 @@ func DunnitDir() string {
 	if dir := os.Getenv("DUNNIT_DIR"); dir != "" {
 		return dir
 	}
-	// Keep existing installations working while users migrate their
-	// environment variable to the new product name.
-	if dir := os.Getenv("DUNZO_DIR"); dir != "" {
-		return dir
-	}
 	if dir := configuredDunnitDir; dir != "" {
 		return dir
 	}
@@ -256,8 +251,6 @@ func configPath() string {
 	home, _ := os.UserHomeDir()
 	root := filepath.Join(home, ".config", "dunnit")
 	if dir := os.Getenv("DUNNIT_DIR"); dir != "" {
-		root = dir
-	} else if dir := os.Getenv("DUNZO_DIR"); dir != "" {
 		root = dir
 	}
 	return filepath.Join(root, "config.toml")

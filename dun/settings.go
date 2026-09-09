@@ -188,7 +188,7 @@ func showSettings(a fyne.App) {
 			dialog.ShowError(err, w)
 			return
 		}
-		if os.Getenv("DUNNIT_DIR") == "" && os.Getenv("DUNZO_DIR") == "" {
+		if os.Getenv("DUNNIT_DIR") == "" {
 			configuredDunnitDir = newCfg.DunnitDir
 		}
 		RebuildTrayMenu()

@@ -1198,7 +1198,7 @@ func buildTrayMenu(a fyne.App, w4 fyne.Window) *fyne.Menu {
 	// Review, Snooze) stay top-level and un-buried; everything else
 	// groups into a submenu by domain (Meetings/Reports/Ledger)
 	// rather than by FR number or chronology.
-	m = fyne.NewMenu("Dunnit",
+	menuItems := []*fyne.MenuItem{
 		fyne.NewMenuItem("Show", func() {
 			if trayRefreshAll != nil {
 				trayRefreshAll()
@@ -1216,11 +1216,17 @@ func buildTrayMenu(a fyne.App, w4 fyne.Window) *fyne.Menu {
 		meetingsItem,
 		reportsItem,
 		ledgerItem,
-		syncItem,
 		fyne.NewMenuItemSeparator(),
 		fyne.NewMenuItem("Help...", func() { showHelp(a) }),
 		fyne.NewMenuItem("Settings...", func() { showSettings(a) }),
-	)
+	}
+	if syncItem != nil {
+		prefix := append([]*fyne.MenuItem{}, menuItems[:len(menuItems)-3]...)
+		suffix := append([]*fyne.MenuItem{}, menuItems[len(menuItems)-3:]...)
+		menuItems = append(prefix, syncItem)
+		menuItems = append(menuItems, suffix...)
+	}
+	m = fyne.NewMenu("Dunnit", menuItems...)
 	return m
 }
 
