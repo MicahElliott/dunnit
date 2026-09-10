@@ -60,6 +60,15 @@ func convertedSuffix(category string) string {
 	return " (via " + category + ")"
 }
 
+// resolutionMatches reports whether resolvedText identifies sourceText.
+// DONE entries may inflect the source item's leading verb for display
+// (for example, "write report" becomes "wrote report"), while SOMEDAY
+// and DISCARDED entries retain the original text.
+func resolutionMatches(sourceText, resolvedText string) bool {
+	return resolvedText == sourceText ||
+		resolvedText == PastTenseLeadingWord(sourceText)
+}
+
 // parseLedgerLine splits a ledger line "[HH:MM:SS] CATEGORY text"
 // into category and text. Returns ok=false if the line doesn't look
 // like a well-formed ledger entry.
@@ -107,7 +116,17 @@ func parseOpenItems(lines []string) []OpenItem {
 
 	var result []OpenItem
 	for _, item := range open {
-		if !resolved[item.Category+"\x00"+item.Text] {
+		isResolved := resolved[item.Category+"\x00"+item.Text]
+		if !isResolved {
+			for resolvedText := range resolved {
+				parts := strings.SplitN(resolvedText, "\x00", 2)
+				if len(parts) == 2 && parts[0] == item.Category && resolutionMatches(item.Text, parts[1]) {
+					isResolved = true
+					break
+				}
+			}
+		}
+		if !isResolved {
 			result = append(result, item)
 		}
 	}

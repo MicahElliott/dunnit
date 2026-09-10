@@ -22,3 +22,17 @@ func TestParseOpenItems(t *testing.T) {
 		t.Errorf("unexpected open[1]: %+v", open[1])
 	}
 }
+
+func TestParseOpenItems_InflectedDoneResolvesSource(t *testing.T) {
+	lines := []string{
+		"[08:00:00] TODO write report",
+		"[08:05:00] DONE wrote report (via TODO)",
+		"[09:00:00] TODO fix the login bug",
+		"[09:05:00] DONE fixed the login bug (via TODO)",
+	}
+
+	open := parseOpenItems(lines)
+	if len(open) != 0 {
+		t.Fatalf("expected inflected DONE entries to resolve TODOs, got %+v", open)
+	}
+}
