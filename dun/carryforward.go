@@ -74,6 +74,7 @@ func priorOpenItems() (items []OpenItem, sinceDates []time.Time) {
 		cat, text string
 	}
 	resolved := make(map[key]bool)
+	emitted := make(map[key]bool)
 	var openEntries []LedgerEntry
 
 	for _, e := range entries {
@@ -92,6 +93,7 @@ func priorOpenItems() (items []OpenItem, sinceDates []time.Time) {
 					orig := strings.TrimSuffix(e.Text, suffix)
 					orig = stripCarryForwardSince(orig)
 					resolved[key{srcCat, orig}] = true
+					resolved[key{srcCat, PastTenseLeadingWord(orig)}] = true
 				}
 			}
 			continue
@@ -112,6 +114,13 @@ func priorOpenItems() (items []OpenItem, sinceDates []time.Time) {
 		if resolved[key{e.Category, strippedText}] {
 			continue
 		}
+		// A carried item appears once per day in the historical scan.
+		// Keep only the oldest occurrence so repeated carry-forward runs
+		// cannot multiply the same item in today's ledger.
+		if emitted[key{e.Category, strippedText}] {
+			continue
+		}
+		emitted[key{e.Category, strippedText}] = true
 		items = append(items, OpenItem{Category: e.Category, Text: strippedText})
 		sinceDates = append(sinceDates, staleDateFor(e.Text, e.Date))
 	}
@@ -153,8 +162,22 @@ func runCarryForwardIfNeeded() {
 	}
 
 	items, sinceDates := priorOpenItems()
+	// Also protect against a missing/stale LastCarryForwardDate marker:
+	// never append a carry-forward item already present in today's file.
+	todayKeys := make(map[string]bool)
+	for _, line := range readLedgerLines() {
+		cat, text, ok := parseLedgerLine(line)
+		if ok && isOpenTrackedCategory(cat) {
+			todayKeys[cat+"\x00"+stripCarryForwardSince(text)] = true
+		}
+	}
 	for i, item := range items {
+		key := item.Category + "\x00" + item.Text
+		if todayKeys[key] {
+			continue
+		}
 		recordActivity(item.Text+carryForwardSinceSuffix(sinceDates[i]), item.Category)
+		todayKeys[key] = true
 	}
 }
 

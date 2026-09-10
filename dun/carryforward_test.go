@@ -52,6 +52,36 @@ func TestRunCarryForwardIfNeeded_SkipsResolvedItem(t *testing.T) {
 	}
 }
 
+func TestRunCarryForwardIfNeeded_DeduplicatesHistoricalAndTodayItems(t *testing.T) {
+	withTempDunnitDir(t)
+
+	yesterday := time.Now().AddDate(0, 0, -1)
+	writeLedgerLinesForDate(t, yesterday, []string{
+		"[09:00:00] TODO repeated task (since 2026-09-07)",
+		"[09:01:00] TODO repeated task (since 2026-09-07)",
+	})
+	InvalidateLedgerCaches()
+
+	runCarryForwardIfNeeded()
+	runCarryForwardIfNeeded()
+
+	lines := readLedgerLines()
+	if len(lines) != 1 {
+		t.Fatalf("expected one deduplicated carry-forward line, got %d: %v", len(lines), lines)
+	}
+
+	// A stale marker must not make a subsequent carry-forward append it again.
+	cfg := LoadConfig()
+	cfg.LastCarryForwardDate = ""
+	if err := writeConfig(cfg); err != nil {
+		t.Fatal(err)
+	}
+	runCarryForwardIfNeeded()
+	if lines = readLedgerLines(); len(lines) != 1 {
+		t.Fatalf("expected existing today's item to suppress duplicate, got %d: %v", len(lines), lines)
+	}
+}
+
 func TestRunCarryForwardIfNeeded_IdempotentPerDay(t *testing.T) {
 	withTempDunnitDir(t)
 

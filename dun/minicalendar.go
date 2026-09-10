@@ -44,6 +44,7 @@ type RecurringMeeting struct {
 	Time          string `toml:"time"`
 	IntervalWeeks int    `toml:"interval_weeks"`
 	AnchorDate    string `toml:"anchor_date"`
+	DayOfMonth    int    `toml:"day_of_month"`
 	WeekendPolicy string `toml:"weekend_policy"` // "include" (default) or "skip" -- daily only
 }
 
@@ -52,7 +53,7 @@ type RecurringMeeting struct {
 // every-N-weeks interval); "Daily" fires every day (or every weekday,
 // per WeekendPolicy), replacing what used to require 5 separate
 // weekly rows (one per weekday) for something like a daily standup.
-var meetingCadenceOptions = []string{"Weekly", "Daily"}
+var meetingCadenceOptions = []string{"daily", "weekly", "biweekly-odd", "biweekly-even", "monthly", "quarterly"}
 
 // dowNames indexes by time.Weekday (0=Sunday..6=Saturday).
 var dowNames = []string{"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}
@@ -77,6 +78,8 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 				if m.WeekendPolicy == "skip" {
 					detail += " (weekdays only)"
 				}
+			} else if m.Cadence == "monthly" || m.Cadence == "quarterly" {
+				detail = m.Cadence + " day " + strconv.Itoa(m.DayOfMonth) + " " + m.Time
 			} else {
 				interval := m.IntervalWeeks
 				if interval <= 0 {
@@ -104,7 +107,7 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 	tagSuggestions := tagEntry.SuggestionBox()
 
 	cadenceSelect := widget.NewSelect(meetingCadenceOptions, nil)
-	cadenceSelect.SetSelected("Weekly")
+	cadenceSelect.SetSelected("weekly")
 
 	dowSelect := widget.NewSelect(dowNames, nil)
 	dowSelect.SetSelected(dowNames[time.Monday])
@@ -131,9 +134,14 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 	intervalWrapper := container.NewGridWrap(fyne.NewSize(50, intervalEntry.MinSize().Height), intervalEntry)
 	intervalLabel := widget.NewLabel("every")
 	weekLabel := widget.NewLabel("week(s)")
+	domEntry := widget.NewEntry()
+	domEntry.SetPlaceHolder("day 1-31")
+	domWrapper := container.NewGridWrap(fyne.NewSize(70, domEntry.MinSize().Height), domEntry)
+	domWrapper.Hide()
 
 	cadenceSelect.OnChanged = func(c string) {
-		daily := c == "Daily"
+		daily := c == "daily"
+		monthly := c == "monthly" || c == "quarterly"
 		if daily {
 			dowSelect.Hide()
 			intervalLabel.Hide()
@@ -141,11 +149,23 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 			weekLabel.Hide()
 			weekendSelect.Show()
 		} else {
-			dowSelect.Show()
-			intervalLabel.Show()
-			intervalWrapper.Show()
-			weekLabel.Show()
 			weekendSelect.Hide()
+			if monthly {
+				dowSelect.Hide()
+				domWrapper.Show()
+			} else {
+				dowSelect.Show()
+				domWrapper.Hide()
+			}
+			if monthly || c == "biweekly-odd" || c == "biweekly-even" {
+				intervalLabel.Hide()
+				intervalWrapper.Hide()
+				weekLabel.Hide()
+			} else {
+				intervalLabel.Show()
+				intervalWrapper.Show()
+				weekLabel.Show()
+			}
 		}
 	}
 
@@ -167,7 +187,7 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 			dialog.ShowError(errors.New("time must be HH:MM (24-hour)"), parent)
 			return
 		}
-		if cadenceSelect.Selected == "Daily" {
+		if cadenceSelect.Selected == "daily" {
 			weekendPolicy := ""
 			if weekendSelect.Selected == weekendPolicyOptions[1] {
 				weekendPolicy = "skip"
@@ -184,6 +204,20 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 			timeEntry.SetText("")
 			return
 		}
+		if cadenceSelect.Selected == "monthly" || cadenceSelect.Selected == "quarterly" {
+			day, err := strconv.Atoi(strings.TrimSpace(domEntry.Text))
+			if err != nil || day < 1 || day > 31 {
+				dialog.ShowError(errors.New("day of month must be 1-31"), parent)
+				return
+			}
+			meetings = append(meetings, RecurringMeeting{Tag: tag, Cadence: cadenceSelect.Selected, Time: timeEntry.Text, DayOfMonth: day, AnchorDate: time.Now().Format("2006-01-02")})
+			saveAll()
+			list.Refresh()
+			tagEntry.SetText("")
+			timeEntry.SetText("")
+			domEntry.SetText("")
+			return
+		}
 		interval, err := strconv.Atoi(strings.TrimSpace(intervalEntry.Text))
 		if err != nil || interval <= 0 {
 			dialog.ShowError(errors.New("every N weeks must be a positive number"), parent)
@@ -197,7 +231,7 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 		}
 		meetings = append(meetings, RecurringMeeting{
 			Tag:           tag,
-			Cadence:       "weekly",
+			Cadence:       cadenceSelect.Selected,
 			DOW:           dow,
 			Time:          timeEntry.Text,
 			IntervalWeeks: interval,
@@ -228,14 +262,14 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 			widget.NewRichTextFromMarkdown("*Use these tags throughout your weeks any time a meeting topic thought comes to mind. They\u2019ll be collected and presented to you just before your meeting starts.*"),
 			tagEntry,
 			tagSuggestions,
-			container.NewHBox(cadenceSelect, dowSelect, timeWrapper, intervalLabel, intervalWrapper, weekLabel, weekendSelect, addBtn),
+			container.NewHBox(cadenceSelect, dowSelect, domWrapper, timeWrapper, intervalLabel, intervalWrapper, weekLabel, weekendSelect, addBtn),
 		),
 		deleteBtn,
 		nil, nil,
 		list,
 	)
 
-	w := a.NewWindow("Recurring Meetings")
+	w := a.NewWindow("Dunnit: Recurring Meetings")
 	w.SetContent(windowPad(content))
 	w.Resize(fyne.NewSize(560, 420))
 	w.Show()
@@ -263,6 +297,21 @@ func nextOccurrence(m RecurringMeeting, now time.Time) time.Time {
 		}
 		return candidate
 	}
+	if m.Cadence == "monthly" || m.Cadence == "quarterly" {
+		day := m.DayOfMonth
+		if day < 1 {
+			day = 1
+		}
+		monthStep := 1
+		if m.Cadence == "quarterly" {
+			monthStep = 3
+		}
+		candidate := time.Date(now.Year(), now.Month(), day, hh, mm, 0, 0, now.Location())
+		if !candidate.After(now) {
+			candidate = candidate.AddDate(0, monthStep, 0)
+		}
+		return candidate
+	}
 
 	interval := m.IntervalWeeks
 	if interval <= 0 {
@@ -275,6 +324,16 @@ func nextOccurrence(m RecurringMeeting, now time.Time) time.Time {
 		candidate = candidate.AddDate(0, 0, 7)
 	}
 
+	if m.Cadence == "biweekly-odd" || m.Cadence == "biweekly-even" {
+		for {
+			_, week := candidate.ISOWeek()
+			odd := week%2 == 1
+			if (m.Cadence == "biweekly-odd" && odd) || (m.Cadence == "biweekly-even" && !odd) {
+				return candidate
+			}
+			candidate = candidate.AddDate(0, 0, 7)
+		}
+	}
 	if interval == 1 {
 		return candidate
 	}

@@ -9,6 +9,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -24,6 +25,17 @@ func showSettings(a fyne.App) {
 	dunnitDir := widget.NewEntry()
 	dunnitDir.SetText(cfg.DunnitDir)
 	dunnitDir.SetPlaceHolder("Leave blank for default")
+	browseDir := widget.NewButtonWithIcon("", theme.FolderOpenIcon(), func() {
+		dialog.ShowFolderOpen(func(uri fyne.ListableURI, err error) {
+			if err != nil {
+				dialog.ShowError(err, w)
+				return
+			}
+			if uri != nil {
+				dunnitDir.SetText(uri.Path())
+			}
+		}, w)
+	})
 	gitSync := widget.NewCheck("", nil)
 	gitSync.SetChecked(cfg.GitSyncEnabled)
 
@@ -91,7 +103,7 @@ func showSettings(a fyne.App) {
 	excludeTagsEntry.SetPlaceHolder("#home, #personal, #buy, #shop")
 
 	form := widget.NewForm(
-		widget.NewFormItem("Dunnit Data Directory", dunnitDir),
+		widget.NewFormItem("Dunnit Data Directory", container.NewBorder(nil, nil, nil, browseDir, dunnitDir)),
 		widget.NewFormItem("Enable Git Sync", gitSync),
 		widget.NewFormItem("Day Start (HH:MM)", dayStart),
 		widget.NewFormItem("Day End (HH:MM)", dayEnd),
@@ -139,7 +151,7 @@ func showSettings(a fyne.App) {
 	}
 	periodForm := widget.NewForm(periodItems...)
 
-	form.OnSubmit = func() {
+	saveSettings := func() {
 		minutes, err := strconv.Atoi(nudgeInterval.Text)
 		if err != nil {
 			dialog.ShowError(fmt.Errorf("Nudge Interval must be a number: %w", err), w)
@@ -194,7 +206,7 @@ func showSettings(a fyne.App) {
 		RebuildTrayMenu()
 		w.Close()
 	}
-	form.SubmitText = "Save"
+	form.OnSubmit = nil
 
 	// Recurring Meetings (FR-15) is its own dialog/config section, but
 	// Settings is a natural place to also reach it from -- both are
@@ -207,12 +219,14 @@ func showSettings(a fyne.App) {
 		showRecurringItemsDialog(a, w)
 	})
 
-	w.SetContent(windowPad(container.NewVScroll(container.NewVBox(form,
+	saveButton := widget.NewButton("Save", saveSettings)
+	content := container.NewVScroll(container.NewVBox(form,
 		widget.NewLabelWithStyle("Kickoff / Review", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		periodForm,
 		widget.NewLabelWithStyle("Faves (Daybook picker's default bucket)", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		favesGroup,
-		recurringMeetingsBtn, recurringItemsBtn))))
+		recurringMeetingsBtn, recurringItemsBtn))
+	w.SetContent(container.NewBorder(nil, container.NewPadded(saveButton), nil, nil, windowPad(content)))
 	w.Resize(fyne.NewSize(420, 620))
 	w.Show()
 }
