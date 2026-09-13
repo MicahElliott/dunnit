@@ -120,3 +120,19 @@ Manually inspect the Daybook UI for a TODO row, click Start, verify it moves to 
 - Time aggregation uses explicit `@Nm` values only; there is no inferred elapsed-time calculation in this change.
 - No historical migration is required for ONGOING.
 - The plan is intentionally scoped to the Go/Fyne application and its category/workflow documentation; no changes are needed in the separate personal data repository.
+
+## Session closeout — 2026-09-13
+
+The DOING implementation and initial handoff were committed as `86c5304` (`Add TODO to DOING lifecycle tracking`). This closeout appends the final verification and remaining migration decision.
+
+Verification completed with the persistent cache `GOCACHE=/home/mde/tmp/codex-go-cache/dunzo`:
+
+- `make build` passes on a warm cache.
+- `make vet` passes on a warm cache.
+- `env -u DUNNIT_DIR go test ./...` passes.
+
+The first build using the new cache took about 380 seconds because it compiled the Fyne/cgo dependency graph from scratch. Subsequent build and vet runs are immediate, so this is no longer an active issue.
+
+With `DUNNIT_DIR=/home/mde/proj/mydunnits`, `TestPathResolutionAgainstMigratedData` fails because the test expects the new layout (`2021/May/w20`) while the historical data still uses the legacy layout (`2021/w20-May`). Newer data already uses the new layout. No changes were made to the separate `mydunnits` repository.
+
+Next step: decide whether to migrate the historical `mydunnits` directories or make the live-data test explicitly opt-in. The safe normal test command while that decision is pending is `env -u DUNNIT_DIR GOCACHE=/home/mde/tmp/codex-go-cache/dunzo go test ./...`.
