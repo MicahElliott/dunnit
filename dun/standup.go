@@ -16,7 +16,7 @@ import (
 // standup export (FR-17) -- everything from the "End" and "Hilite"
 // groups (day-to-day capture/endpoints, plus freestanding notable-
 // event markers -- see docs/category-taxonomy.md), except:
-//   - ONGOING: purely Ditto's internal rewrite marker, never a real
+//   - legacy ONGOING: historical Ditto marker, never a current
 //     "what I did" item.
 //   - EODOnly categories (SUMMARY/PRODUCTIVITY/MEETING_HOURS): day-
 //     level wrap-up meta-notes, not standup-worthy activity of their
@@ -38,7 +38,7 @@ func buildStandupCategories() map[string]bool {
 		}
 	}
 	for _, c := range Categories {
-		if c.EODOnly || c.Code == "ONGOING" {
+		if c.EODOnly || c.Code == legacyOngoingCategory {
 			delete(out, c.Code)
 		}
 	}
@@ -185,7 +185,7 @@ func formatStandup(lines []string) string {
 // feedback that the prior framing didn't read as a real standup.
 // "What will you do today" has no dedicated data source of its own
 // (gatherStandupLines only ever pulls standupCategories -- "End" and
-// "Hilite" group entries, i.e. backward-looking items) -- today's still-open TODOs/GOALs (getOpenItems) are passed
+// "Hilite" group entries, i.e. backward-looking items) -- today's still-open TODOs/DOING/GOALs (getOpenItems) are passed
 // alongside as explicit "currently open" context so the model has
 // real material for that section instead of inventing generic filler.
 // Also explicitly instructs the model to surface a "what do you need
@@ -194,7 +194,7 @@ func formatStandup(lines []string) string {
 func summarizeStandupWithCopilot(lines []string) (string, error) {
 	var openBuf strings.Builder
 	for _, item := range getOpenItems() {
-		if item.Category != "TODO" && item.Category != "GOAL" {
+		if item.Category != "TODO" && item.Category != "DOING" && item.Category != "GOAL" {
 			continue
 		}
 		openBuf.WriteString("- " + stripCarryForwardSince(item.Text) + "\n")
@@ -205,7 +205,7 @@ func summarizeStandupWithCopilot(lines []string) (string, error) {
 	}
 
 	input := "Completed/notable items:\n" + strings.Join(lines, "\n") +
-		"\n\nCurrently open TODOs/GOALs (candidates for \"today\"):\n" + openSection
+		"\n\nCurrently open TODOs/DOING/GOALs (candidates for \"today\"):\n" + openSection
 
 	return summarizeWithCopilotPrompt(
 		"Turn this into a classic scrum daily standup update, structured "+
@@ -213,7 +213,7 @@ func summarizeStandupWithCopilot(lines []string) (string, error) {
 			"\"What did I do yesterday\", \"What will I do today\", and "+
 			"\"Risks / blockers\". Base \"yesterday\" on the completed/"+
 			"notable items given; base \"today\" on the currently-open "+
-			"TODOs/GOALs given (pick the most relevant ones, don't just "+
+			"TODOs/DOING/GOALs given (pick the most relevant ones, don't just "+
 			"dump the whole list verbatim). If there's nothing worth "+
 			"flagging as a risk or blocker, say so briefly rather than "+
 			"omitting the heading. Explicitly call out anything the "+

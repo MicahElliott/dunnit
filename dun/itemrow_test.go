@@ -9,6 +9,7 @@ func TestSplitTrailingMeta(t *testing.T) {
 		"finish the report (since 2026-08-28)": {"finish the report", " (since 2026-08-28)"},
 		"old todo \u26a0 4d":                   {"old todo", " \u26a0 4d"},
 		"todo (since 2026-08-28) \u26a0 4d":    {"todo", " (since 2026-08-28) \u26a0 4d"},
+		"todo @10m (via DOING)":                {"todo", " @10m (via DOING)"},
 	}
 	for in, want := range cases {
 		core, meta := splitTrailingMeta(in)

@@ -68,9 +68,10 @@ const hoverButtonTooltipDelay = 400 * time.Millisecond
 // the button's own tap handler instead of just swallowing it.
 type tooltipPopup struct {
 	*widget.PopUp
-	ownerPos    fyne.Position
-	ownerSize   fyne.Size
-	ownerTapped func()
+	ownerPos         fyne.Position
+	ownerSize        fyne.Size
+	ownerTapped      func()
+	ownerTappedEvent func(*fyne.PointEvent)
 }
 
 func (t *tooltipPopup) Tapped(e *fyne.PointEvent) {
@@ -78,8 +79,12 @@ func (t *tooltipPopup) Tapped(e *fyne.PointEvent) {
 		e.AbsolutePosition.X <= t.ownerPos.X+t.ownerSize.Width &&
 		e.AbsolutePosition.Y <= t.ownerPos.Y+t.ownerSize.Height
 	t.PopUp.Tapped(e) // still lets PopUp's own outside-click-dismiss logic run/hide as normal
-	if within && t.ownerTapped != nil {
-		t.ownerTapped()
+	if within {
+		if t.ownerTappedEvent != nil {
+			t.ownerTappedEvent(e)
+		} else if t.ownerTapped != nil {
+			t.ownerTapped()
+		}
 	}
 }
 

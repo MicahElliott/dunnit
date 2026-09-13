@@ -14,7 +14,7 @@ type Category struct {
 	Help string
 	// Group buckets categories for the picker's quick-filter buttons:
 	// "end" (the literal endpoints a "plan" item resolves into --
-	// DONE/FAIL/WASTED, plus the internal ONGOING marker), "plan"
+	// DONE/FAIL/WASTED), "plan"
 	// (future-facing, open/tracked items), or "hilite" (freestanding
 	// notable-moment callouts, not tied to resolving any specific
 	// "plan" item -- see docs/category-taxonomy.md). Purely a UI
@@ -35,25 +35,21 @@ type Category struct {
 }
 
 // timeTrackableCategories are the codes for which the optional "mins"
-// field on Daybook's main entry row is shown -- deliberately narrowed
-// (2026-09-03) to just the three "endpoint" categories (DONE/FAIL/
-// WASTED, see the "Endpoints" doc comment above Categories) that a
-// Plan-group item resolves into: these are the only categories where
-// "how long did this take" reads as a real completed-effort duration.
+// field on Daybook's main entry row is shown. DONE/FAIL/WASTED are
+// completed-effort endpoints; DOING is included so an active lifecycle
+// item can accumulate explicit minutes before it reaches DONE.
 // Explicitly excludes:
-//   - "Plan"-group items (TODO/GOAL/etc): a mins value here would
+//   - Other "Plan"-group items (TODO/GOAL/etc): a mins value here would
 //     read as a time *estimate*, not an actual duration -- a
 //     different concept this field was never meant to capture (no
 //     hours/days-scale estimation feature exists, and adding one
 //     would be overkill for large accomplishments anyway).
-//   - ONGOING: internal/mechanical marker (Ditto's own bookkeeping),
-//     never hand-picked, so its "mins" relevance is moot.
 //   - MEETING/WAITING: previously included, but these aren't
 //     completed-effort entries either (MEETING is scratch agenda
 //     notes; WAITING is "blocked," not "done") -- narrowed out
 //     alongside the Plan-group exclusion above.
 var timeTrackableCategories = map[string]bool{
-	"DONE": true, "FAIL": true, "WASTED": true,
+	"DONE": true, "DOING": true, "FAIL": true, "WASTED": true,
 }
 
 // IsTimeTrackable reports whether mins tracking is conventionally
@@ -74,9 +70,9 @@ func (c Category) Label() string {
 func GroupLabel(group string) string {
 	switch group {
 	case "end":
-		return "End — day-to-day capture, the terminal states a Plan item resolves into"
+		return "End — terminal states a Planned item resolves into"
 	case "plan":
-		return "Plan — future-facing, open items tracked toward a resolution to DONE in \"End\""
+		return "Plan — TODO/DOING open lifecycle items and other work tracked toward DONE"
 	case "hilite":
 		return "Hilite — freestanding notable-moment callouts, not tied to resolving any specific Plan item"
 	}
@@ -92,8 +88,8 @@ func GroupLabel(group string) string {
 //
 // "Endpoints" (2026-09-02 regroup, further narrowed later): "end" now
 // holds ONLY the literal terminal states a "Plan"-group item
-// (TODO/IDEA/GOAL/FIXME/etc.) resolves into -- DONE/FAIL/WASTED --
-// plus the internal ONGOING marker. TIL/KUDOS/WIN moved out of "end"
+// (TODO/IDEA/GOAL/FIXME/etc.) resolves into -- DONE/FAIL/WASTED.
+// TIL/KUDOS/WIN moved out of "end"
 // and into "hilite" alongside IMPACT/MILESTONE/CAREER/PSA: all of
 // these are freestanding notable-moment callouts that don't resolve
 // any specific open item, a genuinely different concept from an
@@ -104,21 +100,12 @@ func GroupLabel(group string) string {
 // endpoints -- not yet a structured/enforced mechanism).
 var Categories = []Category{
 	// end: literal endpoints only -- DONE/FAIL/WASTED, the terminal
-	// states Plan-group items resolve into. ONGOING is marked EODOnly
-	// (2026-09-02) -- despite the name, it's purely an internal/
-	// mechanical marker written by Ditto's own rewrite logic
-	// (recordExtended in ui.go), never meant to be hand-picked from
-	// the live picker or explained in Help; EODOnly already means
-	// exactly "written by a dedicated internal flow, excluded from
-	// the picker and from Help" (see the EODOnly field doc above),
-	// which fits Ditto's ONGOING rewrite just as well as it fits
-	// eod.go's SUMMARY/PRODUCTIVITY/MEETING_HOURS. WASTED is further
+	// states Plan-group items resolve into. WASTED is further
 	// gated behind Config.WastedTimeTrackingEnabled (default false,
 	// see config.go) -- an opt-in feature, hidden from the live
 	// picker when off, though still present here for Help/legend and
 	// historical ledger entries.
 	{"✔️", "DONE", "Something you completed. The most common endpoint a \"Plan\" item (TODO/IDEA/GOAL/etc.) resolves into — see docs/category-taxonomy.md.", "end", "positive", false},
-	{"⏩", "ONGOING", "Still working on something (e.g. what \"Ditto\" logs) — not finished yet. Purely an internal/mechanical marker (Ditto's own bookkeeping), not part of the endpoint/promotion taxonomy.", "end", "", true},
 	{"❌", "FAIL", "Something that didn't go as hoped — an endpoint a \"Plan\" item can resolve into, same as DONE, just the unsuccessful outcome.", "end", "negative", false},
 	{"🗑️", "WASTED", "Unfocused, pointless work or distraction. Opt-in: hidden from the live picker unless Config.WastedTimeTrackingEnabled is set.", "end", "negative", false},
 
@@ -135,6 +122,7 @@ var Categories = []Category{
 	// moved ahead of IDEA per explicit request) since it's the most
 	// common/actionable item in this group.
 	{"📌", "TODO", "A small, tight, near-term item — actively encouraged. Roughly Jira's \"Task\": scoped and ready to act on (vs. IDEA, which is the same thing before it's scoped).", "plan", "", false},
+	{"▶️", "DOING", "An active TODO currently in progress. Keep one logical item moving toward DONE.", "plan", "", false},
 	{"💡", "IDEA", "A new idea worth capturing, not yet scoped/ready to act on — an earlier maturity stage of TODO (loosely: an un-scoped Jira \"Story\"), not a different type of item.", "plan", "", false},
 	{"🎯", "GOAL", "A bigger overarching aim, reviewed on a longer cadence (not daily). Roughly Jira's \"Epic\": a rollup that TODOs/FIXMEs work toward, not itself a single actionable item.", "plan", "", false},
 	{"❓", "QUESTION", "An open question to follow up on.", "plan", "", false},
@@ -220,7 +208,7 @@ func HelpForCode(code string) string {
 
 // CategoryOptionsForGroup returns Label() strings (emoji + code, e.g.
 // "✔️ DONE") for categories in the given group, excluding EODOnly
-// ones (SUMMARY/PRODUCTIVITY/MEETING_HOURS/ONGOING -- these are
+// ones (SUMMARY/PRODUCTIVITY/MEETING_HOURS -- these are
 // always machine-written by a dedicated flow, never meant to be
 // hand-picked). Unlike CategoryLabelsForGroup, this does NOT gate
 // WASTED on Config.WastedTimeTrackingEnabled -- used by the Edit

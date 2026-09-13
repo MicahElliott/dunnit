@@ -56,11 +56,11 @@ var mainInputEntry *closeShortcutEntry
 var trayApp fyne.App
 var trayWindow fyne.Window
 
-// trayRefreshAll refreshes Daybook's open/completed/reflections/last-
-// done sections -- set once by BuildMainWindow (which owns the actual
-// refreshX closures, scoped to its own widget state), called by
-// buildTrayMenu's "Show" item. nil-checked before use since it isn't
-// set until BuildMainWindow has run.
+// trayRefreshAll refreshes Daybook's picker and open/completed/
+// reflections/last-item sections -- set once by BuildMainWindow (which
+// owns the actual refreshX closures, scoped to its own widget state),
+// called by buildTrayMenu's "Show" item and after Settings saves. nil-
+// checked before use since it isn't set until BuildMainWindow has run.
 var trayRefreshAll func()
 
 // FocusMainInput requests keyboard focus on Daybook's main entry box,
@@ -433,14 +433,14 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	}
 
 	// withMins appends " @Nm" to text if minsInput has a valid
-	// positive integer in it; otherwise returns text unchanged.
+	// non-negative integer in it; otherwise returns text unchanged.
 	withMins := func(text string) string {
 		raw := strings.TrimSpace(minsInput.Text)
 		if raw == "" {
 			return text
 		}
 		n, err := strconv.Atoi(raw)
-		if err != nil || n <= 0 {
+		if err != nil || n < 0 {
 			return text
 		}
 		return text + " @" + raw + "m"
@@ -504,7 +504,9 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	// that wants it.)
 	groupFilter := widget.NewSelect(defaultGroupOptions,
 		func(g string) {
+			cfg := LoadConfig()
 			if g == "Faves" {
+				faves = CategoryLabelsForFaves(cfg)
 				category.Options = faves
 			} else {
 				category.Options = CategoryLabelsForGroup(cfg, strings.ToLower(g))
@@ -513,6 +515,36 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 			category.Refresh()
 		})
 	groupFilter.SetSelected(defaultGroupFilter)
+
+	// refreshCategoryPicker re-reads the favorites and category filters
+	// into the already-open Daybook. Settings used to rebuild only the
+	// tray menu, leaving this picker with the Config snapshot captured
+	// when BuildMainWindow ran until the next full app restart.
+	var refreshCategoryPicker func()
+	refreshCategoryPicker = func() {
+		cfg := LoadConfig()
+		faves = CategoryLabelsForFaves(cfg)
+		groupOptions := []string{"End", "Plan", "Hilite"}
+		selectedGroup := groupFilter.Selected
+		if len(faves) > 0 {
+			groupOptions = []string{"Faves", "End", "Plan", "Hilite"}
+		} else if selectedGroup == "Faves" {
+			selectedGroup = "End"
+		}
+		groupFilter.Options = groupOptions
+		groupFilter.Selected = selectedGroup
+		if selectedGroup == "Faves" {
+			category.Options = faves
+		} else {
+			category.Options = CategoryLabelsForGroup(cfg, strings.ToLower(selectedGroup))
+		}
+		if len(category.Options) == 0 {
+			return
+		}
+		category.SetSelected(category.Options[0])
+		groupFilter.Refresh()
+		category.Refresh()
+	}
 
 	// Dunnit aims to be a mouseless/mouse-optional UI -- keyboard-only
 	// operation should always be possible. IMPORTANT: Fyne's focus
@@ -529,7 +561,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	// content would have.
 	// saveBtn is created here (empty OnTapped, filled in once saveEntry
 	// is defined further below -- it needs refreshOpenItems/
-	// refreshCompleted/refreshReflections/refreshLastDone, which
+	// refreshCompleted/refreshReflections/refreshLastItem, which
 	// aren't defined yet at this point) so it can sit in doneWrapper's
 	// row (right of minsWrapper), matching Tab/visual order -- see
 	// doneWrapper's comment below.
@@ -568,11 +600,11 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	openItemsBox := container.NewVBox()
 	var refreshOpenItems func()
 	var refreshCompleted func()          // forward decl -- used inside refreshOpenItems's Done button, defined below
-	var refreshLastDone func()           // forward decl -- used inside refreshOpenItems's Done button and saveEntry, defined further below (needs lastDoneLabel)
+	var refreshLastItem func()           // forward decl -- used inside refreshOpenItems's Done button and saveEntry, defined further below (needs lastItemLabel)
 	var itemsAccordion *widget.Accordion // forward decl -- used inside refreshOpenItems's Done/Postpone/Discard buttons, defined below
 	// showAllPlanned toggles whether Planned's non-TODO categories
 	// (GOAL/WAITING/QUESTION/FIXME/RISK) are shown -- default false
-	// (TODO-only) since the full set together was feeling
+	// (TODO/DOING-only) since the full set together was feeling
 	// overwhelming; a "Show all" / "Show TODOs only" toggle button
 	// reveals/hides the rest without losing them.
 	showAllPlanned := false
@@ -603,43 +635,56 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 			// text label and no hover tooltip either (Micah doesn't
 			// want either) -- old labels noted in comments below for
 			// reference.
-			row := container.NewBorder(nil, nil, nil,
-				container.NewHBox(
-					widget.NewButtonWithIcon("", theme.Icon(theme.IconNameContentClear), func() { // "Discard"
-						recordDiscarded(item)
-						fyne.Do(func() {
-							refreshOpenItems()
-							itemsAccordion.Refresh()
-							showToast(w4.Canvas(), "Discarded")
-						})
-					}),
-					widget.NewButtonWithIcon("", theme.Icon(theme.IconNameHistory), func() { // "Postpone"
-						recordPostponed(item)
-						fyne.Do(func() {
-							refreshOpenItems()
-							itemsAccordion.Refresh()
-							showToast(w4.Canvas(), "Postponed (to SOMEDAY)")
-						})
-					}),
-					widget.NewButtonWithIcon("", theme.Icon(theme.IconNameConfirm), func() { // "Done"
-						recordConvertedDone(item)
-						fyne.Do(func() {
-							refreshOpenItems()
-							refreshCompleted()
-							refreshLastDone()
-							itemsAccordion.Refresh()
-							showToast(w4.Canvas(), "Done")
-						})
-					}),
-					widget.NewButtonWithIcon("", theme.Icon(theme.IconNameDocumentCreate), func() { // "Edit"
-						showEditItemDialog(w4, item, func() {
-							fyne.Do(func() {
-								refreshOpenItems()
-								itemsAccordion.Refresh()
-							})
-						})
-					}),
-				),
+			actions := []fyne.CanvasObject{
+				widget.NewButtonWithIcon("", theme.Icon(theme.IconNameContentClear), func() { // "Discard"
+					recordDiscarded(item)
+					fyne.Do(func() {
+						refreshOpenItems()
+						itemsAccordion.Refresh()
+						showToast(w4.Canvas(), "Discarded")
+					})
+				}),
+				widget.NewButtonWithIcon("", theme.Icon(theme.IconNameHistory), func() { // "Postpone"
+					recordPostponed(item)
+					fyne.Do(func() {
+						refreshOpenItems()
+						itemsAccordion.Refresh()
+						showToast(w4.Canvas(), "Postponed (to SOMEDAY)")
+					})
+				}),
+				widget.NewButtonWithIcon("", theme.Icon(theme.IconNameConfirm), func() { // "Done"
+					showCompleteItemDialog(w4, item, func() {
+						minsInput.SetText("")
+						refreshOpenItems()
+						refreshCompleted()
+						refreshLastItem()
+						itemsAccordion.Refresh()
+						showToast(w4.Canvas(), "Completed")
+					})
+				}),
+			}
+			if item.Category == "TODO" {
+				actions = append(actions, widget.NewButtonWithIcon("", theme.Icon(theme.IconNameMediaPlay), func() { // "Start"
+					if err := startPlannedItem(item); err != nil {
+						log.Println("Error starting planned item:", err)
+					}
+					minsInput.SetText("")
+					fyne.Do(func() {
+						refreshOpenItems()
+						itemsAccordion.Refresh()
+						showToast(w4.Canvas(), "Started")
+					})
+				}))
+			}
+			actions = append(actions, widget.NewButtonWithIcon("", theme.Icon(theme.IconNameDocumentCreate), func() { // "Edit"
+				showEditItemDialog(w4, item, func() {
+					fyne.Do(func() {
+						refreshOpenItems()
+						itemsAccordion.Refresh()
+					})
+				})
+			}))
+			row := container.NewBorder(nil, nil, nil, container.NewHBox(actions...),
 				itemTextLabel("\u2022 "+stripCarryForwardSince(item.Text)+staleBadge(item.Text)))
 			openItemsBox.Add(row)
 		}
@@ -660,7 +705,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 			}
 		}
 		for _, cat := range cats {
-			if cat != "TODO" {
+			if cat != "TODO" && cat != "DOING" {
 				otherCount += len(grouped[cat])
 				continue
 			}
@@ -678,7 +723,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 			}))
 			if showAllPlanned {
 				for _, cat := range cats {
-					if cat == "TODO" {
+					if cat == "TODO" || cat == "DOING" {
 						continue
 					}
 					addCatRows(cat)
@@ -715,7 +760,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	}
 	refreshOpenItems()
 
-	// completedBox displays today's "end"-group entries (DONE/ONGOING/
+	// completedBox displays today's "end"-group entries (DONE/
 	// FAIL/WASTED) grouped by category with per-category
 	// sub-headings, mirroring how Planned already splits
 	// TODO/GOAL/etc into their own sections (see groupOpenItemsByCategory).
@@ -751,7 +796,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 						showEditItemDialog(w4, item, func() {
 							fyne.Do(func() {
 								refreshCompleted()
-								refreshLastDone()
+								refreshLastItem()
 								itemsAccordion.Refresh()
 							})
 						})
@@ -855,7 +900,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 		refreshOpenItems()
 		refreshCompleted()
 		refreshReflections()
-		refreshLastDone()
+		refreshLastItem()
 	}
 	input.OnSubmitted = func(string) { saveEntry() }
 	minsInput.OnSubmitted = func(string) { saveEntry() }
@@ -865,47 +910,38 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	// that saveEntry exists.
 	saveBtn.OnTapped = saveEntry
 
-	// lastDoneLabel shows the most recently logged DONE entry's text
-	// just below the buttons row -- a quick "what did I just finish?"
-	// glance without opening the (now-collapsed-by-default) Activity
-	// section. dittoBtn sits immediately to its left since Ditto acts
-	// on that same "last entry" (see lastEntryText, which is the more
-	// general "last logged line of any category" used by Ditto itself
-	// -- lastDoneLabel specifically shows the last *DONE* one).
-	lastDoneLabel := widget.NewLabel("")
-	refreshLastDone = func() {
-		done := getCompletedItems()
-		if len(done) == 0 {
-			lastDoneLabel.SetText("(nothing completed yet today)")
+	// lastItemLabel shows the current DOING item just below the buttons
+	// row. Ditto extends this active item; once it reaches DONE it is no
+	// longer offered as the item to continue.
+	lastItemLabel := widget.NewLabel("")
+	refreshLastItem = func() {
+		item, ok := lastDoingItem()
+		if !ok {
+			lastItemLabel.SetText("(nothing doing right now)")
 			return
 		}
-		lastDoneLabel.SetText("Last done: " + done[len(done)-1])
+		lastItemLabel.SetText("Last doing: " + stripCarryForwardSince(item.Text))
 	}
-	refreshLastDone()
+	refreshLastItem()
 
 	dittoBtn := widget.NewButton("Ditto", func() {
-		// Ditto extends the last DONE item: logs a fresh DONE entry
-		// with the same text (so it looks freshly completed again),
-		// and rewrites the *original* DONE line's category to ONGOING
-		// (it was actually still being worked on, not really "done"
-		// at that point -- semantically this is "extend", though
-		// that word is never shown to the user, it's just quiet
-		// historical editing of an append-only-in-spirit ledger).
-		// Deliberately keyed off the last *DONE* entry specifically
-		// (lastDoneItem), not lastEntryText's "last logged line of any
-		// category" -- Ditto should never accidentally repeat/extend
-		// a RISK or other non-DONE entry just because it happened to
-		// be logged more recently.
-		if item, ok := lastDoneItem(); ok {
-			replaceLedgerLineCategoryAt(item.LineIndex, "ONGOING")
-			recordActivity(withMins(item.Text), "DONE")
+		if item, ok := lastDoingItem(); ok {
+			raw := strings.TrimSpace(minsInput.Text)
+			delta, err := strconv.Atoi(raw)
+			if err != nil || delta < 0 {
+				delta = 0
+			}
+			if err := dittoLifecycleItem(item, delta); err != nil {
+				log.Println("Error applying Ditto:", err)
+			}
 			minsInput.SetText("")
 			refreshOpenItems()
 			refreshCompleted()
-			refreshLastDone()
+			refreshLastItem()
+			itemsAccordion.Refresh()
 		}
 	})
-	lastDoneRow := container.NewHBox(dittoBtn, lastDoneLabel)
+	lastDoneRow := container.NewHBox(dittoBtn, lastItemLabel)
 
 	// showAllTagsBtn opens a standalone window listing every known
 	// tag (KnownTags(), full ledger-history scan) -- "Frecent tags:"
@@ -1004,10 +1040,11 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 		trayApp = a
 		trayWindow = w4
 		trayRefreshAll = func() {
+			refreshCategoryPicker()
 			refreshOpenItems()
 			refreshCompleted()
 			refreshReflections()
-			refreshLastDone()
+			refreshLastItem()
 		}
 		desk.SetSystemTrayMenu(buildTrayMenu(a, w4))
 	}
@@ -1244,6 +1281,9 @@ func RebuildTrayMenu() {
 		return
 	}
 	desk.SetSystemTrayMenu(buildTrayMenu(trayApp, trayWindow))
+	if trayRefreshAll != nil {
+		trayRefreshAll()
+	}
 }
 
 func updateTime(clock *widget.Label) {

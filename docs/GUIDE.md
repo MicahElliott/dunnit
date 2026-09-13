@@ -100,7 +100,7 @@ little later" pattern repeated at increasing scale:
 - **Hourly**: the popup captures a one-line entry, tagged with a
   category (`DONE`, `TODO`, `TIL`, `MEETING`, etc.).
 - **Daily** (the heart of the process): *Start of Day* reads back your
-  still-open items (`TODO`/`GOAL`/`WAITING`/`QUESTION`/`FIXME`/`RISK`)
+still-open items (`TODO`/`DOING`/`GOAL`/`WAITING`/`QUESTION`/`FIXME`/`RISK`)
   so you can decide what's still worth carrying; *End of Day* wraps
   things up — reviewing the log, scoring productivity, noting meeting
   hours, and carrying anything unresolved forward to tomorrow.
@@ -163,6 +163,7 @@ authoritative source; update this section whenever categories change._
 **Plan** — future-facing, open items tracked toward a resolution to DONE in "End"
 
 - 📌 `TODO` — A small, tight, near-term item — actively encouraged. Roughly Jira's "Task": scoped and ready to act on (vs. IDEA, which is the same thing before it's scoped).
+- ▶️ `DOING` — A TODO currently in progress. It remains the same logical item until it reaches DONE.
 - 💡 `IDEA` — A new idea worth capturing, not yet scoped/ready to act on — an earlier maturity stage of TODO.
 - 🎯 `GOAL` — A bigger overarching aim, reviewed on a longer cadence (not daily). Roughly Jira's "Epic".
 - ❓ `QUESTION` — An open question to follow up on.
@@ -186,7 +187,7 @@ authoritative source; update this section whenever categories change._
 - 🏁 `MILESTONE` — A significant checkpoint or phase transition in a longer journey, bigger in scope than a single WIN.
 - 💼 `CAREER` — A big, resume/CV-worthy accomplishment.
 
-_(A few additional categories — `ONGOING`, `SUMMARY`, `PRODUCTIVITY`,
+_(A few additional categories — legacy `ONGOING`, `SUMMARY`, `PRODUCTIVITY`,
 `MEETING_HOURS` — are written automatically by internal flows like
 Ditto and End of Day, and aren't meant to be hand-picked; they're
 omitted here as they are from the in-app Help window.)_

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/dialog"
@@ -34,7 +35,7 @@ func gitSync(action string) error {
 		if err := runGit(args...); err != nil {
 			return err
 		}
-		if err := runGit("-C", DunnitDir(), "commit", "-m", "Dunnit sync"); err != nil && !strings.Contains(err.Error(), "nothing to commit") {
+		if err := commitStagedSyncChanges(DunnitDir()); err != nil {
 			return err
 		}
 		return runGit("-C", DunnitDir(), "push")
@@ -43,7 +44,7 @@ func gitSync(action string) error {
 		if err := runGit(args...); err != nil {
 			return err
 		}
-		if err := runGit("-C", DunnitDir(), "commit", "-m", "Dunnit sync"); err != nil && !strings.Contains(err.Error(), "nothing to commit") {
+		if err := commitStagedSyncChanges(DunnitDir()); err != nil {
 			return err
 		}
 		return runGit("-C", DunnitDir(), "pull", "--rebase")
@@ -52,11 +53,63 @@ func gitSync(action string) error {
 	}
 }
 
+func commitStagedSyncChanges(dir string) error {
+	diff, err := runGitOutput("-C", dir, "diff", "--cached", "--unified=0")
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(diff) == "" {
+		return nil
+	}
+	return runGit("-C", dir, "commit", "-m", syncCommitMessage(diff))
+}
+
+func syncCommitMessage(stagedDiff string) string {
+	oldest, newest, ok := stagedEntryTimeRange(stagedDiff)
+	if !ok {
+		return "Dunnit sync [no ledger entries]"
+	}
+	return fmt.Sprintf("Dunnit sync [%s - %s]", oldest.Format("2006-01-02 15:04:05"), newest.Format("2006-01-02 15:04:05"))
+}
+
+// stagedEntryTimeRange finds added ledger entries in the staged diff. This
+// reports the entries actually included in the commit, while allowing an
+// accompanying report or config file to be staged by the same git add -A.
+func stagedEntryTimeRange(stagedDiff string) (oldest, newest time.Time, ok bool) {
+	var date *time.Time
+	for _, line := range strings.Split(stagedDiff, "\n") {
+		if strings.HasPrefix(line, "+++ b/") {
+			date = ledgerFileDate(strings.TrimPrefix(line, "+++ b/"))
+			continue
+		}
+		if date == nil || !strings.HasPrefix(line, "+") || strings.HasPrefix(line, "+++") {
+			continue
+		}
+		entry, parsed := parseLedgerEntry(strings.TrimPrefix(line, "+"), *date, "", 0)
+		if !parsed || entry.Time.IsZero() {
+			continue
+		}
+		if !ok || entry.Time.Before(oldest) {
+			oldest = entry.Time
+		}
+		if !ok || entry.Time.After(newest) {
+			newest = entry.Time
+		}
+		ok = true
+	}
+	return oldest, newest, ok
+}
+
 func runGit(args ...string) error {
+	_, err := runGitOutput(args...)
+	return err
+}
+
+func runGitOutput(args ...string) (string, error) {
 	cmd := exec.Command("git", args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(string(out)))
+		return "", fmt.Errorf("git %s: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(string(out)))
 	}
-	return nil
+	return string(out), nil
 }

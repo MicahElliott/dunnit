@@ -23,11 +23,30 @@ type OpenItem struct {
 // openTrackedCategories are the categories tracked as "open items"
 // needing eventual follow-up/resolution -- shown in Daybook's
 // Upcoming section and SOD/SOM, and resolvable via the Done/Postpone
-// actions. TODO/GOAL were the original FR-07 set; WAITING/QUESTION/
+// actions. TODO/DOING/GOAL were the original FR-07 set plus the active
+// lifecycle state; WAITING/QUESTION/
 // FIXME/RISK share the same "logged now, tracked as open, resolved
 // later" pattern (unlike day-to-day capture categories like DONE/
 // TIL), so they're tracked the same way.
-var openTrackedCategories = []string{"TODO", "GOAL", "WAITING", "QUESTION", "FIXME", "RISK"}
+var openTrackedCategories = []string{"TODO", "DOING", "GOAL", "WAITING", "QUESTION", "FIXME", "RISK"}
+
+// legacyOngoingCategory is retained only for history-aware code and tests.
+// It is intentionally absent from Categories and openTrackedCategories.
+const legacyOngoingCategory = "ONGOING"
+
+func isLifecycleCategory(cat string) bool {
+	return cat == "TODO" || cat == "DOING"
+}
+
+// openItemKey identifies the logical item represented by an open ledger
+// entry. TODO and DOING intentionally share a key so state transitions and
+// daily carry-forward copies collapse to one current item.
+func openItemKey(category, text string) string {
+	if isLifecycleCategory(category) {
+		category = "TODO/DOING"
+	}
+	return category + "\x00" + stripCarryForwardSince(text)
+}
 
 func isOpenTrackedCategory(cat string) bool {
 	for _, c := range openTrackedCategories {
@@ -49,7 +68,7 @@ func isOpenTrackedCategory(cat string) bool {
 // item from the open/Upcoming list. DISCARDED isn't a selectable
 // Daybook category (see categories.go) -- it only ever gets written
 // via recordDiscarded, never picked by hand.
-var resolvingCategories = []string{"DONE", "SOMEDAY", "DISCARDED"}
+var resolvingCategories = []string{"DONE", "FAIL", "WASTED", "SOMEDAY", "DISCARDED"}
 
 // convertedSuffix marks a resolving line (DONE or SOMEDAY) as having
 // been generated from an open item, so parseOpenItems can recognize
@@ -80,13 +99,12 @@ func parseLedgerLine(line string) (category, text string, ok bool) {
 	return parts[1], parts[2], true
 }
 
-// parseOpenItems scans ledger lines for open-tracked-category entries
-// that have not yet been resolved (converted to DONE or postponed to
-// SOMEDAY, via recordConvertedDone/recordPostponed), in first-seen
-// order.
+// parseOpenItems scans ledger lines for open-tracked-category entries that
+// have not yet been resolved. TODO and DOING entries with the same task text
+// are one logical item, with the newest active state winning.
 func parseOpenItems(lines []string) []OpenItem {
-	var open []OpenItem
-	resolved := make(map[string]bool) // "CATEGORY\x00text" -> true
+	active := make(map[string]OpenItem)
+	var order []string
 
 	for i, line := range lines {
 		cat, text, ok := parseLedgerLine(line)
@@ -104,33 +122,42 @@ func parseOpenItems(lines []string) []OpenItem {
 			for _, srcCat := range openTrackedCategories {
 				if suffix := convertedSuffix(srcCat); strings.HasSuffix(text, suffix) {
 					orig := strings.TrimSuffix(text, suffix)
-					resolved[srcCat+"\x00"+orig] = true
+					resolveOpenItems(active, srcCat, orig)
 				}
 			}
 			continue
 		}
 		if isOpenTrackedCategory(cat) {
-			open = append(open, OpenItem{Category: cat, Text: text, LineIndex: i})
+			key := openItemKey(cat, text)
+			if _, exists := active[key]; !exists {
+				order = append(order, key)
+			}
+			active[key] = OpenItem{Category: cat, Text: text, LineIndex: i}
 		}
 	}
 
-	var result []OpenItem
-	for _, item := range open {
-		isResolved := resolved[item.Category+"\x00"+item.Text]
-		if !isResolved {
-			for resolvedText := range resolved {
-				parts := strings.SplitN(resolvedText, "\x00", 2)
-				if len(parts) == 2 && parts[0] == item.Category && resolutionMatches(item.Text, parts[1]) {
-					isResolved = true
-					break
-				}
-			}
-		}
-		if !isResolved {
+	result := make([]OpenItem, 0, len(active))
+	for _, key := range order {
+		if item, ok := active[key]; ok {
 			result = append(result, item)
 		}
 	}
 	return result
+}
+
+func resolveOpenItems(active map[string]OpenItem, sourceCategory, resolvedText string) {
+	for key, item := range active {
+		if isLifecycleCategory(item.Category) && isLifecycleCategory(sourceCategory) {
+			if resolutionMatches(stripCarryForwardSince(item.Text), stripCarryForwardSince(resolvedText)) {
+				delete(active, key)
+			}
+			continue
+		}
+		if item.Category == sourceCategory && resolutionMatches(
+			stripCarryForwardSince(item.Text), stripCarryForwardSince(resolvedText)) {
+			delete(active, key)
+		}
+	}
 }
 
 // getOpenItems returns today's open (unresolved) tracked items.
@@ -149,6 +176,52 @@ func getOpenItems() []OpenItem {
 // (returned unchanged by PastTense in that case).
 func recordConvertedDone(item OpenItem) {
 	recordActivity(PastTenseLeadingWord(item.Text)+convertedSuffix(item.Category), "DONE")
+}
+
+// completePlannedItem changes a TODO/DOING row to DONE in place, preserving
+// its timestamp, task text, and cumulative minutes. The marker lets
+// historical carry-forward copies recognize the lifecycle completion.
+func completePlannedItem(item OpenItem) error {
+	return completePlannedEndpoint(item, "DONE", item.Text)
+}
+
+// completePlannedEndpoint changes a lifecycle row to a selected terminal
+// endpoint in place. The source marker keeps the logical open item resolved
+// without changing the row's timestamp or accumulated duration.
+func completePlannedEndpoint(item OpenItem, endpoint, text string) error {
+	if !isLifecycleCategory(item.Category) || item.LineIndex < 0 {
+		return nil
+	}
+	switch endpoint {
+	case "DONE", "FAIL", "WASTED":
+	default:
+		return nil
+	}
+	return replaceLedgerLineAt(item.LineIndex, endpoint, strings.TrimSpace(text)+convertedSuffix(item.Category))
+}
+
+// startPlannedItem changes a TODO row to DOING in place. Repeated attempts
+// against an already active item are harmless.
+func startPlannedItem(item OpenItem) error {
+	if item.Category != "TODO" || item.LineIndex < 0 {
+		return nil
+	}
+	return replaceLedgerLineCategoryAt(item.LineIndex, "DOING")
+}
+
+// dittoLifecycleItem turns the latest DONE lifecycle row back into DOING or
+// increments an existing DOING row. It never appends a second lifecycle row.
+func dittoLifecycleItem(item OpenItem, delta int) error {
+	if item.LineIndex < 0 {
+		return nil
+	}
+	if item.Category == "DONE" {
+		return replaceLedgerLineAt(item.LineIndex, "DOING", stripResolutionSuffix(item.Text))
+	}
+	if item.Category == "DOING" && delta > 0 {
+		return replaceLedgerLineTextAt(item.LineIndex, incrementEntryMins(item.Text, delta))
+	}
+	return nil
 }
 
 // recordPostponed logs a SOMEDAY entry referencing an original open
@@ -171,7 +244,7 @@ func recordDiscarded(item OpenItem) {
 // groupOpenItemsByCategory buckets items by category, preserving
 // openTrackedCategories order, and skips empty buckets. Shared by
 // Daybook's Upcoming section, SOD, and SOM so all three list open
-// items (TODO/GOAL/WAITING/QUESTION/FIXME/RISK) the same way, rather
+// items (TODO/DOING/GOAL/WAITING/QUESTION/FIXME/RISK) the same way, rather
 // than each hardcoding its own TODO-vs-GOAL binary split. Within each
 // category bucket, items are ordered by leading tag (see
 // leadingTagSortKey) rather than left in ledger/first-seen order --
@@ -270,12 +343,43 @@ func categoryPlural(cat string) string {
 	return cat + "s"
 }
 
+// lastLifecycleItem returns the most recently logged DONE or DOING entry,
+// with lifecycle metadata stripped and its current line index. It remains
+// useful to history-oriented callers; the live Ditto control uses the
+// narrower lastDoingItem lookup below.
+func lastLifecycleItem() (item OpenItem, ok bool) {
+	lines := readLedgerLines()
+	for i := len(lines) - 1; i >= 0; i-- {
+		cat, text, lineOk := parseLedgerLine(lines[i])
+		if !lineOk || (cat != "DONE" && cat != "DOING") {
+			continue
+		}
+		return OpenItem{Category: cat, Text: stripResolutionSuffix(text), LineIndex: i}, true
+	}
+	return OpenItem{}, false
+}
+
+// lastDoingItem returns the most recently logged active DOING entry,
+// with lifecycle metadata stripped and its current line index. Ditto
+// uses this narrower lookup so it extends work that is still active
+// instead of resurrecting an already completed DONE item.
+func lastDoingItem() (item OpenItem, ok bool) {
+	lines := readLedgerLines()
+	for i := len(lines) - 1; i >= 0; i-- {
+		cat, text, lineOk := parseLedgerLine(lines[i])
+		if !lineOk || cat != "DOING" {
+			continue
+		}
+		return OpenItem{Category: cat, Text: stripResolutionSuffix(text), LineIndex: i}, true
+	}
+	return OpenItem{}, false
+}
+
 // lastDoneItem returns the most recently logged DONE entry (text with
 // any "(via CATEGORY)" suffix stripped, plus its LineIndex into
 // readLedgerLines() for in-place rewriting), or ok=false if there is
-// no DONE entry logged yet today. Used by Ditto (ui.go) so it only
-// ever repeats/extends the last *DONE* item, not whatever category
-// happens to be most recent overall (e.g. a RISK logged afterward).
+// no DONE entry logged yet today. This is retained for callers that need
+// the latest terminal item without considering active DOING work.
 func lastDoneItem() (item OpenItem, ok bool) {
 	lines := readLedgerLines()
 	for i := len(lines) - 1; i >= 0; i-- {
@@ -283,12 +387,17 @@ func lastDoneItem() (item OpenItem, ok bool) {
 		if !lineOk || cat != "DONE" {
 			continue
 		}
-		for _, srcCat := range openTrackedCategories {
-			text = strings.TrimSuffix(text, convertedSuffix(srcCat))
-		}
+		text = stripResolutionSuffix(text)
 		return OpenItem{Category: cat, Text: text, LineIndex: i}, true
 	}
 	return OpenItem{}, false
+}
+
+func stripResolutionSuffix(text string) string {
+	for _, srcCat := range openTrackedCategories {
+		text = strings.TrimSuffix(text, convertedSuffix(srcCat))
+	}
+	return text
 }
 
 // getCompletedItems returns today's DONE entries, in the order they
@@ -304,9 +413,7 @@ func getCompletedItems() []string {
 		if !ok || cat != "DONE" {
 			continue
 		}
-		for _, srcCat := range openTrackedCategories {
-			text = strings.TrimSuffix(text, convertedSuffix(srcCat))
-		}
+		text = stripResolutionSuffix(text)
 		out = append(out, text)
 	}
 	return out
@@ -346,9 +453,7 @@ func getCategoryGroupItems(group string) []OpenItem {
 		if !ok || !codes[cat] {
 			continue
 		}
-		for _, srcCat := range openTrackedCategories {
-			text = strings.TrimSuffix(text, convertedSuffix(srcCat))
-		}
+		text = stripResolutionSuffix(text)
 		out = append(out, OpenItem{Category: cat, Text: text, LineIndex: i})
 	}
 	return out

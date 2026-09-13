@@ -38,8 +38,8 @@ func replaceLastLedgerLine(newLine string) error {
 // replaceLedgerLineCategoryAt rewrites the line at idx to use
 // newCategory instead of its current category, preserving its
 // original timestamp and text. No-op if idx is out of range or the
-// line isn't well-formed. Used by recordExtended to retroactively
-// mark a prior DONE entry as ONGOING when Ditto is used on it.
+// line isn't well-formed. Used by lifecycle and Ditto actions to
+// change a lifecycle row's category when Start, Done, or Ditto is used.
 func replaceLedgerLineCategoryAt(idx int, newCategory string) error {
 	lines := readLedgerLines()
 	if idx < 0 || idx >= len(lines) {
@@ -108,7 +108,7 @@ func deleteLedgerLineAt(idx int) error {
 // letting the user edit its text, change its category (via a
 // dropdown restricted to categories sharing the item's own Group --
 // see GroupForCode/CategoryOptionsForGroup -- shown with their emoji,
-// e.g. "✔️ DONE", and excluding EODOnly codes like ONGOING/SUMMARY/
+// e.g. "✔️ DONE", and excluding EODOnly codes like SUMMARY/
 // PRODUCTIVITY/MEETING_HOURS, which are always machine-written and
 // never meant to be hand-picked), Save, Cancel, or Delete the entry
 // outright. Calls onSave after a successful save/delete so callers
@@ -216,6 +216,70 @@ func showEditItemDialog(parent fyne.Window, item OpenItem, onSave func()) {
 	// a much taller box.
 	d.Resize(fyne.NewSize(624, 140))
 	d.Show()
+}
+
+// showCompleteItemDialog is the Planned-row completion flow. It gives the
+// user one chance to adjust the text and choose the terminal endpoint before
+// the item leaves Planned. The normal Edit dialog cannot be reused here
+// because its category list is limited to the item's current group.
+func showCompleteItemDialog(parent fyne.Window, item OpenItem, onSave func()) {
+	catOptions := CategoryOptionsForGroup("end")
+	catSelect := widget.NewSelect(catOptions, nil)
+	catSelect.SetSelected(categoryLabelForCode("DONE"))
+
+	var d *dialog.CustomDialog
+	var saveBtn *widget.Button
+	entry := newDialogEntry(nil, nil)
+	entry.SetText(item.Text)
+	entry.SetMinRowsVisible(2)
+
+	doSave := func() {
+		endpoint := "DONE"
+		if sel := catSelect.Selected; sel != "" {
+			if parts := strings.Split(sel, " "); len(parts) == 2 {
+				endpoint = parts[1]
+			}
+		}
+		text := strings.TrimSpace(entry.Text)
+		var err error
+		if isLifecycleCategory(item.Category) {
+			err = completePlannedEndpoint(item, endpoint, text)
+		} else {
+			recordActivity(text+convertedSuffix(item.Category), endpoint)
+		}
+		if err != nil {
+			dialog.ShowError(err, parent)
+			return
+		}
+		d.Hide()
+		onSave()
+	}
+
+	d = dialog.NewCustomWithoutButtons("Complete Planned Item",
+		container.NewBorder(nil, nil, catSelect, nil, entry), parent)
+	entry.onEscape = func() { d.Hide() }
+	entry.OnSubmitted = func(string) { doSave() }
+
+	saveBtn = widget.NewButton("Save", doSave)
+	saveBtn.Importance = widget.HighImportance
+	cancelBtn := widget.NewButton("Cancel", func() { d.Hide() })
+	d.SetButtons([]fyne.CanvasObject{cancelBtn, saveBtn})
+	entry.onTabForward = func() {
+		if c := fyne.CurrentApp().Driver().CanvasForObject(entry); c != nil {
+			c.Focus(saveBtn)
+		}
+	}
+	d.Resize(fyne.NewSize(624, 140))
+	d.Show()
+}
+
+func categoryLabelForCode(code string) string {
+	for _, category := range Categories {
+		if category.Code == code {
+			return category.Label()
+		}
+	}
+	return code
 }
 
 // writeLedgerLines overwrites today's ledger file with the given

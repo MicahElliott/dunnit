@@ -2,38 +2,39 @@
 
 Status: informal design notes, not a spec. Captures reasoning behind
 the current `Categories` grouping (`dunnit/categories.go`) and open
-questions for future discussion. Written 2026-09-02 after a session
-that moved FAIL/WASTED from "reflect" into "now" -- read this before
+questions for future discussion. Updated 2026-09-12 for the DOING
+lifecycle -- read this before
 changing group membership or adding new categories.
 
 ## The core insight: "endpoints"
 
-Most `plan`-group categories (TODO, IDEA, GOAL, QUESTION, WAITING,
+Most `plan`-group categories (TODO, DOING, IDEA, GOAL, QUESTION, WAITING,
 FIXME, RISK, SOMEDAY, OPTIMIZE) represent an *open item*: something
 logged now, tracked, and expected to eventually resolve. They all
 share the same lifecycle shape: **logged -> tracked as open ->
-resolved**.
+resolved**. TODO has an explicit active state: **TODO -> DOING -> DONE**.
+The state changes keep one logical task in the active Daybook view; daily
+carry-forward history remains readable.
 
 **DONE, FAIL, and WASTED are the resolution states of that lifecycle**
 -- the "endpoints" a plan-group item can land on. This is why they
-belong conceptually with "now" (day-to-day capture, logged in the
-moment) rather than "reflect" (which had implied "retrospective,
-look-back" framing) -- resolving an item isn't a retrospective act,
+belong conceptually with "End" (day-to-day capture, logged in the
+moment) rather than "Hilite" (which has a "retrospective, look-back"
+framing) -- resolving an item isn't a retrospective act,
 it's just as much a moment-of capture as logging the item was.
 
-This reframing came from noticing that DONE was already in "now" while
-FAIL/WASTED were oddly siloed in "reflect" despite being the *same
-kind of thing* as DONE (just the unsuccessful outcomes). Moving
-FAIL/WASTED into "now" alongside DONE was the fix (2026-09-02).
+This reframing came from noticing that DONE was already in "End" while
+FAIL/WASTED were oddly siloed in "Hilite" despite being the *same kind
+of thing* as DONE (just the unsuccessful outcomes). They belong with
+DONE as terminal endpoints.
 
-`ONGOING` is explicitly **not** part of this endpoint concept -- it's
-an internal/mechanical marker (used by Ditto's category-rewrite
-bookkeeping), not a state a user meaningfully picks as "this thing is
-resolved."
+`DOING` belongs in Plan because it is an active, user-visible state. Old
+`ONGOING` lines are legacy history from the earlier Ditto implementation;
+they remain readable but are not treated as current open work.
 
-## What's left in "reflect" -- and is it still coherent?
+## What's left in "Hilite" -- and is it still coherent?
 
-After moving the endpoints out, "reflect" contains:
+After keeping the endpoints together, "Hilite" contains:
 
 - **IMPACT, MILESTONE, CAREER** -- freestanding notable-event markers.
   These don't resolve any specific open item; a CAREER note might have
@@ -44,29 +45,29 @@ After moving the endpoints out, "reflect" contains:
   meta-notes, always machine-written by `eod.go`'s Finalize Day flow.
   Arguably a *third*, distinct concept (day-level stats/wrap-up, not
   itself a loggable "event" at all) -- currently left bundled into
-  "reflect" for simplicity rather than split into its own group.
+  "Hilite" for simplicity rather than split into its own group.
 
-So "reflect" is arguably still doing double duty (freestanding
+So "Hilite" is arguably still doing double duty (freestanding
 notable-events + day-meta), but this was judged less confusing than
 the original three-way conflation (endpoints + notable-events +
 day-meta) and left as-is for now. A future split into a 4th group
 (e.g. "Daily Wrap" for the EODOnly trio) was discussed but not done --
-revisit if "reflect" still feels muddled in practice.
+revisit if "Hilite" still feels muddled in practice.
 
-Renaming "reflect" itself (e.g. to "Major") was considered but not
+Renaming "Hilite" itself (e.g. to "Major") was considered but not
 done -- IMPACT/MILESTONE/CAREER genuinely are reflective in nature
 (recognizing in hindsight that something was significant), so the
 word wasn't the actual source of confusion; the endpoint categories
 sharing the bucket were.
 
-## Current grouping (post-2026-09-02)
+## Current grouping (post-2026-09-12)
 
-- **Now** -- day-to-day capture + endpoints: DONE, ONGOING, TIL,
-  KUDOS, WIN, FAIL, WASTED
-- **Plan** -- open/tracked items: TODO, IDEA, GOAL, QUESTION, WAITING,
+- **End** -- terminal endpoints: DONE, FAIL, WASTED
+- **Plan** -- open/tracked items: TODO, DOING, IDEA, GOAL, QUESTION, WAITING,
   FIXME, RISK, MEETING, SOMEDAY, OPTIMIZE
-- **Reflect** -- freestanding notable-event markers + day-meta:
-  IMPACT, MILESTONE, CAREER, SUMMARY*, PRODUCTIVITY*, MEETING_HOURS*
+- **Hilite** -- freestanding notable-event markers + day-meta: TIL,
+  KUDOS, WIN, PSA, OVERCOMING, INNOVATION, LEADERSHIP, IMPACT,
+  MILESTONE, CAREER, SUMMARY*, PRODUCTIVITY*, MEETING_HOURS*
   (*EODOnly)
 
 ## The Jira/GitHub-Issues parallel (TODO/FIXME/IDEA/GOAL)
@@ -117,8 +118,7 @@ e.g. a DONE line noting `(from TODO)`. Current status:
   category chosen up front; there's no formal "promote this open item
   to DONE" UI action yet that would stamp this automatically.
 - **Applies only to true promotions of Plan-group items into an
-  endpoint** -- explicitly does *not* apply to ONGOING (internal
-  mechanism only, not part of this taxonomy).
+  endpoint** -- explicitly does *not* apply to legacy ONGOING records.
 - **Future direction, not yet built:** if this is to become genuinely
   trackable/analyzable (e.g. "% of IDEAs that become TODOs then DONE,"
   FIXME time-to-resolution stats), it needs:

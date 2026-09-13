@@ -49,7 +49,7 @@ func recordTomorrowGoals(lines []string) {
 }
 
 // eodOpenItemsSection builds one Postpone-opt-out checkbox section
-// (used for both TODO and QUESTION) of showEODWindow: a checkbox per
+// (used for TODO/DOING and QUESTION) of showEODWindow: a checkbox per
 // still-open item of the given category, UNCHECKED by default.
 //
 // Naming/semantics note (2026-09-02, see
@@ -181,12 +181,13 @@ func showEODWindow(a fyne.App) {
 	goals.SetPlaceHolder("Any goals for tomorrow? One per line\u2026")
 	goals.SetMinRowsVisible(3)
 
-	// (2026-09-02, see docs/todo-carryforward-design.md): open TODOs
-	// and QUESTIONs each get their own Postpone-opt-out checkbox
+	// (2026-09-02, see docs/todo-carryforward-design.md): open TODOs,
+	// DOING, and QUESTIONs each get their own Postpone-opt-out checkbox
 	// section -- checking a box here sends that item to SOMEDAY
 	// instead of letting it carry forward automatically tomorrow (see
 	// eodOpenItemsSection's doc comment for the full rationale).
 	todoBox, openTodos, todoChecks := eodOpenItemsSection("TODO")
+	doingBox, openDoing, doingChecks := eodOpenItemsSection("DOING")
 	questionBox, openQuestions, questionChecks := eodOpenItemsSection("QUESTION")
 
 	items := []*widget.FormItem{
@@ -199,6 +200,9 @@ func showEODWindow(a fyne.App) {
 	}
 	if len(openTodos) > 0 {
 		items = append(items, widget.NewFormItem("Postpone Open TODOs", todoBox))
+	}
+	if len(openDoing) > 0 {
+		items = append(items, widget.NewFormItem("Postpone Open DOING", doingBox))
 	}
 	if len(openQuestions) > 0 {
 		items = append(items, widget.NewFormItem("Postpone Open QUESTIONs", questionBox))
@@ -220,6 +224,11 @@ func showEODWindow(a fyne.App) {
 		}
 		for i, item := range openTodos {
 			if todoChecks[i].Checked {
+				recordPostponed(item)
+			}
+		}
+		for i, item := range openDoing {
+			if doingChecks[i].Checked {
 				recordPostponed(item)
 			}
 		}

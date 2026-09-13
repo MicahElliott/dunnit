@@ -70,12 +70,12 @@ func priorOpenItems() (items []OpenItem, sinceDates []time.Time) {
 	today := time.Now()
 	ty, tm, td := today.Date()
 
-	type key struct {
-		cat, text string
+	type candidate struct {
+		item  OpenItem
+		since time.Time
 	}
-	resolved := make(map[key]bool)
-	emitted := make(map[key]bool)
-	var openEntries []LedgerEntry
+	active := make(map[string]candidate)
+	var order []string
 
 	for _, e := range entries {
 		ey, em, ed := e.Date.Date()
@@ -91,9 +91,21 @@ func priorOpenItems() (items []OpenItem, sinceDates []time.Time) {
 			for _, srcCat := range openTrackedCategories {
 				if suffix := convertedSuffix(srcCat); strings.HasSuffix(e.Text, suffix) {
 					orig := strings.TrimSuffix(e.Text, suffix)
-					orig = stripCarryForwardSince(orig)
-					resolved[key{srcCat, orig}] = true
-					resolved[key{srcCat, PastTenseLeadingWord(orig)}] = true
+					for key, item := range active {
+						if isLifecycleCategory(item.item.Category) && isLifecycleCategory(srcCat) {
+							if resolutionMatches(
+								stripCarryForwardSince(item.item.Text),
+								stripCarryForwardSince(orig)) {
+								delete(active, key)
+							}
+							continue
+						}
+						if item.item.Category == srcCat && resolutionMatches(
+							stripCarryForwardSince(item.item.Text),
+							stripCarryForwardSince(orig)) {
+							delete(active, key)
+						}
+					}
 				}
 			}
 			continue
@@ -105,24 +117,24 @@ func priorOpenItems() (items []OpenItem, sinceDates []time.Time) {
 			continue
 		}
 		if isOpenTrackedCategory(e.Category) {
-			openEntries = append(openEntries, e)
+			key := openItemKey(e.Category, e.Text)
+			if _, exists := active[key]; !exists {
+				order = append(order, key)
+			}
+			active[key] = candidate{
+				item:  OpenItem{Category: e.Category, Text: stripCarryForwardSince(e.Text)},
+				since: staleDateFor(e.Text, e.Date),
+			}
 		}
 	}
 
-	for _, e := range openEntries {
-		strippedText := stripCarryForwardSince(e.Text)
-		if resolved[key{e.Category, strippedText}] {
+	for _, key := range order {
+		item, ok := active[key]
+		if !ok {
 			continue
 		}
-		// A carried item appears once per day in the historical scan.
-		// Keep only the oldest occurrence so repeated carry-forward runs
-		// cannot multiply the same item in today's ledger.
-		if emitted[key{e.Category, strippedText}] {
-			continue
-		}
-		emitted[key{e.Category, strippedText}] = true
-		items = append(items, OpenItem{Category: e.Category, Text: strippedText})
-		sinceDates = append(sinceDates, staleDateFor(e.Text, e.Date))
+		items = append(items, item.item)
+		sinceDates = append(sinceDates, item.since)
 	}
 	return items, sinceDates
 }
@@ -168,11 +180,11 @@ func runCarryForwardIfNeeded() {
 	for _, line := range readLedgerLines() {
 		cat, text, ok := parseLedgerLine(line)
 		if ok && isOpenTrackedCategory(cat) {
-			todayKeys[cat+"\x00"+stripCarryForwardSince(text)] = true
+			todayKeys[openItemKey(cat, text)] = true
 		}
 	}
 	for i, item := range items {
-		key := item.Category + "\x00" + item.Text
+		key := openItemKey(item.Category, item.Text)
 		if todayKeys[key] {
 			continue
 		}

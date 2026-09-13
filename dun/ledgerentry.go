@@ -29,8 +29,9 @@ type LedgerEntry struct {
 	// Tags is Text's #tag tokens, pre-extracted via extractTags so
 	// callers don't need to re-run the regex themselves.
 	Tags []string
-	// Mins is parsed from a trailing " @Nm" suffix in Text (see
-	// ui.go's withMins), 0 if absent/invalid. Note this does NOT
+	// Mins is parsed from a " @Nm" suffix in Text (see ui.go's withMins),
+	// including when lifecycle metadata follows it. 0 if absent/invalid.
+	// Note this does NOT
 	// strip the "@Nm" substring back out of Text -- Text stays the
 	// full original string as written to the ledger.
 	Mins int
@@ -43,23 +44,83 @@ type LedgerEntry struct {
 	Line   int
 }
 
-// entryMinsPattern matches a trailing " @Nm" mins suffix (e.g.
-// " @20m") at the end of a ledger line's text, mirroring the format
-// ui.go's withMins appends.
-var entryMinsPattern = regexp.MustCompile(`@(\d+)m$`)
+// entryMinsPattern matches a minutes token (e.g. "@20m"). Boundary
+// validation happens in entryMinsMatch because Go's regexp package
+// deliberately does not support look-around assertions.
+var entryMinsPattern = regexp.MustCompile(`@(\d+)m`)
 
-// parseEntryMins returns the minutes value from a trailing " @Nm"
-// suffix in text, or 0 if absent/invalid.
+// parseEntryMins returns the minutes value from a valid " @Nm" token
+// in text, or 0 if absent/invalid. Lifecycle metadata such as
+// " (via DOING)" may follow the token.
 func parseEntryMins(text string) int {
-	m := entryMinsPattern.FindStringSubmatch(strings.TrimSpace(text))
-	if m == nil {
-		return 0
-	}
-	n, err := strconv.Atoi(m[1])
-	if err != nil {
+	_, _, n, ok := entryMinsMatch(text)
+	if !ok {
 		return 0
 	}
 	return n
+}
+
+// entryMinsMatch returns the last valid minutes token and its byte span.
+// A token is valid only when separated from surrounding text by whitespace
+// or a string boundary, so prose such as "@20minutes" is left untouched.
+func entryMinsMatch(text string) (start, end, mins int, ok bool) {
+	matches := entryMinsPattern.FindAllStringSubmatchIndex(text, -1)
+	for i := len(matches) - 1; i >= 0; i-- {
+		match := matches[i]
+		start, end := match[0], match[1]
+		if start > 0 && text[start-1] != ' ' && text[start-1] != '\t' {
+			continue
+		}
+		if end < len(text) && text[end] != ' ' && text[end] != '\t' {
+			continue
+		}
+		n, err := strconv.Atoi(text[match[2]:match[3]])
+		if err != nil {
+			continue
+		}
+		return start, end, n, true
+	}
+	return 0, 0, 0, false
+}
+
+// replaceEntryMins replaces the existing valid minutes token or appends one
+// before known trailing lifecycle/carry-forward metadata. Existing malformed
+// duration text is preserved and treated as absent.
+func replaceEntryMins(text string, mins int) string {
+	if mins < 0 {
+		return text
+	}
+	if start, end, _, ok := entryMinsMatch(text); ok {
+		return text[:start] + "@" + strconv.Itoa(mins) + "m" + text[end:]
+	}
+	leading := len(text) - len(strings.TrimLeft(text, " \t"))
+	trailing := len(text) - len(strings.TrimRight(text, " \t"))
+	coreEnd := len(text) - trailing
+	core := text[leading:coreEnd]
+	insertAt := len(core)
+	for _, suffix := range []string{" (via TODO)", " (via DOING)"} {
+		if idx := strings.LastIndex(core, suffix); idx >= 0 && idx < insertAt && idx+len(suffix) == len(core) {
+			insertAt = idx
+		}
+	}
+	if since := strings.LastIndex(core, " (since "); since >= 0 && strings.HasSuffix(core, ")") && since < insertAt {
+		insertAt = since
+	}
+	return text[:leading] + core[:insertAt] + " @" + strconv.Itoa(mins) + "m" + core[insertAt:] + text[coreEnd:]
+}
+
+// incrementEntryMins adds delta to a valid existing minutes value. If the
+// prior value is absent or malformed, it is treated as zero while all other
+// text remains unchanged.
+func incrementEntryMins(text string, delta int) string {
+	if delta <= 0 {
+		return text
+	}
+	_, _, current, ok := entryMinsMatch(text)
+	if !ok {
+		current = 0
+	}
+	return replaceEntryMins(text, current+delta)
 }
 
 // parseLedgerEntry parses one raw ledger line into a LedgerEntry,

@@ -122,6 +122,58 @@ func TestRunCarryForwardIfNeeded_PreservesOriginalSinceDate(t *testing.T) {
 	}
 }
 
+func TestCarryForwardStartDoneCollapsesLifecycleAcrossDays(t *testing.T) {
+	withTempDunnitDir(t)
+
+	yesterday := time.Now().AddDate(0, 0, -1)
+	writeLedgerLinesForDate(t, yesterday, []string{
+		"[09:00:00] TODO finish the report @20m",
+	})
+	InvalidateLedgerCaches()
+
+	runCarryForwardIfNeeded()
+	item := getOpenItems()[0]
+	if item.Category != "TODO" {
+		t.Fatalf("carried item category = %q, want TODO", item.Category)
+	}
+	if err := startPlannedItem(item); err != nil {
+		t.Fatalf("start carried item: %v", err)
+	}
+	item = getOpenItems()[0]
+	if err := completePlannedItem(item); err != nil {
+		t.Fatalf("complete carried item: %v", err)
+	}
+
+	if items, _ := priorOpenItems(); len(items) != 0 {
+		t.Fatalf("completed carried item should not reappear tomorrow: %+v", items)
+	}
+	lines := readLedgerLines()
+	if len(lines) != 1 {
+		t.Fatalf("expected one current lifecycle row, got %v", lines)
+	}
+	if cat, _, ok := parseLedgerLine(lines[0]); !ok || cat != "DONE" {
+		t.Fatalf("current row = %q, want DONE", lines[0])
+	}
+}
+
+func TestLegacyOngoingIsNotActiveOrCarried(t *testing.T) {
+	withTempDunnitDir(t)
+
+	yesterday := time.Now().AddDate(0, 0, -1)
+	writeLedgerLinesForDate(t, yesterday, []string{
+		"[09:00:00] ONGOING old ditto record",
+	})
+	InvalidateLedgerCaches()
+
+	runCarryForwardIfNeeded()
+	if lines := readLedgerLines(); len(lines) != 0 {
+		t.Fatalf("legacy ONGOING should not be carried: %v", lines)
+	}
+	if category, text, ok := parseLedgerLine("[09:00:00] ONGOING old ditto record"); !ok || category != legacyOngoingCategory || text != "old ditto record" {
+		t.Fatal("legacy ONGOING should remain parseable as raw history")
+	}
+}
+
 func TestStaleBadge(t *testing.T) {
 	fresh := "do a thing (since " + time.Now().Format("2006-01-02") + ")"
 	if got := staleBadge(fresh); got != "" {

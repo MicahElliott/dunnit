@@ -133,7 +133,7 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 	}
 
 	// FR-13: Start-of-Day nudge, fires once per workday near
-	// cfg.DayStart, showing today's open TODOs/GOALs (readback) and a
+	// cfg.DayStart, showing today's open TODOs/DOING/GOALs (readback) and a
 	// chance to add more before the day gets going. FR-14: if today
 	// is also the first weekday of the month, show the SOM wizard
 	// instead (its step 4 already covers the same "current GOALs"

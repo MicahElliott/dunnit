@@ -42,6 +42,7 @@ var trailingMetaPattern = regexp.MustCompile(
 	`(?:` +
 		` @\d+m` +
 		`| \(since \d{4}-\d{2}-\d{2}\)` +
+		`| \(via [A-Z_]+\)` +
 		`| \x{26a0} \d+d` +
 		`)+$`)
 

@@ -153,7 +153,7 @@ func showPeriodReviewWindow(a fyne.App, period summaryPeriod, anchor time.Time) 
 	}
 
 	// Postpone-opt-out: same eodOpenItemsSection as EOD (2026-09-02,
-	// see docs/todo-carryforward-design.md) -- unresolved TODOs/
+	// see docs/todo-carryforward-design.md) -- unresolved TODOs/DOING/
 	// QUESTIONs now carry forward to the next day automatically
 	// (runCarryForwardIfNeeded), so this section's role is to let the
 	// user explicitly send an item to SOMEDAY (Postpone) instead,
@@ -162,11 +162,16 @@ func showPeriodReviewWindow(a fyne.App, period summaryPeriod, anchor time.Time) 
 	// saving a report and postponing open items are independent
 	// actions.
 	todoBox, openTodos, todoChecks := eodOpenItemsSection("TODO")
+	doingBox, openDoing, doingChecks := eodOpenItemsSection("DOING")
 	questionBox, openQuestions, questionChecks := eodOpenItemsSection("QUESTION")
 	carryForwardBox := container.NewVBox()
 	if len(openTodos) > 0 {
 		carryForwardBox.Add(widget.NewLabelWithStyle("Postpone Open TODOs (checked = send to SOMEDAY)", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
 		carryForwardBox.Add(todoBox)
+	}
+	if len(openDoing) > 0 {
+		carryForwardBox.Add(widget.NewLabelWithStyle("Postpone Open DOING (checked = send to SOMEDAY)", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
+		carryForwardBox.Add(doingBox)
 	}
 	if len(openQuestions) > 0 {
 		carryForwardBox.Add(widget.NewLabelWithStyle("Postpone Open QUESTIONs (checked = send to SOMEDAY)", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
@@ -178,6 +183,11 @@ func showPeriodReviewWindow(a fyne.App, period summaryPeriod, anchor time.Time) 
 	doneBtn := widget.NewButton("Done", func() {
 		for i, item := range openTodos {
 			if todoChecks[i].Checked {
+				recordPostponed(item)
+			}
+		}
+		for i, item := range openDoing {
+			if doingChecks[i].Checked {
 				recordPostponed(item)
 			}
 		}

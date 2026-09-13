@@ -119,7 +119,7 @@ func okrKickoffSection(a fyne.App, period summaryPeriod, anchor time.Time) fyne.
 
 // showPeriodKickoffWindow shows a generic Kickoff dialog (docs/
 // kickoff-review-design.md) for period's unit containing anchor --
-// open TODOs/GOALs readback, a quick-entry field, and (for Week/
+// open TODOs/DOING/GOALs readback, a quick-entry field, and (for Week/
 // Month, which have a matching recurring-item cadence) recurring-item
 // suggestions. Used for Week, Quarter, and Year, which have no
 // bespoke dialog of their own (unlike Day/Month's existing SOD/Month

@@ -57,12 +57,11 @@ func (s *hoverSelect) showTooltip() {
 		PopUp:     widget.NewPopUp(label, canvas),
 		ownerPos:  fyne.CurrentApp().Driver().AbsolutePositionForObject(s),
 		ownerSize: s.Size(),
-		// No ownerTapped forward here (unlike hoverButton): Select's
-		// Tapped(*fyne.PointEvent) opens its dropdown menu and isn't
-		// safe to call with a synthetic/nil event. A click that lands
-		// on the Select while this tooltip is showing just dismisses
-		// the tooltip (PopUp's normal outside-click behavior); a
-		// second click then opens the dropdown as usual.
+		// Forward the real event so a click that lands on the Select
+		// while its tooltip is showing opens the dropdown immediately.
+		// The old behavior only dismissed the tooltip, forcing a
+		// second click and making category changes feel unreliable.
+		ownerTappedEvent: func(e *fyne.PointEvent) { s.Tapped(e) },
 	}
 	s.popup = pop
 	pos := fyne.CurrentApp().Driver().AbsolutePositionForObject(s)
