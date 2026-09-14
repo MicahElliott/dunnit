@@ -2,6 +2,23 @@ package dun
 
 import "testing"
 
+func TestAllCategoriesHaveHelpText(t *testing.T) {
+	for _, category := range Categories {
+		if category.Help == "" {
+			t.Errorf("%s has no help text", category.Code)
+		}
+	}
+}
+
+func TestEmojiForCode(t *testing.T) {
+	if got := EmojiForCode("TODO"); got != "📌" {
+		t.Errorf("EmojiForCode(TODO) = %q, want pushpin", got)
+	}
+	if got := EmojiForCode("missing"); got != "" {
+		t.Errorf("EmojiForCode(missing) = %q, want empty", got)
+	}
+}
+
 func TestDoingCategoryIsVisiblePlannedAndTimeTrackable(t *testing.T) {
 	var doing Category
 	for _, category := range Categories {

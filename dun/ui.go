@@ -651,20 +651,8 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 		}
 		excludeTags := LoadConfig().ReportExcludeTags
 		addRow := func(item OpenItem) {
-			// Icon-only widget.NewButtonWithIcon (empty label), not
-			// newHoverIconButton -- this Planned section specifically
-			// hit the tooltip-popup click-swallowing bug
-			// hoverbutton.go documents (a click needs two separate
-			// taps to register once the hover tooltip has appeared),
-			// which the existing tapped-forwarding patch there
-			// doesn't fully close. Sidestepping the tooltip-popup
-			// mechanism entirely removes the whole bug class rather
-			// than chasing Fyne's overlay hit-testing further. No
-			// text label and no hover tooltip either (Micah doesn't
-			// want either) -- old labels noted in comments below for
-			// reference.
 			actions := []fyne.CanvasObject{
-				widget.NewButtonWithIcon("", theme.Icon(theme.IconNameContentClear), func() { // "Discard"
+				newHoverIconButton(theme.Icon(theme.IconNameContentClear), "Discard", func() {
 					recordDiscarded(item)
 					fyne.Do(func() {
 						refreshOpenItems()
@@ -672,7 +660,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 						showToast(w4.Canvas(), "Discarded")
 					})
 				}),
-				widget.NewButtonWithIcon("", theme.Icon(theme.IconNameHistory), func() { // "Postpone"
+				newHoverIconButton(theme.Icon(theme.IconNameHistory), "Postpone", func() {
 					recordPostponed(item)
 					fyne.Do(func() {
 						refreshOpenItems()
@@ -680,7 +668,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 						showToast(w4.Canvas(), "Postponed (to SOMEDAY)")
 					})
 				}),
-				widget.NewButtonWithIcon("", theme.Icon(theme.IconNameConfirm), func() { // "Done"
+				newHoverIconButton(theme.Icon(theme.IconNameConfirm), "Done", func() {
 					showCompleteItemDialog(w4, item, func() {
 						minsInput.SetText("")
 						refreshOpenItems()
@@ -692,7 +680,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 				}),
 			}
 			if item.Category == "TODO" {
-				actions = append(actions, widget.NewButtonWithIcon("", theme.Icon(theme.IconNameMediaPlay), func() { // "Start"
+				actions = append(actions, newHoverIconButton(theme.Icon(theme.IconNameMediaPlay), "Start", func() {
 					if err := startPlannedItem(item); err != nil {
 						log.Println("Error starting planned item:", err)
 					}
@@ -704,7 +692,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 					})
 				}))
 			}
-			actions = append(actions, widget.NewButtonWithIcon("", theme.Icon(theme.IconNameDocumentCreate), func() { // "Edit"
+			actions = append(actions, newHoverIconButton(theme.Icon(theme.IconNameDocumentCreate), "Edit", func() {
 				showEditItemDialog(w4, item, func() {
 					fyne.Do(func() {
 						refreshOpenItems()
@@ -713,7 +701,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 				})
 			}))
 			row := container.NewBorder(nil, nil, nil, container.NewHBox(actions...),
-				itemTextLabel("\u2022 "+stripCarryForwardSince(item.Text)+staleBadge(item.Text)))
+				itemTextLabel(categoryIconPrefix(item.Category)+stripCarryForwardSince(item.Text)+staleBadge(item.Text)))
 			openItemsBox.Add(row)
 		}
 		cats, grouped := groupOpenItemsByCategory(items)
@@ -820,7 +808,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 			for _, item := range shown {
 				item := item // capture
 				row := container.NewBorder(nil, nil, nil,
-					widget.NewButtonWithIcon("", theme.Icon(theme.IconNameDocumentCreate), func() { // "Edit"
+					newHoverIconButton(theme.Icon(theme.IconNameDocumentCreate), "Edit", func() {
 						showEditItemDialog(w4, item, func() {
 							fyne.Do(func() {
 								refreshCompleted()
@@ -829,7 +817,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 							})
 						})
 					}),
-					itemTextLabel("\u2022 "+item.Text))
+					itemTextLabel(categoryIconPrefix(item.Category)+item.Text))
 				completedBox.Add(row)
 			}
 		}
@@ -880,7 +868,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 			for _, item := range shown {
 				item := item // capture
 				row := container.NewBorder(nil, nil, nil,
-					widget.NewButtonWithIcon("", theme.Icon(theme.IconNameDocumentCreate), func() { // "Edit"
+					newHoverIconButton(theme.Icon(theme.IconNameDocumentCreate), "Edit", func() {
 						showEditItemDialog(w4, item, func() {
 							fyne.Do(func() {
 								refreshReflections()
@@ -888,7 +876,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 							})
 						})
 					}),
-					itemTextLabel("\u2022 "+item.Text))
+					itemTextLabel(categoryIconPrefix(item.Category)+item.Text))
 				reflectionsBox.Add(row)
 			}
 		}
@@ -1028,7 +1016,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 
 	content := container.NewVBox(
 		startOfDayNotice,
-		widget.NewLabelWithStyle("Time to record what’s going on.", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		widget.NewLabelWithStyle("Time to record what’s just been DONE/DOING.", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		doneWrapper,
 		inputSuggestions,
 		// category, input,

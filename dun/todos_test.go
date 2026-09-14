@@ -185,6 +185,8 @@ func TestLifecycleDurationMetadata(t *testing.T) {
 		wantReplace string
 	}{
 		{"plain", "task @10m", 10, "task @15m"},
+		{"hours", "task @2h", 120, "task @125m"},
+		{"days", "task @4d", 4 * 24 * 60, "task @5765m"},
 		{"completion marker", "task @10m (via DOING)", 10, "task @15m (via DOING)"},
 		{"carry and marker", "task @10m (since 2026-09-01) (via DOING)", 10, "task @15m (since 2026-09-01) (via DOING)"},
 		{"malformed", "task @xm (via DOING)", 0, "task @xm @5m (via DOING)"},

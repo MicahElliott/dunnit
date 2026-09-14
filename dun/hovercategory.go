@@ -53,19 +53,21 @@ func (s *hoverSelect) showTooltip() {
 		return
 	}
 	label := widget.NewLabel(text)
+	ownerPos := fyne.CurrentApp().Driver().AbsolutePositionForObject(s)
 	pop := &tooltipPopup{
-		PopUp:     widget.NewPopUp(label, canvas),
-		ownerPos:  fyne.CurrentApp().Driver().AbsolutePositionForObject(s),
-		ownerSize: s.Size(),
+		host:       canvas,
+		ownerPos:   ownerPos,
+		ownerSize:  s.Size(),
+		tooltipPos: tooltipPositionAbove(ownerPos, label),
+		label:      label,
 		// Forward the real event so a click that lands on the Select
 		// while its tooltip is showing opens the dropdown immediately.
-		// The old behavior only dismissed the tooltip, forcing a
-		// second click and making category changes feel unreliable.
 		ownerTappedEvent: func(e *fyne.PointEvent) { s.Tapped(e) },
 	}
+	pop.ExtendBaseWidget(pop)
+	pop.Resize(canvas.Size())
 	s.popup = pop
-	pos := fyne.CurrentApp().Driver().AbsolutePositionForObject(s)
-	pop.ShowAtPosition(pos.Add(fyne.NewPos(0, s.Size().Height)))
+	canvas.Overlays().Add(pop)
 }
 
 func (s *hoverSelect) hideTooltip() {

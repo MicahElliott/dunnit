@@ -20,7 +20,7 @@ var tagTextColor = color.NRGBA{R: 0, G: 100, B: 0, A: 255}
 
 // metaTextColor is a medium-light gray (not so light it's hard to
 // read) used for trailing display-only metadata appended to an item
-// row's text -- " @Nm" (mins, ui.go's withMins), " (since ...)"
+// row's text -- " @N[mhd]" (duration, ui.go's withMins), " (since ...)"
 // (carry-forward annotation, carryforward.go), and " \u26a0 Nd" (the
 // stale badge, also carryforward.go) -- so this bookkeeping visually
 // recedes behind the item's actual content.
@@ -33,14 +33,14 @@ const metaTextSizeRatio = 0.85
 
 // trailingMetaPattern matches one or more of the known trailing
 // display-metadata suffixes back-to-back at the very end of an item's
-// text: " @Nm" (mins), " (since YYYY-MM-DD)" (carry-forward), and
+// text: " @N[mhd]" (duration), " (since YYYY-MM-DD)" (carry-forward), and
 // " \u26a0 Nd" (stale badge). Matched as a repeating group so any
 // combination/order of these (in practice at most one or two ever
 // co-occur -- see splitTrailingMeta's doc comment) is captured as one
 // contiguous trailing run.
 var trailingMetaPattern = regexp.MustCompile(
 	`(?:` +
-		` @\d+m` +
+		` @\d+[mhd]` +
 		`| \(since \d{4}-\d{2}-\d{2}\)` +
 		`| \(via [A-Z_]+\)` +
 		`| \x{26a0} \d+d` +

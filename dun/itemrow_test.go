@@ -6,6 +6,8 @@ func TestSplitTrailingMeta(t *testing.T) {
 	cases := map[string][2]string{
 		"Fix the login bug":                    {"Fix the login bug", ""},
 		"walk the dog @15m":                    {"walk the dog", " @15m"},
+		"long task @2h":                        {"long task", " @2h"},
+		"multi-day task @4d":                   {"multi-day task", " @4d"},
 		"finish the report (since 2026-08-28)": {"finish the report", " (since 2026-08-28)"},
 		"old todo \u26a0 4d":                   {"old todo", " \u26a0 4d"},
 		"todo (since 2026-08-28) \u26a0 4d":    {"todo", " (since 2026-08-28) \u26a0 4d"},

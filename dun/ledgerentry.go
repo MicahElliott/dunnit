@@ -29,10 +29,11 @@ type LedgerEntry struct {
 	// Tags is Text's #tag tokens, pre-extracted via extractTags so
 	// callers don't need to re-run the regex themselves.
 	Tags []string
-	// Mins is parsed from a " @Nm" suffix in Text (see ui.go's withMins),
-	// including when lifecycle metadata follows it. 0 if absent/invalid.
+	// Mins is parsed from a " @N[mhd]" suffix in Text (see ui.go's
+	// withMins), converting hours and days to minutes, including when
+	// lifecycle metadata follows it. 0 if absent/invalid.
 	// Note this does NOT
-	// strip the "@Nm" substring back out of Text -- Text stays the
+	// strip the "@N[mhd]" substring back out of Text -- Text stays the
 	// full original string as written to the ledger.
 	Mins int
 	// Source is the ledger file path this entry came from, and Line
@@ -44,14 +45,26 @@ type LedgerEntry struct {
 	Line   int
 }
 
-// entryMinsPattern matches a minutes token (e.g. "@20m"). Boundary
-// validation happens in entryMinsMatch because Go's regexp package
-// deliberately does not support look-around assertions.
-var entryMinsPattern = regexp.MustCompile(`@(\d+)m`)
+// entryMinsPattern matches a duration token (e.g. "@20m", "@2h", or
+// "@4d"). Boundary validation happens in entryMinsMatch because Go's
+// regexp package deliberately does not support look-around assertions.
+var entryMinsPattern = regexp.MustCompile(`@(\d+)([mhd])`)
 
-// parseEntryMins returns the minutes value from a valid " @Nm" token
-// in text, or 0 if absent/invalid. Lifecycle metadata such as
-// " (via DOING)" may follow the token.
+func durationMarkerMultiplier(unit byte) int {
+	switch unit {
+	case 'm':
+		return 1
+	case 'h':
+		return 60
+	case 'd':
+		return 24 * 60
+	}
+	return 0
+}
+
+// parseEntryMins returns the minutes value from a valid " @N[mhd]" token
+// in text, or 0 if absent/invalid. Hours and days are converted to minutes.
+// Lifecycle metadata such as " (via DOING)" may follow the token.
 func parseEntryMins(text string) int {
 	_, _, n, ok := entryMinsMatch(text)
 	if !ok {
@@ -78,7 +91,11 @@ func entryMinsMatch(text string) (start, end, mins int, ok bool) {
 		if err != nil {
 			continue
 		}
-		return start, end, n, true
+		multiplier := durationMarkerMultiplier(text[match[4]])
+		if multiplier == 0 || n > int(^uint(0)>>1)/multiplier {
+			continue
+		}
+		return start, end, n * multiplier, true
 	}
 	return 0, 0, 0, false
 }

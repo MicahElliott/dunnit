@@ -106,7 +106,7 @@ func showSODWindow(a fyne.App) {
 			planBox.Add(widget.NewLabel("No TODOs carried in yet. Add one below or from Daybook."))
 		} else {
 			for _, item := range plan {
-				planBox.Add(widget.NewLabel("\u2022 " + stripCarryForwardSince(item.Text) + staleBadge(item.Text)))
+				planBox.Add(widget.NewLabel(categoryIconPrefix(item.Category) + stripCarryForwardSince(item.Text) + staleBadge(item.Text)))
 			}
 		}
 		planBox.Refresh()
@@ -133,7 +133,7 @@ func showSODWindow(a fyne.App) {
 		contextCount := 0
 		for _, item := range contextItems {
 			if sodContextCategories[item.Category] {
-				contextBox.Add(widget.NewLabel("\u2022 " + item.Category + ": " + stripCarryForwardSince(item.Text)))
+				contextBox.Add(widget.NewLabel(categoryIconPrefix(item.Category) + item.Category + ": " + stripCarryForwardSince(item.Text)))
 				contextCount++
 			}
 		}
@@ -152,7 +152,7 @@ func showSODWindow(a fyne.App) {
 		staleBox.Add(widget.NewLabelWithStyle("Stale TODOs", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
 		staleBox.Add(widget.NewLabel("These have been open for at least seven days."))
 		for _, item := range staleItems {
-			staleBox.Add(widget.NewLabel("\u2022 " + stripCarryForwardSince(item.Text) + staleBadge(item.Text)))
+			staleBox.Add(widget.NewLabel(categoryIconPrefix(item.Category) + stripCarryForwardSince(item.Text) + staleBadge(item.Text)))
 		}
 		staleBox.Add(widget.NewButton("Move stale TODOs to SOMEDAY", func() {
 			for _, item := range staleItems {

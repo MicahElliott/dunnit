@@ -343,6 +343,16 @@ func categoryPlural(cat string) string {
 	return cat + "s"
 }
 
+// categoryIconPrefix returns the category's icon plus a separating space
+// for categorized item lists. Unknown categories retain the old bullet so
+// callers remain readable if historical data contains an old code.
+func categoryIconPrefix(cat string) string {
+	if emoji := EmojiForCode(cat); emoji != "" {
+		return emoji + " "
+	}
+	return "\u2022 "
+}
+
 // lastLifecycleItem returns the most recently logged DONE or DOING entry,
 // with lifecycle metadata stripped and its current line index. It remains
 // useful to history-oriented callers; the live Ditto control uses the

@@ -65,6 +65,17 @@ func (c Category) Label() string {
 	return c.Emoji + " " + c.Code
 }
 
+// EmojiForCode returns the category icon for code, or "" when code is
+// unknown. Readback lists use it in place of generic bullet markers.
+func EmojiForCode(code string) string {
+	for _, c := range Categories {
+		if c.Code == code {
+			return c.Emoji
+		}
+	}
+	return ""
+}
+
 // GroupLabel returns a display name + description for a group, used
 // as section headers in the Category Legend.
 func GroupLabel(group string) string {
@@ -105,9 +116,9 @@ var Categories = []Category{
 	// see config.go) -- an opt-in feature, hidden from the live
 	// picker when off, though still present here for Help/legend and
 	// historical ledger entries.
-	{"✔️", "DONE", "Something you completed. The most common endpoint a \"Plan\" item (TODO/IDEA/GOAL/etc.) resolves into — see docs/category-taxonomy.md.", "end", "positive", false},
-	{"❌", "FAIL", "Something that didn't go as hoped — an endpoint a \"Plan\" item can resolve into, same as DONE, just the unsuccessful outcome.", "end", "negative", false},
-	{"🗑️", "WASTED", "Unfocused, pointless work or distraction. Opt-in: hidden from the live picker unless Config.WastedTimeTrackingEnabled is set.", "end", "negative", false},
+	{"✔️", "DONE", "Completed work.", "end", "positive", false},
+	{"❌", "FAIL", "Work that did not succeed.", "end", "negative", false},
+	{"🗑️", "WASTED", "Unfocused or pointless work.", "end", "negative", false},
 
 	// plan: future-facing -- includes the "open item, needs follow-up
 	// or resolution" categories (WAITING/QUESTION/FIXME/RISK moved
@@ -121,17 +132,17 @@ var Categories = []Category{
 	// that pairing consistent. TODO leads the group (2026-09-02,
 	// moved ahead of IDEA per explicit request) since it's the most
 	// common/actionable item in this group.
-	{"📌", "TODO", "A small, tight, near-term item — actively encouraged. Roughly Jira's \"Task\": scoped and ready to act on (vs. IDEA, which is the same thing before it's scoped).", "plan", "", false},
-	{"▶️", "DOING", "An active TODO currently in progress. Keep one logical item moving toward DONE.", "plan", "", false},
-	{"💡", "IDEA", "A new idea worth capturing, not yet scoped/ready to act on — an earlier maturity stage of TODO (loosely: an un-scoped Jira \"Story\"), not a different type of item.", "plan", "", false},
-	{"🎯", "GOAL", "A bigger overarching aim, reviewed on a longer cadence (not daily). Roughly Jira's \"Epic\": a rollup that TODOs/FIXMEs work toward, not itself a single actionable item.", "plan", "", false},
+	{"📌", "TODO", "A small, actionable near-term task.", "plan", "", false},
+	{"▶️", "DOING", "A TODO currently in progress.", "plan", "", false},
+	{"💡", "IDEA", "An idea not yet ready to act on.", "plan", "", false},
+	{"🎯", "GOAL", "A larger aim that TODOs work toward.", "plan", "", false},
 	{"❓", "QUESTION", "An open question to follow up on.", "plan", "", false},
-	{"⏳", "WAITING", "Blocked on someone/something else; not actionable right now.", "plan", "", false},
-	{"🔧", "FIXME", "Something broken that needs fixing — roughly Jira's \"Bug\": a genuinely different *type* of item than TODO (fixing vs. building), not just a maturity stage like IDEA is.", "plan", "negative", false},
-	{"⚠️", "RISK", "A risk worth flagging/tracking.", "plan", "negative", false},
-	{"📅", "MEETING", "Scratch agenda-builder notes for an upcoming meeting (tag-scoped).", "plan", "", false},
-	{"🕰️", "SOMEDAY", "Something you might want to do eventually, not now (also where stalled TODOs/GOALs land).", "plan", "", false},
-	{"🏎️", "OPTIMIZE", "Something working but worth improving/speeding up.", "plan", "", false},
+	{"⏳", "WAITING", "Blocked on someone or something else.", "plan", "", false},
+	{"🔧", "FIXME", "A bug or broken thing to fix.", "plan", "negative", false},
+	{"⚠️", "RISK", "A risk worth tracking.", "plan", "negative", false},
+	{"📅", "MEETING", "Agenda notes for an upcoming meeting.", "plan", "", false},
+	{"🕰️", "SOMEDAY", "Something to do eventually, not now.", "plan", "", false},
+	{"🏎️", "OPTIMIZE", "Working well, but worth improving.", "plan", "", false},
 
 	// hilite: freestanding notable-moment callouts -- not tied to
 	// resolving any specific "Plan" item (unlike DONE/FAIL/WASTED,
@@ -145,19 +156,19 @@ var Categories = []Category{
 	// level meta-notes, arguably a fourth concept of their own (see
 	// docs/category-taxonomy.md) but left bundled into "hilite" for
 	// now rather than splitting into a new group.
-	{"🌱", "TIL", "Today I Learned — something new you picked up.", "hilite", "positive", false},
-	{"🙌", "KUDOS", "Recognition given to someone else, or received from someone else.", "hilite", "positive", false},
-	{"🏆", "WIN", "A distinct, successful moment or completed task — short-term momentum, not necessarily part of a bigger journey.", "hilite", "positive", false},
-	{"📢", "PSA", "An announcement or heads-up the team should know about — not a personal accomplishment, just something worth broadcasting.", "hilite", "positive", false},
-	{"💪", "OVERCOMING", "A time you turned a failure, roadblock, or crisis into a recovery — the comeback, not just the setback.", "hilite", "positive", false},
-	{"✨", "INNOVATION", "You created a new process, tool, or idea from scratch — something that didn't exist before.", "hilite", "positive", false},
-	{"👑", "LEADERSHIP", "A moment you mentored someone, led an initiative, or influenced a decision without direct authority.", "hilite", "positive", false},
-	{"💥", "IMPACT", "The measurable result or value your action caused, not just what you did — why it mattered (e.g. saved time, grew revenue).", "hilite", "positive", false},
-	{"🏁", "MILESTONE", "A significant checkpoint or phase transition in a longer journey, bigger in scope than a single WIN (e.g. shipping v1, a work anniversary).", "hilite", "positive", false},
-	{"💼", "CAREER", "A big, resume/CV-worthy accomplishment — not a plan, a retrospective note that something huge happened.", "hilite", "positive", false},
-	{"🔚", "SUMMARY", "A wrap-up/summary note (typically written via End of Day).", "hilite", "", true},
-	{"📈", "PRODUCTIVITY", "A note on your own productivity/efficiency (typically written via End of Day).", "hilite", "", true},
-	{"🕑", "MEETING_HOURS", "How many hours of meetings you were in today (typically written via End of Day).", "hilite", "", true},
+	{"🌱", "TIL", "Something new you learned today.", "hilite", "positive", false},
+	{"🙌", "KUDOS", "Recognition given or received.", "hilite", "positive", false},
+	{"🏆", "WIN", "A distinct success or completed task.", "hilite", "positive", false},
+	{"📢", "PSA", "An announcement or team heads-up.", "hilite", "positive", false},
+	{"💪", "OVERCOMING", "A setback or crisis you recovered from.", "hilite", "positive", false},
+	{"✨", "INNOVATION", "A new process, tool, or idea you created.", "hilite", "positive", false},
+	{"👑", "LEADERSHIP", "A moment of leadership or influence.", "hilite", "positive", false},
+	{"💥", "IMPACT", "The result or value your action created.", "hilite", "positive", false},
+	{"🏁", "MILESTONE", "A significant checkpoint in a longer journey.", "hilite", "positive", false},
+	{"💼", "CAREER", "A resume-worthy accomplishment.", "hilite", "positive", false},
+	{"🔚", "SUMMARY", "A wrap-up or summary note.", "hilite", "", true},
+	{"📈", "PRODUCTIVITY", "A note about productivity or efficiency.", "hilite", "", true},
+	{"🕑", "MEETING_HOURS", "The number of meeting hours today.", "hilite", "", true},
 }
 
 // GroupForCode returns the Group of the category with the given code
