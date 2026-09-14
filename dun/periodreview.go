@@ -152,12 +152,10 @@ func showPeriodReviewWindow(a fyne.App, period summaryPeriod, anchor time.Time) 
 		}()
 	}
 
-	// Postpone-opt-out: same eodOpenItemsSection as EOD (2026-09-02,
-	// see docs/todo-carryforward-design.md) -- unresolved TODOs/DOING/
-	// QUESTIONs now carry forward to the next day automatically
-	// (runCarryForwardIfNeeded), so this section's role is to let the
-	// user explicitly send an item to SOMEDAY (Postpone) instead,
-	// stopping it from continuing to carry forward. Applied on Done
+	// Postpone-opt-out: same eodOpenItemsSection as EOD -- unresolved
+	// TODOs/DOING/QUESTIONs are offered by the next Start of Day, so
+	// this section lets the user explicitly send an item to SOMEDAY
+	// (Postpone) instead. Applied on Done
 	// regardless of whether a report was ever generated -- generating/
 	// saving a report and postponing open items are independent
 	// actions.

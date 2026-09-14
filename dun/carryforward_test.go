@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func TestRunCarryForwardIfNeeded_CopiesUnresolvedItem(t *testing.T) {
+func TestCarryForwardDailyPlan_CopiesUnresolvedItem(t *testing.T) {
 	withTempDunnitDir(t)
 
 	// Simulate a TODO logged "yesterday" by writing directly to a
@@ -19,7 +19,7 @@ func TestRunCarryForwardIfNeeded_CopiesUnresolvedItem(t *testing.T) {
 	})
 	InvalidateLedgerCaches()
 
-	runCarryForwardIfNeeded()
+	carryForwardDailyPlan(time.Now())
 
 	lines := readLedgerLines()
 	if len(lines) != 1 {
@@ -34,7 +34,7 @@ func TestRunCarryForwardIfNeeded_CopiesUnresolvedItem(t *testing.T) {
 	}
 }
 
-func TestRunCarryForwardIfNeeded_SkipsResolvedItem(t *testing.T) {
+func TestCarryForwardDailyPlan_SkipsResolvedItem(t *testing.T) {
 	withTempDunnitDir(t)
 
 	yesterday := time.Now().AddDate(0, 0, -1)
@@ -44,7 +44,7 @@ func TestRunCarryForwardIfNeeded_SkipsResolvedItem(t *testing.T) {
 	})
 	InvalidateLedgerCaches()
 
-	runCarryForwardIfNeeded()
+	carryForwardDailyPlan(time.Now())
 
 	lines := readLedgerLines()
 	if len(lines) != 0 {
@@ -52,7 +52,7 @@ func TestRunCarryForwardIfNeeded_SkipsResolvedItem(t *testing.T) {
 	}
 }
 
-func TestRunCarryForwardIfNeeded_DeduplicatesHistoricalAndTodayItems(t *testing.T) {
+func TestCarryForwardDailyPlan_DeduplicatesHistoricalAndTodayItems(t *testing.T) {
 	withTempDunnitDir(t)
 
 	yesterday := time.Now().AddDate(0, 0, -1)
@@ -62,27 +62,22 @@ func TestRunCarryForwardIfNeeded_DeduplicatesHistoricalAndTodayItems(t *testing.
 	})
 	InvalidateLedgerCaches()
 
-	runCarryForwardIfNeeded()
-	runCarryForwardIfNeeded()
+	carryForwardDailyPlan(time.Now())
+	carryForwardDailyPlan(time.Now())
 
 	lines := readLedgerLines()
 	if len(lines) != 1 {
 		t.Fatalf("expected one deduplicated carry-forward line, got %d: %v", len(lines), lines)
 	}
 
-	// A stale marker must not make a subsequent carry-forward append it again.
-	cfg := LoadConfig()
-	cfg.LastCarryForwardDate = ""
-	if err := writeConfig(cfg); err != nil {
-		t.Fatal(err)
-	}
-	runCarryForwardIfNeeded()
+	// The existing today's item itself suppresses a duplicate.
+	carryForwardDailyPlan(time.Now())
 	if lines = readLedgerLines(); len(lines) != 1 {
 		t.Fatalf("expected existing today's item to suppress duplicate, got %d: %v", len(lines), lines)
 	}
 }
 
-func TestRunCarryForwardIfNeeded_IdempotentPerDay(t *testing.T) {
+func TestCarryForwardDailyPlan_IdempotentPerDay(t *testing.T) {
 	withTempDunnitDir(t)
 
 	yesterday := time.Now().AddDate(0, 0, -1)
@@ -91,8 +86,8 @@ func TestRunCarryForwardIfNeeded_IdempotentPerDay(t *testing.T) {
 	})
 	InvalidateLedgerCaches()
 
-	runCarryForwardIfNeeded()
-	runCarryForwardIfNeeded() // should be a no-op the second time
+	carryForwardDailyPlan(time.Now())
+	carryForwardDailyPlan(time.Now()) // should be a no-op the second time
 
 	lines := readLedgerLines()
 	if len(lines) != 1 {
@@ -100,7 +95,7 @@ func TestRunCarryForwardIfNeeded_IdempotentPerDay(t *testing.T) {
 	}
 }
 
-func TestRunCarryForwardIfNeeded_PreservesOriginalSinceDate(t *testing.T) {
+func TestCarryForwardDailyPlan_PreservesOriginalSinceDate(t *testing.T) {
 	withTempDunnitDir(t)
 
 	twoDaysAgo := time.Now().AddDate(0, 0, -2)
@@ -109,7 +104,7 @@ func TestRunCarryForwardIfNeeded_PreservesOriginalSinceDate(t *testing.T) {
 	})
 	InvalidateLedgerCaches()
 
-	runCarryForwardIfNeeded()
+	carryForwardDailyPlan(time.Now())
 
 	lines := readLedgerLines()
 	if len(lines) != 1 {
@@ -122,6 +117,83 @@ func TestRunCarryForwardIfNeeded_PreservesOriginalSinceDate(t *testing.T) {
 	}
 }
 
+func TestDailyCarryForwardUsesNewestPlanDayOnly(t *testing.T) {
+	withTempDunnitDir(t)
+
+	now := time.Now()
+	older := now.AddDate(0, 0, -2)
+	yesterday := now.AddDate(0, 0, -1)
+	writeLedgerLinesForDate(t, older, []string{
+		"[09:00:00] TODO older task",
+	})
+	writeLedgerLinesForDate(t, yesterday, []string{
+		"[09:00:00] TODO newer task",
+		"[09:01:00] DOING newer active task",
+		"[09:02:00] RISK deployment concern",
+	})
+	InvalidateLedgerCaches()
+
+	source, items, _ := dailyCarryForwardItems(now)
+	if source.Format("2006-01-02") != yesterday.Format("2006-01-02") {
+		t.Fatalf("source date = %v, want yesterday %v", source, yesterday)
+	}
+	if len(items) != 2 {
+		t.Fatalf("expected only yesterday's two plan items, got %+v", items)
+	}
+	if items[0].Text != "newer task" || items[1].Text != "newer active task" {
+		t.Fatalf("unexpected carry-forward items: %+v", items)
+	}
+}
+
+func TestDailyCarryForwardSkipsResolvedAndOlderThanLookback(t *testing.T) {
+	withTempDunnitDir(t)
+
+	now := time.Now()
+	older := now.AddDate(0, 0, -2)
+	yesterday := now.AddDate(0, 0, -1)
+	writeLedgerLinesForDate(t, older, []string{
+		"[09:00:00] TODO older unresolved task",
+		"[09:01:00] TODO resolved task",
+	})
+	writeLedgerLinesForDate(t, yesterday, []string{
+		"[09:00:00] TODO resolved task",
+		"[10:00:00] DONE resolved task (via TODO)",
+	})
+	InvalidateLedgerCaches()
+
+	_, items, _ := dailyCarryForwardItems(now)
+	if len(items) != 1 || items[0].Text != "older unresolved task" {
+		t.Fatalf("expected the unresolved item from the older qualifying day, got %+v", items)
+	}
+
+	withTempDunnitDir(t)
+	writeLedgerLinesForDate(t, now.AddDate(0, 0, -dailyCarryLookbackDays-1), []string{
+		"[09:00:00] TODO too old",
+	})
+	InvalidateLedgerCaches()
+	if source, items, _ := dailyCarryForwardItems(now); !source.IsZero() || len(items) != 0 {
+		t.Fatalf("item outside lookback should not carry: source=%v items=%+v", source, items)
+	}
+}
+
+func TestStaleDailyPlanItemsLookBeyondCarryWindow(t *testing.T) {
+	withTempDunnitDir(t)
+
+	now := time.Now()
+	writeLedgerLinesForDate(t, now.AddDate(0, 0, -8), []string{
+		"[09:00:00] TODO stale task",
+	})
+	writeLedgerLinesForDate(t, now.AddDate(0, 0, -3), []string{
+		"[09:00:00] TODO fresh task",
+	})
+	InvalidateLedgerCaches()
+
+	items := staleDailyPlanItems(now)
+	if len(items) != 1 || items[0].Text != "stale task" {
+		t.Fatalf("expected only the seven-day-old item in stale review, got %+v", items)
+	}
+}
+
 func TestCarryForwardStartDoneCollapsesLifecycleAcrossDays(t *testing.T) {
 	withTempDunnitDir(t)
 
@@ -131,7 +203,7 @@ func TestCarryForwardStartDoneCollapsesLifecycleAcrossDays(t *testing.T) {
 	})
 	InvalidateLedgerCaches()
 
-	runCarryForwardIfNeeded()
+	carryForwardDailyPlan(time.Now())
 	item := getOpenItems()[0]
 	if item.Category != "TODO" {
 		t.Fatalf("carried item category = %q, want TODO", item.Category)
@@ -165,7 +237,7 @@ func TestLegacyOngoingIsNotActiveOrCarried(t *testing.T) {
 	})
 	InvalidateLedgerCaches()
 
-	runCarryForwardIfNeeded()
+	carryForwardDailyPlan(time.Now())
 	if lines := readLedgerLines(); len(lines) != 0 {
 		t.Fatalf("legacy ONGOING should not be carried: %v", lines)
 	}

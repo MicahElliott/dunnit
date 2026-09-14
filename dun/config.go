@@ -1,6 +1,7 @@
 package dun
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -180,16 +181,11 @@ type Config struct {
 	// CategoryLabelsForFaves in categories.go).
 	WastedTimeTrackingEnabled bool `toml:"wasted_time_tracking_enabled"`
 
-	// LastCarryForwardDate is "YYYY-MM-DD", the last calendar date
-	// on which unresolved open items (TODO/GOAL/WAITING/QUESTION/
-	// FIXME/RISK) were copied forward into that day's ledger (see
-	// docs/todo-carryforward-design.md). Same pattern as
-	// RecurringMeeting's lastOccurrence tracking, just persisted here
-	// instead of derived from ledger content -- deliberately NOT
-	// inferred from "is today's ledger file empty", since a user who
-	// logs an entry before carry-forward has run would make that
-	// check wrong. Empty string means carry-forward has never run.
-	LastCarryForwardDate string `toml:"last_carry_forward_date"`
+	// LastStartOfDayDate is "YYYY-MM-DD", the last calendar date on
+	// which the Day Kickoff/Start of Day routine was completed. Carry-forward
+	// decisions are represented by ledger entries, while this marker only
+	// controls the Daybook reminder.
+	LastStartOfDayDate string `toml:"last_start_of_day_date"`
 }
 
 // defaultConfig mirrors the values from dunnit's config-example.zsh.
@@ -256,38 +252,71 @@ func configPath() string {
 	return filepath.Join(root, "config.toml")
 }
 
-// LoadConfig reads config.toml, creating it with defaults on first run
-// if it doesn't exist yet.
-func LoadConfig() Config {
+// loadConfig reads config.toml, creating it with defaults on first run if it
+// doesn't exist yet. The error return lets callers that might write config
+// avoid replacing an existing file when it could not be decoded.
+func loadConfig() (Config, error) {
 	cfg := defaultConfig()
 	path := configPath()
 
-	if _, err := os.Stat(path); os.IsNotExist(err) {
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
 		if err := os.MkdirAll(DunnitDir(), 0755); err != nil {
-			log.Println("Error creating dunnit dir:", err)
-			return cfg
+			return cfg, fmt.Errorf("create dunnit dir: %w", err)
 		}
 		if err := writeConfig(cfg); err != nil {
-			log.Println("Error writing default config:", err)
+			return cfg, fmt.Errorf("write default config: %w", err)
 		}
-		return cfg
+		return cfg, nil
+	}
+	if err != nil {
+		return cfg, fmt.Errorf("stat config: %w", err)
+	}
+	if info.IsDir() {
+		return cfg, fmt.Errorf("config path is a directory: %s", path)
 	}
 
 	if _, err := toml.DecodeFile(path, &cfg); err != nil {
-		log.Println("Error reading config, using defaults:", err)
-		return defaultConfig()
+		return defaultConfig(), fmt.Errorf("decode config: %w", err)
 	}
 	if os.Getenv("DUNNIT_DIR") == "" && cfg.DunnitDir != "" {
 		configuredDunnitDir = cfg.DunnitDir
+	}
+	return cfg, nil
+}
+
+// LoadConfig reads config.toml and falls back to defaults when it cannot be
+// read. Callers that may persist a changed config should use loadConfig so
+// they can distinguish that fallback from a successfully loaded config.
+func LoadConfig() Config {
+	cfg, err := loadConfig()
+	if err != nil {
+		log.Println("Error loading config, using defaults:", err)
 	}
 	return cfg
 }
 
 func writeConfig(cfg Config) error {
-	f, err := os.Create(configPath())
+	path := configPath()
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return err
+	}
+	f, err := os.CreateTemp(filepath.Dir(path), ".config.toml-*")
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	return toml.NewEncoder(f).Encode(cfg)
+	tmpPath := f.Name()
+	defer os.Remove(tmpPath)
+
+	if err := toml.NewEncoder(f).Encode(cfg); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		return err
+	}
+	return nil
 }

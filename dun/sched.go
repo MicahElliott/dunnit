@@ -154,6 +154,7 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 					a.SendNotification(fyne.NewNotification(
 						"Dunnit", "Start of a new month!"))
 					fyne.Do(func() {
+						showSODWindow(a)
 						showMonthReviewWindow(a, periodOffsetAnchor(periodMonth, now, -1))
 						showMonthKickoffWindow(a, now)
 					})

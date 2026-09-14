@@ -75,18 +75,10 @@ func recordTomorrowGoals(lines []string) {
 // still-open item of the given category, UNCHECKED by default.
 //
 // Naming/semantics note (2026-09-02, see
-// docs/todo-carryforward-design.md): this used to be a "carry
-// forward" section (checked = copy to tomorrow), back when carry-
-// forward was something the user had to opt into here. Now that
-// unresolved items copy forward *automatically* every day
-// (runCarryForwardIfNeeded, carryforward.go) regardless of whether
-// EOD is ever opened, this section's job flipped: it's now the
-// explicit **opt-out** -- checking a box here Postpones that item
-// (recordPostponed, into SOMEDAY) so it stops being copied forward
-// tomorrow and every day after, rather than copying it forward itself
-// (which would now double up with the automatic copy). Leaving
-// everything unchecked (the default) is a complete no-op here --
-// automatic carry-forward already handles it.
+// docs/todo-carryforward-design.md): this section is an explicit
+// opt-out from future daily planning. Checking a box Postpones that
+// item (recordPostponed, into SOMEDAY); leaving it unchecked leaves
+// it available for the next Start of Day carry-forward.
 func eodOpenItemsSection(category string) (box *fyne.Container, items []OpenItem, checks []*widget.Check) {
 	for _, item := range getOpenItems() {
 		if item.Category == category {
@@ -108,8 +100,8 @@ func eodOpenItemsSection(category string) (box *fyne.Container, items []OpenItem
 // a short daily wrap-up showing everything logged today, an AI-drafted
 // summary (editable before saving), a productivity score, a meeting-
 // hours count, a sentiment rating, goals for tomorrow, and (FR-09,
-// extended) a chance to carry forward any TODOs/QUESTIONs not
-// resolved today. Rather than a chain of separate popups (as the
+// extended) a chance to postpone any TODOs/QUESTIONs not resolved
+// today. Rather than a chain of separate popups (as the
 // original zsh alerter-based flow did), this is one window with all
 // the questions -- simpler to implement and to answer.
 func showEODWindow(a fyne.App) {
@@ -207,11 +199,9 @@ func showEODWindow(a fyne.App) {
 	goals.SetPlaceHolder("Any goals for tomorrow? One per line\u2026")
 	goals.SetMinRowsVisible(3)
 
-	// (2026-09-02, see docs/todo-carryforward-design.md): open TODOs,
-	// DOING, and QUESTIONs each get their own Postpone-opt-out checkbox
-	// section -- checking a box here sends that item to SOMEDAY
-	// instead of letting it carry forward automatically tomorrow (see
-	// eodOpenItemsSection's doc comment for the full rationale).
+	// Open TODOs, DOING, and QUESTIONs each get their own Postpone checkbox
+	// section. Checking a box sends that item to SOMEDAY before the next
+	// Start of Day planning pass.
 	todoBox, openTodos, todoChecks := eodOpenItemsSection("TODO")
 	doingBox, openDoing, doingChecks := eodOpenItemsSection("DOING")
 	questionBox, openQuestions, questionChecks := eodOpenItemsSection("QUESTION")

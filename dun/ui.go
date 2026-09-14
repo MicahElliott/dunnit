@@ -63,6 +63,12 @@ var trayWindow fyne.Window
 // checked before use since it isn't set until BuildMainWindow has run.
 var trayRefreshAll func()
 
+// refreshStartOfDayNotice updates the small Daybook reminder shown while
+// today's Start of Day routine is still pending. It is set by
+// BuildMainWindow and called when Start of Day runs, including when the
+// Daybook window is already open.
+var refreshStartOfDayNotice func()
+
 // FocusMainInput requests keyboard focus on Daybook's main entry box,
 // if it's been built yet. Safe to call even before BuildMainWindow
 // has run (no-op).
@@ -130,8 +136,7 @@ func defaultSnoozeDuration() time.Duration {
 // outside this package (currently just cmd/dunnit's CLI, see
 // docs/cli-design.md or the CLI's own doc comment) that want to
 // append a ledger entry the same way Daybook's Save button does --
-// same carry-forward trigger, same tag-cache invalidation, same
-// ledger-index invalidation. Does NOT validate that category is a
+// same tag-cache invalidation and ledger-index invalidation. Does NOT validate that category is a
 // real Category code; callers should check that themselves (see
 // CategoryExists in categories.go) before calling.
 func RecordActivity(text, category string) {
@@ -139,7 +144,6 @@ func RecordActivity(text, category string) {
 }
 
 func recordActivity(text, category string) {
-	runCarryForwardIfNeeded()
 	text = normalizeLedgerText(text)
 	log.Println("Content was:", text)
 	fpath, fname := getLedger()
@@ -384,7 +388,6 @@ func (e *closeShortcutEntry) TypedShortcut(shortcut fyne.Shortcut) {
 // (e.g. the scheduler) can Show()/RequestFocus() it later.
 func BuildMainWindow(a fyne.App) fyne.Window {
 	a.Settings().SetTheme(newCompactTheme())
-	runCarryForwardIfNeeded()
 	cfg := LoadConfig()
 
 	w4 := a.NewWindow("Dunnit: Daybook")
@@ -416,6 +419,19 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	// surrounding layout, immediately below input's row, as a plain
 	// sibling widget (no overlay).
 	inputSuggestions := input.SuggestionBox()
+
+	startOfDayNotice := container.NewVBox()
+	refreshStartOfDayNotice = func() {
+		startOfDayNotice.RemoveAll()
+		if startOfDayPending(LoadConfig(), time.Now()) {
+			notice := widget.NewLabel("Start of Day hasn’t run yet today; run it to bring forward open items.")
+			notice.Wrapping = fyne.TextWrapWord
+			startOfDayNotice.Add(container.New(newStretchRowLayout(notice), notice,
+				widget.NewButton("Start of Day…", func() { showSODWindow(a) })))
+		}
+		startOfDayNotice.Refresh()
+	}
+	refreshStartOfDayNotice()
 
 	// minsInput is an optional free-text "minutes spent" field (very
 	// informal time tracking). When non-empty and numeric, its value
@@ -1011,6 +1027,8 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	))
 
 	content := container.NewVBox(
+		startOfDayNotice,
+		widget.NewLabelWithStyle("Time to record what’s going on.", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		doneWrapper,
 		inputSuggestions,
 		// category, input,
@@ -1057,6 +1075,9 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 			refreshCompleted()
 			refreshReflections()
 			refreshLastItem()
+			if refreshStartOfDayNotice != nil {
+				refreshStartOfDayNotice()
+			}
 		}
 		desk.SetSystemTrayMenu(buildTrayMenu(a, w4))
 	}
