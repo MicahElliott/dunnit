@@ -16,16 +16,26 @@ import (
 	"github.com/yuin/goldmark"
 )
 
-// periodReportPath returns DunnitDir()/<kind>-<date formatted with
-// format>.md, e.g. periodReportPath("dsu", now, "20060102") or
-// periodReportPath("som", from, "200601"). Unifies what were
-// previously two slightly-different ad hoc conventions (dsuSavePath
-// in standup.go, SOM's inline digestSavePath in som.go).
-// dailysummary.go's per-ledger-directory summary-<date>.md convention
-// is intentionally left alone -- it lives alongside its ledger file
-// rather than at DunnitDir()'s root, a deliberately different scheme.
-func periodReportPath(kind string, date time.Time, format string) string {
-	return filepath.Join(DunnitDir(), kind+"-"+date.Format(format)+".md")
+// reportFilename returns a descriptor-first report filename. The covered
+// period comes before the generation date so filenames remain useful when
+// sorted lexically while still distinguishing regenerated reports.
+func reportFilename(kind, covered, theme string, generated time.Time) string {
+	name := kind + "-" + covered + "-" + generated.Format("20060102")
+	if theme != "" {
+		name += "-" + theme
+	}
+	return name + ".md"
+}
+
+func periodReportPath(kind, covered string, generated time.Time) string {
+	return filepath.Join(DunnitDir(), reportFilename(kind, covered, "", generated))
+}
+
+func writeReportFile(path, text string) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(text), 0644)
 }
 
 // showGeneratedReport displays a markdown report in a small
@@ -47,7 +57,7 @@ func showGeneratedReport(a fyne.App, title, savePath, text string) {
 		a.Clipboard().SetContent(text)
 	})
 	saveBtn := widget.NewButtonWithIcon("Save", theme.Icon(theme.IconNameDocumentSave), func() {
-		if err := os.WriteFile(savePath, []byte(text), 0644); err != nil {
+		if err := writeReportFile(savePath, text); err != nil {
 			dialog.ShowError(err, w)
 			return
 		}
@@ -104,7 +114,7 @@ func showEditableReportWindow(a fyne.App, title, savePath, initialText string) {
 	previewScroll.SetMinSize(fyne.NewSize(0, 260))
 
 	saveBtn := widget.NewButtonWithIcon("Save", theme.Icon(theme.IconNameDocumentSave), func() {
-		if err := os.WriteFile(savePath, []byte(editor.Text), 0644); err != nil {
+		if err := writeReportFile(savePath, editor.Text); err != nil {
 			dialog.ShowError(err, w)
 			return
 		}

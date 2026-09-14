@@ -18,7 +18,7 @@ type ReportFile struct {
 	// Path is the absolute file path under DunnitDir().
 	Path string
 	// Kind is the report-family prefix parsed from the filename,
-	// e.g. "review-week", "review-month", "dsu", "summary". Meant
+	// e.g. "review-week", "review-month", "standup", "status", "eod". Meant
 	// for broad "what kind of thing is this" grouping/display --
 	// callers wanting an exact covered date range for the "review-*"
 	// family specifically already have review.go's more precise
@@ -31,8 +31,8 @@ type ReportFile struct {
 	// Date is the file's modification time -- used as a stand-in for
 	// "when was this generated/last saved", since each report kind
 	// encodes its own covered period differently in its filename
-	// (reviewReportDateToken vs periodReportPath's plain
-	// time.Format-based token) and ReportFile only needs a
+	// (reviewReportDateToken vs periodReportPath's covered-period token)
+	// and ReportFile only needs a
 	// reasonably-ordered "when" for browsing/sorting, not the exact
 	// covered range.
 	Date time.Time
@@ -44,7 +44,7 @@ type ReportFile struct {
 // one that could otherwise falsely match part of it. Sourced from
 // reviewReportKind (review.go, one per summaryPeriod) plus the other
 // ad hoc kinds seen in periodReportPath call sites (standup.go's
-// "dsu", som.go's "som") and dailysummary.go's "summary".
+// "standup", statusreport.go's "status") and dailysummary.go's "eod".
 func reportFileKinds() []string {
 	kinds := []string{
 		reviewReportKind(periodQuarter), // "review-quarter" before "review-*" ambiguity
@@ -52,9 +52,9 @@ func reportFileKinds() []string {
 		reviewReportKind(periodWeek),
 		reviewReportKind(periodYear),
 		reviewReportKind(periodDay),
-		"dsu",
-		"som",
-		"summary",
+		"standup",
+		"status",
+		"eod",
 	}
 	return kinds
 }
@@ -85,10 +85,9 @@ func parseReportFileName(base string) (kind, theme string, ok bool) {
 	return "", "", false
 }
 
-// AllReportFiles walks DunnitDir() (root-level "<kind>-<token>[-<theme>].md"
-// files, e.g. review-*/dsu-*/som-*) plus every ledger-adjacent
-// "summary-*.md" daily summary doc (dailysummary.go's per-day-
-// directory convention), returning a ReportFile per match. No
+// AllReportFiles walks DunnitDir() for canonical report filenames in
+// both root and ledger-adjacent directories, returning a ReportFile per
+// match. No
 // caching yet (unlike AllLedgerEntries) -- report file counts are
 // expected to be orders of magnitude smaller than ledger line counts
 // (one file per generated report vs one line per logged activity),
@@ -98,47 +97,19 @@ func AllReportFiles() []ReportFile {
 	var out []ReportFile
 
 	root := DunnitDir()
-	rootEntries, err := os.ReadDir(root)
-	if err == nil {
-		for _, entry := range rootEntries {
-			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
-				continue
-			}
-			kind, theme, ok := parseReportFileName(entry.Name())
-			if !ok {
-				continue
-			}
-			info, err := entry.Info()
-			if err != nil {
-				continue
-			}
-			out = append(out, ReportFile{
-				Path:  filepath.Join(root, entry.Name()),
-				Kind:  kind,
-				Theme: theme,
-				Date:  info.ModTime(),
-			})
-		}
-	}
-
-	// Daily summary docs live alongside their ledger file (one level
-	// down, in a year/w<week>-<month> directory), not at DunnitDir()'s
-	// root -- walk those separately.
 	filepath.Walk(root, func(path string, info os.FileInfo, walkErr error) error {
 		if walkErr != nil || info.IsDir() {
 			return nil
 		}
-		name := info.Name()
-		if !strings.HasPrefix(name, "summary-") || !strings.HasSuffix(name, ".md") {
+		kind, theme, ok := parseReportFileName(info.Name())
+		if !ok {
 			return nil
 		}
-		if filepath.Dir(path) == root {
-			return nil // already picked up by the root-level pass above
-		}
 		out = append(out, ReportFile{
-			Path: path,
-			Kind: "summary",
-			Date: info.ModTime(),
+			Path:  path,
+			Kind:  kind,
+			Theme: theme,
+			Date:  info.ModTime(),
 		})
 		return nil
 	})

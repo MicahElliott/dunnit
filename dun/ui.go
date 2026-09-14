@@ -140,12 +140,12 @@ func RecordActivity(text, category string) {
 
 func recordActivity(text, category string) {
 	runCarryForwardIfNeeded()
-	text = strings.TrimSpace(text)
+	text = normalizeLedgerText(text)
 	log.Println("Content was:", text)
 	fpath, fname := getLedger()
-	if _, err := os.Stat(fpath); os.IsNotExist(err) {
-		log.Println("Making new dir:", fpath)
-		os.MkdirAll(fpath, os.ModePerm)
+	if err := os.MkdirAll(fpath, 0755); err != nil {
+		log.Println("Error making ledger dir:", err)
+		return
 	}
 	f, err := os.OpenFile(fname, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -154,13 +154,25 @@ func recordActivity(text, category string) {
 	}
 	stamp := time.Now().Format("[15:04:05]")
 	outstr := stamp + " " + category + " " + text + "\n"
-	f.WriteString(outstr)
-	f.Close()
+	if _, err := f.WriteString(outstr); err != nil {
+		log.Println("Error writing ledger:", err)
+		_ = f.Close()
+		return
+	}
+	if err := f.Close(); err != nil {
+		log.Println("Error closing ledger:", err)
+		return
+	}
 	lastActivityAt = time.Now()
 	if len(extractTags(text)) > 0 {
 		InvalidateTagCache()
 	}
 	InvalidateLedgerIndex()
+}
+
+func normalizeLedgerText(text string) string {
+	text = strings.NewReplacer("\r\n", " ", "\r", " ", "\n", " ").Replace(text)
+	return strings.TrimSpace(text)
 }
 
 // readLedgerLines returns all lines from today's ledger file (empty if
@@ -1185,11 +1197,11 @@ func buildTrayMenu(a fyne.App, w4 fyne.Window) *fyne.Menu {
 		fyne.NewMenuItem("Recurring Items...", func() {
 			showRecurringItemsDialog(a, w4)
 		}),
-		fyne.NewMenuItem("Daily Summary Doc...", func() {
+		fyne.NewMenuItem("EOD Report...", func() {
 			go func() {
-				path, _, err := ensureDailySummaryDoc(time.Now())
+				path, _, err := ensureEODReport(time.Now())
 				if err != nil {
-					log.Println("Error drafting daily summary doc:", err)
+					log.Println("Error drafting EOD report:", err)
 					return
 				}
 				if path != "" {

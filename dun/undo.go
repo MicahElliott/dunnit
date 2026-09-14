@@ -67,7 +67,7 @@ func replaceLedgerLineTextAt(idx int, newText string) error {
 	if len(parts) < 3 {
 		return nil
 	}
-	lines[idx] = parts[0] + " " + parts[1] + " " + strings.TrimSpace(newText)
+	lines[idx] = parts[0] + " " + parts[1] + " " + normalizeLedgerText(newText)
 	return writeLedgerLines(lines)
 }
 
@@ -86,7 +86,7 @@ func replaceLedgerLineAt(idx int, newCategory, newText string) error {
 	if len(parts) < 3 {
 		return nil
 	}
-	lines[idx] = parts[0] + " " + newCategory + " " + strings.TrimSpace(newText)
+	lines[idx] = parts[0] + " " + newCategory + " " + normalizeLedgerText(newText)
 	return writeLedgerLines(lines)
 }
 
@@ -295,7 +295,7 @@ func writeLedgerLines(lines []string) error {
 	}
 	defer f.Close()
 	for _, l := range lines {
-		if _, err := f.WriteString(l + "\n"); err != nil {
+		if _, err := f.WriteString(normalizeLedgerText(l) + "\n"); err != nil {
 			return err
 		}
 	}

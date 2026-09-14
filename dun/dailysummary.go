@@ -7,18 +7,18 @@ import (
 	"time"
 )
 
-// dailySummaryPath returns the path for date's markdown summary doc
+// eodReportPath returns the path for date's markdown EOD report
 // (FR-18), living alongside that date's ledger file in the same
 // year/month/week directory (same naming scheme as getLedger, just
-// "summary-" instead of "ledger-" and ".md" instead of ".txt").
-func dailySummaryPath(date time.Time) (dir, path string) {
+// "eod-" instead of "ledger-" and ".md" instead of ".txt").
+func eodReportPath(date time.Time) (dir, path string) {
 	dir, _ = ledgerPathFor(date)
-	path = filepath.Join(dir, "summary-"+date.Format("20060102")+".md")
+	path = filepath.Join(dir, "eod-"+date.Format("Mon-20060102")+".md")
 	return dir, path
 }
 
 // draftDailySummary generates initial markdown content for date's
-// summary doc via the existing gh copilot pipeline (summarize.go),
+// EOD report via the existing gh copilot pipeline (summarize.go),
 // scoped to just that single day's ledger. Returns "" (with the
 // error) if there's nothing to summarize or the copilot call fails.
 //
@@ -30,7 +30,7 @@ func dailySummaryPath(date time.Time) (dir, path string) {
 // nothing real to summarize, which previously let a near-empty ledger
 // through to gh copilot and got back a confused response describing
 // the missing content instead of a real summary (real bug, hit via
-// both auto-draft-at-EOD and the manual "Daily Summary Doc..." tray
+// both auto-draft-at-EOD and the manual "EOD Report..." tray
 // item).
 func draftDailySummary(date time.Time) (string, error) {
 	ledgerText := gatherLedgerTextForDate(date)
@@ -55,12 +55,12 @@ func hasRealLedgerContent(ledgerText string) bool {
 	return false
 }
 
-// ensureDailySummaryDoc creates today's (or the given date's) summary
-// doc with LLM-drafted content, only if it doesn't already exist --
+// ensureEODReport creates today's (or the given date's) EOD report
+// with LLM-drafted content, only if it doesn't already exist --
 // never overwrites existing hand-edited content (FR-18's core
 // guarantee). Returns the file path and whether it was newly created.
-func ensureDailySummaryDoc(date time.Time) (path string, created bool, err error) {
-	dir, path := dailySummaryPath(date)
+func ensureEODReport(date time.Time) (path string, created bool, err error) {
+	dir, path := eodReportPath(date)
 	if _, statErr := os.Stat(path); statErr == nil {
 		return path, false, nil // already exists, leave it alone
 	}

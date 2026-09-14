@@ -55,6 +55,12 @@ func TestPathResolutionAgainstMigratedData(t *testing.T) {
 			comment: "Should resolve to 2025/Apr/w18/ (week's Monday month, not date's month)",
 		},
 	}
+	for _, tt := range tests {
+		dir, _ := ledgerPathFor(tt.date)
+		if _, err := os.Stat(dir); err != nil {
+			t.Skipf("migrated data directory %s is not present; run the ledger migration first", dir)
+		}
+	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -70,7 +76,7 @@ func TestPathResolutionAgainstMigratedData(t *testing.T) {
 			}
 
 			// Verify the expected filename pattern
-			expectedBase := "ledger-" + tt.date.Format("20060102") + ".txt"
+			expectedBase := "ledger-" + tt.date.Format("Mon-20060102") + ".txt"
 			_ = filepath.Join(dir, expectedBase)
 
 			// For this verification test, we don't require the specific file to exist,
@@ -134,6 +140,27 @@ func TestWeekMonthInfoBoundaryCase(t *testing.T) {
 			}
 
 			t.Logf("✓ %s -> %d/%s/w%d", tc.date.Format("2006-01-02"), yr, moname, wk)
+		})
+	}
+}
+
+func TestLedgerFileDateRequiresCanonicalWeekdaySuffix(t *testing.T) {
+	cases := []struct {
+		name string
+		path string
+		want bool
+	}{
+		{name: "canonical", path: "ledger-Sat-20260912.txt", want: true},
+		{name: "legacy date only", path: "ledger-20260912.txt", want: false},
+		{name: "wrong weekday", path: "ledger-Sun-20260912.txt", want: false},
+		{name: "invalid date", path: "ledger-Sat-20260999.txt", want: false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ledgerFileDate(tc.path) != nil
+			if got != tc.want {
+				t.Fatalf("ledgerFileDate(%q) != nil: %v, want %v", tc.path, got, tc.want)
+			}
 		})
 	}
 }

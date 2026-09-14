@@ -2,6 +2,7 @@ package dun
 
 import (
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -62,5 +63,23 @@ func TestReplaceLastLedgerLine(t *testing.T) {
 	}
 	if lines[0] == newLine {
 		t.Errorf("first line should be untouched")
+	}
+}
+
+func TestRecordActivityFlattensNewlines(t *testing.T) {
+	withTempDunnitDir(t)
+
+	recordActivity("first line\r\nsecond line\nthird line", "DONE")
+
+	_, fname := getLedger()
+	data, err := os.ReadFile(fname)
+	if err != nil {
+		t.Fatalf("read ledger: %v", err)
+	}
+	if strings.Count(string(data), "\n") != 1 {
+		t.Fatalf("expected one physical ledger line, got %q", data)
+	}
+	if !strings.Contains(string(data), "first line second line third line") {
+		t.Fatalf("expected flattened text, got %q", data)
 	}
 }

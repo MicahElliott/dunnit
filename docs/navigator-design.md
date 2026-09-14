@@ -183,9 +183,9 @@ ledgers) -- **reportindex.go**/**reportsearch.go**/**reportslibrary.go**:
   (Path, Kind, Theme, Date=file mtime) -- deliberately much lighter
   than `LedgerEntry`, since reports are large markdown documents, not
   per-line structured data. `AllReportFiles()` walks `DunnitDir()`'s
-  root (`review-*`/`dsu-*`/`som-*`) plus every ledger-adjacent
-  `summary-*.md` daily-summary doc (`dailysummary.go`'s per-day-
-  directory convention), parsing kind/theme out of each filename via
+  root (`review-*`, `standup-*`, `status-*`, and `eod-*`) plus every
+  ledger-adjacent report with one of those prefixes, parsing kind/theme
+  out of each filename via
   `parseReportFileName` (reusing the same dash-suffix theme-stripping
   approach `review.go`'s `listReviewReportsForPeriod` already uses,
   generalized across all known report-file kinds). No caching (unlike
@@ -211,8 +211,8 @@ included in `AllReportFiles()` -- confirmed during this work that
 Status Report and Annual Review are clipboard-only (no `WriteFile`
 call anywhere in `statusreport.go`/`annualreview.go`), and Kickoff
 windows don't appear to save to disk either. Only Review
-(`review-*`), Standup (`dsu-*`), and Daily Summary (`summary-*`)
-actually persist as files today -- Reports Library only browses what
+(`review-*`), Standup (`standup-*`), Status (`status-*`), and EOD
+(`eod-*`) persist as files today -- Reports Library only browses what
 genuinely exists on disk.
 
 This closes out the "Saved-reports library/browser" and "Cross-report

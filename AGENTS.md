@@ -45,7 +45,7 @@ macOS and Linux.
 
 ## Data format
 
-Ledger files: `$DUNNIT_DIR/<year>/w<week>-<month>/ledger-<YYYYMMDD>.txt`,
+Ledger files: `$DUNNIT_DIR/<year>/<month>/w<week>/ledger-<DOW>-<YYYYMMDD>.txt`,
 one line per entry: `[HH:MM:SS] CATEGORY free text #tag`. See sample
 real data in the sibling `../mydunnits` repo for ground truth on
 format nuances (e.g. `GOAL`, `DONE`, `MEETING`, `TIL`, `WIN` categories

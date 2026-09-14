@@ -231,9 +231,9 @@ func defaultConfig() Config {
 }
 
 // DunnitDir is the single root directory for everything dunnit owns:
-// ledger files (DunnitDir()/<year>/w<week>-<month>/ledger-*.txt) and
+// ledger files (DunnitDir()/<year>/<month>/w<week>/ledger-*.txt) and
 // config.toml. Overridable via the DUNNIT_DIR env var; defaults to
-// ~/.config/dun.
+// ~/.config/dunnit.
 func DunnitDir() string {
 	if dir := os.Getenv("DUNNIT_DIR"); dir != "" {
 		return dir
@@ -277,7 +277,7 @@ func LoadConfig() Config {
 		log.Println("Error reading config, using defaults:", err)
 		return defaultConfig()
 	}
-	if os.Getenv("DUNNIT_DIR") == "" && os.Getenv("DUNZO_DIR") == "" && cfg.DunnitDir != "" {
+	if os.Getenv("DUNNIT_DIR") == "" && cfg.DunnitDir != "" {
 		configuredDunnitDir = cfg.DunnitDir
 	}
 	return cfg

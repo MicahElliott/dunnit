@@ -48,21 +48,17 @@ func ledgerDirFor(yr, wk int, moname string) string {
 func ledgerPathFor(date time.Time) (dir, path string) {
 	yr, moname, wk := weekMonthInfo(date)
 	dir = ledgerDirFor(yr, wk, moname)
-	path = filepath.Join(dir, "ledger-"+date.Format("20060102")+".txt")
+	path = filepath.Join(dir, "ledger-"+date.Format("Mon-20060102")+".txt")
 	return dir, path
 }
 
 // weeklyReportPath returns the save path for a weekly Review report for
 // the week containing anchor, themed for theme. Now nested inside the
-// week's directory: <year>/<month>/w<week>/w<week>-review-<theme>.md
+// week's directory: <year>/<month>/w<week>/review-week-<period>-<date>[-<theme>].md
 func weeklyReportPath(anchor time.Time, theme string) string {
 	yr, moname, wk := weekMonthInfo(anchor)
 	dir := ledgerDirFor(yr, wk, moname)
-	filename := "w" + strconv.Itoa(wk) + "-review"
-	if theme != "" {
-		filename += "-" + theme
-	}
-	filename += ".md"
+	filename := reportFilename("review-week", reviewReportDateToken(periodWeek, anchor), theme, time.Now())
 	return filepath.Join(dir, filename)
 }
 
@@ -75,11 +71,7 @@ func monthlyReportPath(anchor time.Time, theme string) string {
 	token := anchor.Format("200601") // YYYYMM format
 	dir := filepath.Join(DunnitDir(), strconv.Itoa(yr), moname)
 
-	filename := "review-month-" + token
-	if theme != "" {
-		filename += "-" + theme
-	}
-	filename += ".md"
+	filename := reportFilename("review-month", token, theme, time.Now())
 	return filepath.Join(dir, filename)
 }
 
@@ -90,11 +82,7 @@ func quarterlyReportPath(anchor time.Time, theme string) string {
 	q := quarterOf(anchor)
 	token := strconv.Itoa(yr) + "Q" + strconv.Itoa(q)
 
-	filename := "review-quarter-" + token
-	if theme != "" {
-		filename += "-" + theme
-	}
-	filename += ".md"
+	filename := reportFilename("review-quarter", token, theme, time.Now())
 	return filepath.Join(DunnitDir(), filename)
 }
 
@@ -104,10 +92,6 @@ func yearlyReportPath(anchor time.Time, theme string) string {
 	yr := anchor.Year()
 	token := strconv.Itoa(yr)
 
-	filename := "review-year-" + token
-	if theme != "" {
-		filename += "-" + theme
-	}
-	filename += ".md"
+	filename := reportFilename("review-year", token, theme, time.Now())
 	return filepath.Join(DunnitDir(), filename)
 }

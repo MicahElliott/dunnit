@@ -3,6 +3,7 @@ package dun
 import (
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -91,7 +92,7 @@ func standupSourceDates(now time.Time) []time.Time {
 // ledgerFileForDate returns the ledger file path for date if it
 // exists among allLedgerFiles(), or "" if none.
 func ledgerFileForDate(date time.Time) string {
-	target := "ledger-" + date.Format("20060102") + ".txt"
+	target := "ledger-" + date.Format("Mon-20060102") + ".txt"
 	for _, path := range allLedgerFiles() {
 		if strings.HasSuffix(path, target) {
 			return path
@@ -225,10 +226,11 @@ func summarizeStandupWithCopilot(lines []string) (string, error) {
 
 // showGeneratedStandupSummary displays an AI-generated standup
 // summary via the shared showGeneratedReport window (Copy/Save/
-// Close), saving to periodReportPath("dsu", today, "20060102").
+// Close), saving to standup-w<week>-<generation-date>.md.
 func showGeneratedStandupSummary(a fyne.App, parent fyne.Window, summary string) {
+	_, week := time.Now().ISOWeek()
 	showGeneratedReport(a, "Dunnit: Generated Standup Summary",
-		periodReportPath("dsu", time.Now(), "20060102"), summary)
+		periodReportPath("standup", "w"+strconv.Itoa(week), time.Now()), summary)
 }
 
 // showStandupExport builds the deterministic standup summary (FR-17

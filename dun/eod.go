@@ -19,10 +19,32 @@ func tomorrowLedgerPath() (string, string) {
 	return ledgerPathFor(tomorrow)
 }
 
+const minAutoEODDoneEntries = 3
+
+func doneEntriesForDate(date time.Time) int {
+	path := ledgerFileForDate(date)
+	if path == "" {
+		return 0
+	}
+	count := 0
+	for _, line := range readLedgerLinesFrom(path) {
+		category, _, ok := parseLedgerLine(line)
+		if ok && category == "DONE" {
+			count++
+		}
+	}
+	return count
+}
+
+func autoEODReportEligible(date time.Time) bool {
+	return doneEntriesForDate(date) >= minAutoEODDoneEntries
+}
+
 // appendTomorrowLine appends a single pre-formatted ledger line (sans
 // trailing newline) to tomorrow's ledger file, creating the directory
 // and file as needed.
 func appendTomorrowLine(line string) error {
+	line = normalizeLedgerText(line)
 	fpath, fname := tomorrowLedgerPath()
 	if err := os.MkdirAll(fpath, os.ModePerm); err != nil {
 		return err
@@ -147,7 +169,11 @@ func showEODWindow(a fyne.App) {
 		copySummaryBtn,
 	)
 	go func() {
-		ledgerText := gatherLedgerTextForDate(time.Now())
+		today := time.Now()
+		if !autoEODReportEligible(today) {
+			return
+		}
+		ledgerText := gatherLedgerTextForDate(today)
 		if !hasRealLedgerContent(ledgerText) {
 			return
 		}
@@ -211,7 +237,10 @@ func showEODWindow(a fyne.App) {
 	form.SubmitText = "Finalize Day"
 	form.OnSubmit = func() {
 		if strings.TrimSpace(summary.Text) != "" {
-			recordActivity(summary.Text, "SUMMARY")
+			_, path := eodReportPath(time.Now())
+			if err := writeReportFile(path, summary.Text); err != nil {
+				log.Println("Error saving EOD report:", err)
+			}
 		}
 		recordActivity(productivity.Selected, "PRODUCTIVITY")
 		if hrs := strings.TrimSpace(meetingHours.Text); hrs != "" {
@@ -238,21 +267,21 @@ func showEODWindow(a fyne.App) {
 			}
 		}
 		// FR-18: draft (if not already present) today's hand-editable
-		// summary doc, now that the day's SUMMARY/PRODUCTIVITY/
+		// EOD report, now that the day's PRODUCTIVITY/
 		// SENTIMENT lines above have just been recorded. Gated behind
 		// AutoDraftDailySummary (default off) -- open design
 		// questions remain about EOD-vs-other trigger timing and how
 		// this doc's content should differ from Summarize's existing
 		// Day output; see docs/open-design-questions.md. Manual
-		// drafting via the "Daily Summary Doc..." tray item always
+		// drafting via the "EOD Report..." tray item always
 		// works regardless of this setting. Runs in the background
 		// since it shells out to gh copilot; opens in $EDITOR when
 		// ready rather than blocking Finalize Day.
-		if LoadConfig().AutoDraftDailySummary {
+		if LoadConfig().AutoDraftDailySummary && autoEODReportEligible(time.Now()) {
 			go func() {
-				path, _, err := ensureDailySummaryDoc(time.Now())
+				path, _, err := ensureEODReport(time.Now())
 				if err != nil {
-					log.Println("Error drafting daily summary doc:", err)
+					log.Println("Error drafting EOD report:", err)
 					return
 				}
 				if path != "" {

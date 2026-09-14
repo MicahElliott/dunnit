@@ -9,17 +9,15 @@ import (
 	"time"
 )
 
-// reviewReportKind returns the periodReportPath "kind" prefix used
-// for a unit's saved Review reports, e.g. "review-week",
-// "review-month". Distinct from other existing kinds ("dsu", "som")
-// already in use by standup.go/som.go.
+// reviewReportKind returns the filename prefix used for a unit's saved
+// Review reports, e.g. "review-week" or "review-month".
 func reviewReportKind(period summaryPeriod) string {
 	return "review-" + strings.ToLower(string(period))
 }
 
 // reviewReportPath returns the save path for period's Review report
-// covering the nominal unit containing anchor, themed for theme.
-// Week/Month reports are now nested by date; Quarter/Year stay flat.
+// covering the nominal unit containing anchor, themed for theme. The
+// filename includes both the covered-period token and generation date.
 func reviewReportPath(period summaryPeriod, anchor time.Time, theme string) string {
 	switch period {
 	case periodWeek:
@@ -31,22 +29,13 @@ func reviewReportPath(period summaryPeriod, anchor time.Time, theme string) stri
 	case periodYear:
 		return yearlyReportPath(anchor, theme)
 	case periodDay:
-		// Day reports are intentionally not nested for now
-		token := anchor.Format("20060102")
-		filename := "review-day-" + token
-		if theme != "" {
-			filename += "-" + theme
-		}
-		filename += ".md"
+		filename := reportFilename("review-day", reviewReportDateToken(periodDay, anchor), theme, time.Now())
 		return filepath.Join(DunnitDir(), filename)
 	default:
 		// Fallback (shouldn't happen in practice)
 		token := reviewReportDateToken(period, anchor)
 		kind := reviewReportKind(period)
-		if theme != "" {
-			token += "-" + theme
-		}
-		return filepath.Join(DunnitDir(), kind+"-"+token+".md")
+		return filepath.Join(DunnitDir(), reportFilename(kind, token, theme, time.Now()))
 	}
 }
 
@@ -67,18 +56,16 @@ func listReviewReportsForPeriod(period summaryPeriod, anchor time.Time) (paths [
 	case periodWeek:
 		yr, moname, wk := weekMonthInfo(anchor)
 		dir := ledgerDirFor(yr, wk, moname)
-		pattern = filepath.Join(dir, "w"+strconv.Itoa(wk)+"-review-*.md")
+		pattern = filepath.Join(dir, "review-week-*.md")
 	case periodMonth:
 		yr := anchor.Year()
 		moname := anchor.Format("Jan")
 		dir := filepath.Join(DunnitDir(), strconv.Itoa(yr), moname)
 		pattern = filepath.Join(dir, "review-month-*.md")
 	case periodQuarter:
-		q := quarterOf(anchor)
-		pattern = filepath.Join(DunnitDir(), "review-quarter-*Q"+strconv.Itoa(q)+"-*.md")
+		pattern = filepath.Join(DunnitDir(), "review-quarter-*.md")
 	case periodYear:
-		yr := anchor.Year()
-		pattern = filepath.Join(DunnitDir(), "review-year-"+strconv.Itoa(yr)+"-*.md")
+		pattern = filepath.Join(DunnitDir(), "review-year-*.md")
 	default:
 		return
 	}
@@ -87,15 +74,9 @@ func listReviewReportsForPeriod(period summaryPeriod, anchor time.Time) (paths [
 	wantFrom, wantTo := periodNominalRange(period, anchor)
 
 	for _, path := range matches {
-		name := strings.TrimSuffix(filepath.Base(path), ".md")
-		// Extract theme by trying to strip known theme suffixes
-		token, foundTheme := name, ""
-		for _, th := range themeDisplayOrder {
-			if suffix := "-" + th; strings.HasSuffix(name, suffix) {
-				token = strings.TrimSuffix(name, suffix)
-				foundTheme = th
-				break
-			}
+		token, foundTheme, ok := reviewReportFilenameParts(period, path)
+		if !ok {
+			continue
 		}
 
 		anchorFromToken, ok := reviewReportAnchorFromToken(period, token)
@@ -131,6 +112,38 @@ func reviewReportDateToken(period summaryPeriod, anchor time.Time) string {
 	default:
 		return anchor.Format("20060102")
 	}
+}
+
+// reviewReportFilenameParts extracts the covered-period token and theme
+// from a canonical Review filename. The final date token is the report's
+// generation date and is deliberately ignored by callers that only need
+// the covered period.
+func reviewReportFilenameParts(period summaryPeriod, path string) (token, theme string, ok bool) {
+	name := strings.TrimSuffix(filepath.Base(path), ".md")
+	prefix := reviewReportKind(period) + "-"
+	if !strings.HasPrefix(name, prefix) {
+		return "", "", false
+	}
+	rest := strings.TrimPrefix(name, prefix)
+	for _, th := range themeDisplayOrder {
+		if suffix := "-" + th; strings.HasSuffix(rest, suffix) {
+			theme = th
+			rest = strings.TrimSuffix(rest, suffix)
+			break
+		}
+	}
+	idx := strings.LastIndexByte(rest, '-')
+	if idx <= 0 {
+		return "", "", false
+	}
+	if _, err := time.ParseInLocation("20060102", rest[idx+1:], time.Local); err != nil {
+		return "", "", false
+	}
+	token = rest[:idx]
+	if _, valid := reviewReportAnchorFromToken(period, token); !valid {
+		return "", "", false
+	}
+	return token, theme, true
 }
 
 // reviewReportAnchorFromToken parses a filename date token (as
@@ -169,13 +182,6 @@ func reviewReportAnchorFromToken(period summaryPeriod, token string) (t time.Tim
 	}
 }
 
-// periodReportPathRaw joins DunnitDir()/<kind>-<token>.md directly,
-// bypassing periodReportPath's time.Time-based Format call since
-// Quarter's token isn't produced via time.Time.Format.
-func periodReportPathRaw(kind, token string) string {
-	return filepath.Join(DunnitDir(), kind+"-"+token+".md")
-}
-
 // listReviewReportsOverlapping returns the saved Review report file
 // paths of the given subPeriod kind whose nominal range overlaps
 // [from, to] at all (loose -- any overlap counts, see
@@ -191,7 +197,7 @@ func listReviewReportsOverlapping(subPeriod summaryPeriod, from, to time.Time) [
 	switch subPeriod {
 	case periodWeek:
 		// Weeks can span multiple month directories, search broadly
-		pattern = filepath.Join(DunnitDir(), "*", "*", "w*-review-*.md")
+		pattern = filepath.Join(DunnitDir(), "*", "*", "*", "review-week-*.md")
 	case periodMonth:
 		// Search all year/month directories
 		pattern = filepath.Join(DunnitDir(), "*", "*", "review-month-*.md")
@@ -210,76 +216,12 @@ func listReviewReportsOverlapping(subPeriod summaryPeriod, from, to time.Time) [
 	}
 
 	for _, path := range matches {
-		name := strings.TrimSuffix(filepath.Base(path), ".md")
-		var token string
-
-		switch subPeriod {
-		case periodWeek:
-			// Name is w<N>-review or w<N>-review-<theme>
-			// Extract the week number and reconstruct the date from it
-			if idx := strings.Index(name, "-review"); idx >= 0 {
-				weekPart := name[:idx] // e.g., "w36"
-				if strings.HasPrefix(weekPart, "w") {
-					// We have the week number, but we need the year/month from the directory
-					// For now, use a simple reconstruction: search for the week's Monday
-					// This is approximate but works for overlap detection
-					parts := strings.Split(filepath.Dir(path), string(filepath.Separator))
-					if len(parts) >= 2 {
-						// The week directory is at parts[-1], month at parts[-2], year at parts[-3]
-						// Store the original week-part for now
-						token = weekPart
-					}
-				}
-			}
-		case periodMonth:
-			// Name is review-month-<token> or review-month-<token>-<theme>
-			if strings.HasPrefix(name, "review-month-") {
-				token = strings.TrimPrefix(name, "review-month-")
-				for _, th := range themeDisplayOrder {
-					if strings.HasSuffix(token, "-"+th) {
-						token = strings.TrimSuffix(token, "-"+th)
-						break
-					}
-				}
-			}
-		case periodQuarter:
-			// Name is review-quarter-<token> or review-quarter-<token>-<theme>
-			if strings.HasPrefix(name, "review-quarter-") {
-				token = strings.TrimPrefix(name, "review-quarter-")
-				for _, th := range themeDisplayOrder {
-					if strings.HasSuffix(token, "-"+th) {
-						token = strings.TrimSuffix(token, "-"+th)
-						break
-					}
-				}
-			}
-		case periodYear:
-			// Name is review-year-<token> or review-year-<token>-<theme>
-			if strings.HasPrefix(name, "review-year-") {
-				token = strings.TrimPrefix(name, "review-year-")
-				for _, th := range themeDisplayOrder {
-					if strings.HasSuffix(token, "-"+th) {
-						token = strings.TrimSuffix(token, "-"+th)
-						break
-					}
-				}
-			}
-		}
-
-		if token == "" {
+		token, _, ok := reviewReportFilenameParts(subPeriod, path)
+		if !ok {
 			continue
 		}
 
-		// For week reports, the token is just "w<N>", so we need special handling
-		var anchor time.Time
-		var ok bool
-		if subPeriod == periodWeek && strings.HasPrefix(token, "w") {
-			// Extract week number and reconstruct from a known year
-			// This is a temporary workaround; a better solution would embed the date in the filename
-			continue // Skip week overlaps for now; they're rare in practice
-		}
-
-		anchor, ok = reviewReportAnchorFromToken(subPeriod, token)
+		anchor, ok := reviewReportAnchorFromToken(subPeriod, token)
 		if !ok {
 			continue
 		}

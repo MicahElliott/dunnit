@@ -58,8 +58,9 @@ func ledgerFilesFor(period summaryPeriod, now time.Time) []string {
 	return files
 }
 
-// allLedgerFiles returns the paths of every ledger-*.txt file under
-// DunnitDir(), regardless of date, in filesystem walk order.
+// allLedgerFiles returns the paths of every canonical ledger file under
+// DunnitDir(), regardless of date, in filesystem walk order. Filename
+// validation happens in ledgerFileDate, so legacy names are ignored.
 func allLedgerFiles() []string {
 	var files []string
 	root := DunnitDir()
@@ -77,14 +78,14 @@ func allLedgerFiles() []string {
 	return files
 }
 
-// ledgerFileDate parses the YYYYMMDD date out of a ledger file's
-// name (e.g. ".../ledger-20260828.txt"), returning nil if it doesn't
-// match the expected naming pattern.
+// ledgerFileDate parses the weekday and YYYYMMDD date out of a ledger
+// filename (e.g. ".../ledger-Fri-20260828.txt"), returning nil if the
+// name is not canonical or its weekday disagrees with its date.
 func ledgerFileDate(path string) *time.Time {
 	name := filepath.Base(path)
 	datePart := strings.TrimSuffix(strings.TrimPrefix(name, "ledger-"), ".txt")
-	t, err := time.ParseInLocation("20060102", datePart, time.Local)
-	if err != nil {
+	t, err := time.ParseInLocation("Mon-20060102", datePart, time.Local)
+	if err != nil || t.Format("Mon-20060102") != datePart {
 		return nil
 	}
 	return &t

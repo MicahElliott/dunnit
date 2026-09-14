@@ -8,13 +8,13 @@ import (
 
 func TestSyncCommitMessageUsesAddedLedgerRange(t *testing.T) {
 	diff := strings.Join([]string{
-		"diff --git a/2026/ Sep/ledger-20260912.txt b/2026/Sep/ledger-20260912.txt",
-		"+++ b/2026/Sep/ledger-20260912.txt",
+		"diff --git a/2026/Sep/ledger-Sat-20260912.txt b/2026/Sep/ledger-Sat-20260912.txt",
+		"+++ b/2026/Sep/ledger-Sat-20260912.txt",
 		"@@",
 		"+[08:15:00] TODO start the report",
 		"+[16:45:00] DONE finish the report",
-		"diff --git a/2026/Sep/summary-20260912.md b/2026/Sep/summary-20260912.md",
-		"+++ b/2026/Sep/summary-20260912.md",
+		"diff --git a/status-w37-20260914.md b/status-w37-20260914.md",
+		"+++ b/status-w37-20260914.md",
 		"@@",
 		"+# summary",
 	}, "\n")
@@ -27,7 +27,7 @@ func TestSyncCommitMessageUsesAddedLedgerRange(t *testing.T) {
 
 func TestStagedEntryTimeRangeIgnoresContextAndReports(t *testing.T) {
 	diff := strings.Join([]string{
-		"+++ b/2026/Sep/ledger-20260912.txt",
+		"+++ b/2026/Sep/ledger-Sat-20260912.txt",
 		"@@",
 		" [07:00:00] DONE old context",
 		"+[09:00:00] DOING active work",

@@ -19,9 +19,9 @@ var reportKindDisplayNames = map[string]string{
 	"review-month":   "Review: Month",
 	"review-quarter": "Review: Quarter",
 	"review-year":    "Review: Year",
-	"dsu":            "Standup",
-	"som":            "Start of Month",
-	"summary":        "Daily Summary",
+	"standup":        "Standup",
+	"status":         "Status Report",
+	"eod":            "End of Day",
 }
 
 func reportKindLabel(kind string) string {
@@ -33,7 +33,7 @@ func reportKindLabel(kind string) string {
 
 // showReportsLibraryWindow opens the "Reports Library" -- a browse/
 // search window over every generated report file on disk (Review/
-// Standup/SOM/Daily Summary), the reports-corpus counterpart to
+// Standup/Status/EOD), the reports-corpus counterpart to
 // Navigator's ledger browsing (navigator.go). Two modes in one
 // window: a Kind filter (browse all reports of one family,
 // chronological by file mtime) and a free-text search across every
