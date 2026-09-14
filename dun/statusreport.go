@@ -33,7 +33,7 @@ const shareableStatusPrompt = "Summarize the following ledger entries into a " +
 
 // showStatusReportDialog lets the user pick a week and an
 // audience (Private/Shareable), then generates the report via the
-// shared Summarize/gh copilot plumbing (FR-23).
+// shared Summarize/configured LLM CLI plumbing (FR-23).
 //
 // Own standalone window (not a dialog parented on Daybook) -- Daybook
 // is normally hidden, and this is a tray-invoked, occasional workflow
@@ -115,18 +115,24 @@ func runStatusReport(a fyne.App, anchor time.Time, audience string) {
 	}
 
 	progress := a.NewWindow("Dunnit: Generating Status Report\u2026")
-	progress.SetContent(windowPad(widget.NewLabel(
-		"Asking gh copilot to summarize, please wait\u2026\n" +
-			"The generated report will be copied to your clipboard automatically.")))
+	request := newLLMCLIRequest()
+	progress.SetOnClosed(request.close)
+	progress.SetContent(windowPad(llmCLIProgressContent(
+		"Asking configured LLM CLI to summarize, please wait\u2026\n"+
+			"The generated report will be copied to your clipboard automatically.", request)))
 	progress.Show()
 
 	go func() {
-		summary, err := summarizeWithCopilotPrompt(prompt, ledgerText)
+		summary, err := summarizeWithLLMCLIPromptContext(request.ctx, prompt, ledgerText)
+		request.finish()
 		fyne.Do(func() {
 			progress.Close()
+			if request.canceled() {
+				return
+			}
 			if err != nil {
 				w := a.NewWindow("Dunnit: " + audience + " Status Report")
-				w.SetContent(windowPad(widget.NewLabel("Error running gh copilot:\n" + err.Error())))
+				w.SetContent(windowPad(widget.NewLabel("Error running configured LLM CLI:\n" + err.Error())))
 				w.Resize(fyne.NewSize(600, 500))
 				w.Show()
 			} else {

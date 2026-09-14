@@ -88,7 +88,7 @@ func parseNavigatorTagsInput(text string) []string {
 // (category, tags, date range) built on the shared LedgerQuery/
 // FilterLedgerEntries layer (ledgerquery.go), plus "Ask AI about
 // these" (feeds the currently-filtered entries into
-// summarizeWithCopilotPrompt with a free-form question) and
+// summarizeWithLLMCLIPrompt with a free-form question) and
 // "Histogram..." (a plain-text per-category bar chart of the current
 // filtered set, formatCategoryHistogram) -- see docs/navigator-design.md
 // for the fuller design discussion and remaining open items
@@ -184,8 +184,8 @@ func showNavigatorWindow(a fyne.App) {
 
 // showNavigatorAskAIDialog prompts for a free-form question, then
 // feeds it plus entries' text (via ledgerEntriesToText) into
-// summarizeWithCopilotPrompt as a one-shot Q&A -- reusing the same
-// gh-copilot integration point every other AI-report feature
+// summarizeWithLLMCLIPrompt as a one-shot Q&A -- reusing the same
+// LLM CLI integration point every other AI-report feature
 // (Standup/Status Report/Annual Review/Kickoff-Review) already funnels
 // through, just with a free-form question instead of a fixed
 // instruction template. Runs synchronously in a goroutine with a
@@ -207,18 +207,31 @@ func showNavigatorAskAIDialog(a fyne.App, parent fyne.Window, entries []LedgerEn
 			return
 		}
 		q := question.Text
+		request := newLLMCLIRequest()
+		progress := a.NewWindow("Dunnit: Asking AI\u2026")
+		progress.SetOnClosed(request.close)
+		progress.SetContent(windowPad(llmCLIProgressContent("Asking configured LLM CLI, please wait\u2026", request)))
+		progress.Resize(fyne.NewSize(360, 140))
+		progress.Show()
 		go func() {
 			instructions := fmt.Sprintf(
 				"Answer the following question using only the ledger "+
 					"entries provided below as source material -- be concise, "+
 					"and if the entries don't contain enough information to "+
 					"answer, say so rather than guessing. Question: %q", q)
-			answer, err := summarizeWithCopilotPrompt(instructions, ledgerEntriesToText(entries))
-			if err != nil {
-				dialog.ShowError(err, parent)
-				return
-			}
-			showNavigatorAIAnswerWindow(a, q, answer)
+			answer, err := summarizeWithLLMCLIPromptContext(request.ctx, instructions, ledgerEntriesToText(entries))
+			request.finish()
+			fyne.Do(func() {
+				progress.Close()
+				if request.canceled() {
+					return
+				}
+				if err != nil {
+					dialog.ShowError(err, parent)
+					return
+				}
+				showNavigatorAIAnswerWindow(a, q, answer)
+			})
 		}()
 	}, parent)
 }
@@ -226,7 +239,7 @@ func showNavigatorAskAIDialog(a fyne.App, parent fyne.Window, entries []LedgerEn
 // ledgerEntriesToText renders entries back into ledger-line-shaped
 // text ("[HH:MM:SS] CATEGORY text", one per line, prefixed with the
 // entry's date since entries here may span many days unlike a single
-// day's raw ledger file) for feeding to summarizeWithCopilotPrompt.
+// day's raw ledger file) for feeding to summarizeWithLLMCLIPrompt.
 func ledgerEntriesToText(entries []LedgerEntry) string {
 	var sb strings.Builder
 	for _, e := range entries {

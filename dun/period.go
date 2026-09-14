@@ -1,6 +1,7 @@
 package dun
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -378,7 +379,7 @@ func setTheme(cfg *Config, period summaryPeriod, value string) {
 }
 
 // reviewLengthWords is the rough target word-count ceiling to instruct
-// the copilot prompt with for each unit's Review, scaled so a Day
+// the LLM CLI prompt with for each unit's Review, scaled so a Day
 // digest stays tight while a Year digest is allowed more room to
 // cover a full year's worth of rolled-up material. Deliberately a
 // ceiling stated in the prompt itself (not just achieved structurally
@@ -395,11 +396,11 @@ var reviewLengthWords = map[summaryPeriod]int{
 }
 
 // reviewLengthConstraint returns a short instruction fragment, scaled
-// to period, to append to any Review-generating copilot prompt --
-// e.g. summarizeWithCopilotPrompt(someInstructions+reviewLengthConstraint(periodMonth), ...).
+// to period, to append to any Review-generating LLM CLI prompt --
+// e.g. summarizeWithLLMCLIPrompt(someInstructions+reviewLengthConstraint(periodMonth), ...).
 // Kept as a standalone appendable fragment (not baked into
-// summarizeWithCopilotPrompt itself) so non-Review callers (e.g.
-// Standup's summarizeStandupWithCopilot, which already has its own
+// summarizeWithLLMCLIPrompt itself) so non-Review callers (e.g.
+// Standup's summarizeStandupWithLLMCLI, which already has its own
 // "Be concise" framing) aren't forced to adopt it.
 func reviewLengthConstraint(period summaryPeriod) string {
 	words, ok := reviewLengthWords[period]
@@ -411,7 +412,7 @@ func reviewLengthConstraint(period summaryPeriod) string {
 }
 
 // themePromptFraming returns the instruction text for a Review's
-// copilot prompt, per theme (docs/kickoff-review-design.md's "Three
+// LLM CLI prompt, per theme (docs/kickoff-review-design.md's "Three
 // themes" section) -- title is the report's periodLabel-derived
 // title (e.g. "Sep 2026", "Q3 2026 (Jul-Sep)"), unitNoun is the plain
 // English name of the unit being covered (e.g. "day", "week",
@@ -461,13 +462,17 @@ func unitNoun(period summaryPeriod) string {
 	return strings.ToLower(string(period))
 }
 
-// generateThemedReview runs the full themed-Review copilot pipeline
+// generateThemedReview runs the full themed-Review LLM CLI pipeline
 // for period's unit containing anchor: gathers rollup source material
 // via gatherReviewSourceMaterial (review.go), builds the theme-framed
 // prompt (themePromptFraming + reviewLengthConstraint), and returns
 // the resulting markdown. Returns a placeholder message (nil error)
 // if there's no source material at all to summarize.
 func generateThemedReview(cfg Config, period summaryPeriod, anchor time.Time) (string, error) {
+	return generateThemedReviewContext(context.Background(), cfg, period, anchor)
+}
+
+func generateThemedReviewContext(ctx context.Context, cfg Config, period summaryPeriod, anchor time.Time) (string, error) {
 	from, to := periodDataRange(period, anchor)
 	material := gatherReviewSourceMaterial(period, from, to)
 
@@ -494,5 +499,5 @@ func generateThemedReview(cfg Config, period summaryPeriod, anchor time.Time) (s
 	theme := themeFor(cfg, period)
 	title := periodLabel(cfg, period, anchor)
 	instructions := themePromptFraming(theme, unitNoun(period), title) + reviewLengthConstraint(period)
-	return summarizeWithCopilotPrompt(instructions, combined.String())
+	return summarizeWithLLMCLIPromptContext(ctx, instructions, combined.String())
 }

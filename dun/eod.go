@@ -125,9 +125,9 @@ func showEODWindow(a fyne.App) {
 	todayScroll.SetMinSize(fyne.NewSize(0, 220)) // room for ~8+ lines
 
 	// AI-drafted summary: fed today's ledger text via the same
-	// summarizeWithCopilot pipeline used elsewhere (Summarize/SOM),
+	// summarizeWithLLMCLI pipeline used elsewhere (Summarize/SOM),
 	// rather than asking the user to hand-write one. Runs in the
-	// background since it shells out to gh copilot; the field starts
+	// background since it shells out to configured LLM CLI; the field starts
 	// with a placeholder and is editable once (or before) the draft
 	// arrives, so the user can always tweak/replace it before Finalize
 	// Day. A rendered-markdown preview (summaryPreview) sits below the
@@ -154,8 +154,13 @@ func showEODWindow(a fyne.App) {
 	copySummaryBtn := widget.NewButton("Copy", func() {
 		a.Clipboard().SetContent(summary.Text)
 	})
+	draftRequest := newLLMCLIRequest()
+	w.SetOnClosed(draftRequest.close)
+	draftStopBtn := draftRequest.stopButton()
+	draftStopBtn.Hide()
 	summaryBox := container.NewVBox(
 		summary,
+		draftStopBtn,
 		widget.NewLabelWithStyle("Preview:", fyne.TextAlignLeading, fyne.TextStyle{Italic: true}),
 		summaryPreviewScroll,
 		copySummaryBtn,
@@ -169,13 +174,19 @@ func showEODWindow(a fyne.App) {
 		if !hasRealLedgerContent(ledgerText) {
 			return
 		}
-		draft, err := summarizeWithCopilotPrompt(
+		fyne.Do(draftStopBtn.Show)
+		draft, err := summarizeWithLLMCLIPromptContext(draftRequest.ctx,
 			"Summarize this ledger of a day's activity entries into "+
 				"a brief impact report suitable for a personal end-of-day "+
 				"recap. Be concise and group related work together."+
 				reviewLengthConstraint(periodDay), ledgerText)
+		draftRequest.finish()
 		fyne.Do(func() {
+			draftStopBtn.Hide()
 			if err != nil {
+				if draftRequest.canceled() {
+					return
+				}
 				log.Println("Error drafting EOD summary:", err)
 				return
 			}
@@ -265,18 +276,31 @@ func showEODWindow(a fyne.App) {
 		// Day output; see docs/open-design-questions.md. Manual
 		// drafting via the "EOD Report..." tray item always
 		// works regardless of this setting. Runs in the background
-		// since it shells out to gh copilot; opens in $EDITOR when
+		// since it shells out to configured LLM CLI; opens in $EDITOR when
 		// ready rather than blocking Finalize Day.
 		if LoadConfig().AutoDraftDailySummary && autoEODReportEligible(time.Now()) {
+			request := newLLMCLIRequest()
+			progress := a.NewWindow("Dunnit: Drafting EOD Report\u2026")
+			progress.SetOnClosed(request.close)
+			progress.SetContent(windowPad(llmCLIProgressContent("Drafting the EOD report with the configured LLM CLI, please wait\u2026", request)))
+			progress.Resize(fyne.NewSize(420, 140))
+			progress.Show()
 			go func() {
-				path, _, err := ensureEODReport(time.Now())
-				if err != nil {
-					log.Println("Error drafting EOD report:", err)
-					return
-				}
-				if path != "" {
-					openInEditor(path)
-				}
+				path, _, err := ensureEODReportContext(request.ctx, time.Now())
+				request.finish()
+				fyne.Do(func() {
+					progress.Close()
+					if request.canceled() {
+						return
+					}
+					if err != nil {
+						log.Println("Error drafting EOD report:", err)
+						return
+					}
+					if path != "" {
+						openInEditor(path)
+					}
+				})
 			}()
 		}
 		w.Close()

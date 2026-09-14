@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -229,32 +228,6 @@ func concatLedgerFilesFiltered(files []string, categories map[string]bool) strin
 	return sb.String()
 }
 
-// summarizeWithCopilotPrompt is like summarizeWithCopilot, but lets
-// the caller supply the full instruction text prepended before the
-// ledger content -- used by FR-22/FR-23's differently-framed prompts
-// (performance-review-flavored, private-vs-shareable) while reusing
-// the exact same gh copilot invocation plumbing.
-func summarizeWithCopilotPrompt(instructions, ledgerText string) (string, error) {
-	prompt := instructions + "\n\n" + ledgerText
-
-	cmd := exec.Command("gh", "copilot", "-p", prompt, "--silent", "--allow-all-tools")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("gh copilot failed: %w\n%s", err, out)
-	}
-	return string(out), nil
-}
-
-// summarizeWithCopilot shells out to `gh copilot` with a one-shot prompt
-// asking it to summarize the given ledger text into a brief impact
-// report. Requires the `gh` CLI with the Copilot extension available.
-func summarizeWithCopilot(ledgerText string) (string, error) {
-	return summarizeWithCopilotPrompt(
-		"Summarize this ledger of daily activity entries into a brief "+
-			"impact report suitable for a standup or status update. Be concise "+
-			"and group related work together.", ledgerText)
-}
-
 // showSummarizeDialog lets the user pick a period, then runs the
 // summary and displays the result in a new window.
 //
@@ -298,18 +271,27 @@ func runSummarize(a fyne.App, period summaryPeriod) {
 	}
 
 	progress := a.NewWindow("Dunnit: Summarizing\u2026")
-	progress.SetContent(windowPad(widget.NewLabel(
-		"Asking gh copilot to summarize, please wait\u2026\n" +
-			"The generated report will be copied to your clipboard automatically.")))
+	request := newLLMCLIRequest()
+	progress.SetOnClosed(request.close)
+	progress.SetContent(windowPad(llmCLIProgressContent(
+		"Asking configured LLM CLI to summarize, please wait\u2026\n"+
+			"The generated report will be copied to your clipboard automatically.", request)))
 	progress.Show()
 
 	go func() {
-		summary, err := summarizeWithCopilot(ledgerText)
+		summary, err := summarizeWithLLMCLIPromptContext(request.ctx,
+			"Summarize this ledger of daily activity entries into a brief "+
+				"impact report suitable for a standup or status update. Be concise "+
+				"and group related work together.", ledgerText)
+		request.finish()
 		fyne.Do(func() {
 			progress.Close()
+			if request.canceled() {
+				return
+			}
 			w := a.NewWindow(fmt.Sprintf("Dunnit: %s Summary", period))
 			if err != nil {
-				w.SetContent(windowPad(widget.NewLabel("Error running gh copilot:\n" + err.Error())))
+				w.SetContent(windowPad(widget.NewLabel("Error running configured LLM CLI:\n" + err.Error())))
 			} else {
 				a.Clipboard().SetContent(summary)
 				body := widget.NewMultiLineEntry()

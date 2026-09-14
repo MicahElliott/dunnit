@@ -258,7 +258,7 @@ Two levers, both needed:
    summaries instead of raw ledger keeps input size down at higher
    tiers automatically.
 2. **Explicit prompt instruction**: every Review-generating
-   `summarizeWithCopilotPrompt` call should append a shared,
+   `summarizeWithLLMCLIPrompt` call should append a shared,
    period-scaled length constraint (e.g. "Keep the total output under
    roughly N words; be terse, favor bullet points over prose" with N
    smaller for Day, larger for Year) -- so length discipline doesn't

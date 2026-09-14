@@ -25,7 +25,7 @@ const annualReviewPrompt = "Summarize the following IMPACT/MILESTONE/WIN " +
 
 // showAnnualReviewDialog lets the user pick a year (default: current)
 // and generates a narrative summary via the shared Summarize/gh
-// copilot plumbing, scoped to that year's IMPACT/MILESTONE/WIN lines.
+// LLM CLI plumbing, scoped to that year's IMPACT/MILESTONE/WIN lines.
 //
 // Own standalone window (not a dialog parented on Daybook) -- Daybook
 // is normally hidden, and this is a tray-invoked, occasional workflow
@@ -72,18 +72,24 @@ func runAnnualReview(a fyne.App, year int) {
 	}
 
 	progress := a.NewWindow("Dunnit: Generating Annual Review\u2026")
-	progress.SetContent(windowPad(widget.NewLabel(
-		"Asking gh copilot to summarize, please wait\u2026\n" +
-			"The generated report will be copied to your clipboard automatically.")))
+	request := newLLMCLIRequest()
+	progress.SetOnClosed(request.close)
+	progress.SetContent(windowPad(llmCLIProgressContent(
+		"Asking configured LLM CLI to summarize, please wait\u2026\n"+
+			"The generated report will be copied to your clipboard automatically.", request)))
 	progress.Show()
 
 	go func() {
-		summary, err := summarizeWithCopilotPrompt(annualReviewPrompt, ledgerText)
+		summary, err := summarizeWithLLMCLIPromptContext(request.ctx, annualReviewPrompt, ledgerText)
+		request.finish()
 		fyne.Do(func() {
 			progress.Close()
+			if request.canceled() {
+				return
+			}
 			w := a.NewWindow("Dunnit: Annual Review " + strconv.Itoa(year))
 			if err != nil {
-				w.SetContent(windowPad(widget.NewLabel("Error running gh copilot:\n" + err.Error())))
+				w.SetContent(windowPad(widget.NewLabel("Error running configured LLM CLI:\n" + err.Error())))
 			} else {
 				a.Clipboard().SetContent(summary)
 				body := widget.NewMultiLineEntry()

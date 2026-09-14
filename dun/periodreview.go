@@ -125,19 +125,40 @@ func showPeriodReviewWindow(a fyne.App, period summaryPeriod, anchor time.Time) 
 	}
 
 	generateBtn := widget.NewButton("Generate", nil)
+	var request *llmCLIRequest
+	stopBtn := widget.NewButton("Stop", nil)
+	stopBtn.Hide()
+	w.SetOnClosed(func() {
+		if request != nil {
+			request.close()
+		}
+	})
 	generateBtn.OnTapped = func() {
 		selectedTheme := themeFromDisplayName(themeSelect.Selected)
 		if selectedTheme == "" {
 			return
 		}
 		generateBtn.Disable()
+		request = newLLMCLIRequest()
+		stopBtn.OnTapped = func() {
+			stopBtn.Disable()
+			request.cancel()
+		}
+		stopBtn.Enable()
+		stopBtn.Show()
 		statusLabel.SetText("Generating, please wait\u2026")
 		go func() {
 			overrideCfg := cfg
 			setTheme(&overrideCfg, period, selectedTheme)
-			summary, err := generateThemedReview(overrideCfg, period, anchor)
+			summary, err := generateThemedReviewContext(request.ctx, overrideCfg, period, anchor)
+			request.finish()
 			fyne.Do(func() {
 				generateBtn.Enable()
+				stopBtn.Hide()
+				if request.canceled() {
+					statusLabel.SetText("Stopped.")
+					return
+				}
 				if err != nil {
 					log.Println("Error generating "+string(period)+" Review:", err)
 					statusLabel.SetText("Error generating report \u2014 see logs.")
@@ -203,7 +224,7 @@ func showPeriodReviewWindow(a fyne.App, period summaryPeriod, anchor time.Time) 
 	content := container.NewVBox(
 		widget.NewLabel(string(period)+" Review: "+label),
 		container.NewBorder(nil, nil, widget.NewLabel("Theme:"), generateBtn, themeSelect),
-		statusLabel,
+		container.NewHBox(statusLabel, stopBtn),
 		existingBox,
 		carryForwardBox,
 	)

@@ -252,7 +252,7 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 	// FR-19: proactive weekly digest, fires once on the configured
 	// weekly_digest_day/time (e.g. Friday 16:00) and shows a Week-
 	// period Summarize report unprompted. Disabled by default (no
-	// weekly_digest_day configured) since it shells out to gh copilot
+	// weekly_digest_day configured) since it shells out to configured LLM CLI
 	// on a schedule -- opt-in via Settings/config.toml. The monthly
 	// version is intentionally not a separate mechanism here; it's
 	// folded into FR-14's SOM wizard once that exists.

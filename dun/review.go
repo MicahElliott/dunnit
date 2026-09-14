@@ -237,7 +237,7 @@ func listReviewReportsOverlapping(subPeriod summaryPeriod, from, to time.Time) [
 	return out
 }
 
-// reviewSourceMaterial is what gets fed to the copilot prompt for a
+// reviewSourceMaterial is what gets fed to the LLM CLI prompt for a
 // Review: already-generated sub-tier reports (their saved, possibly
 // hand-edited markdown bodies) found to overlap the requested range,
 // plus raw ledger text for whatever days aren't covered by one of

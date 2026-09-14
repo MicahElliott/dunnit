@@ -31,7 +31,7 @@ Open questions:
    overwrite guarantee somehow, e.g. append additional LLM passes
    rather than skip entirely if content already exists).
 3. **Should the auto-draft even shell out to an LLM by default?**
-   Considered separately from timing -- shelling out to `gh copilot`
+   Considered separately from timing -- shelling out to a configured LLM CLI
    unprompted on every EOD (once enabled) has real latency/cost
    implications, similar to the concern that led FR-19's weekly
    digest to default off. Current fix (this same flag) addresses this

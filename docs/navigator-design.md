@@ -149,7 +149,7 @@ two more composable filters plus an action, all built on the existing
 - **Ask AI about these...**: takes the currently-filtered entry set
   (all three filters composed together), renders it back to ledger-
   line-shaped text (`ledgerEntriesToText`), and feeds it plus a
-  user-typed free-form question into `summarizeWithCopilotPrompt` --
+  user-typed free-form question into `summarizeWithLLMCLIPrompt` --
   the same integration point every other AI-report feature already
   funnels through (Standup/Status Report/Annual Review/Kickoff-Review),
   just with a one-shot question instead of a fixed instruction

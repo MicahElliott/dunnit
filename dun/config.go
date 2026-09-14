@@ -14,6 +14,10 @@ import (
 // config-example.zsh (minus dunnits_dir, which is now just DunnitDir()
 // itself -- everything dunnit owns lives under one root directory).
 type Config struct {
+	// LLMCLI selects the local CLI used for one-shot reports. "auto" uses
+	// the documented availability order; the other values pin one CLI.
+	LLMCLI string `toml:"llm_cli"`
+
 	// DunnitDir is the directory containing ledgers and related data. The
 	// DUNNIT_DIR environment variable still takes precedence.
 	DunnitDir string `toml:"dunnit_dir"`
@@ -50,14 +54,14 @@ type Config struct {
 	// WeeklyDigestDay/Time (FR-19) configure when the proactive
 	// weekly digest nudge fires, e.g. "Friday" "16:00". Empty
 	// DigestDay disables the nudge (default: disabled, since it
-	// shells out to gh copilot and Micah may not want it firing
+	// shells out to a configured LLM CLI and Micah may not want it firing
 	// unprompted until explicitly configured).
 	WeeklyDigestDay  string `toml:"weekly_digest_day"`
 	WeeklyDigestTime string `toml:"weekly_digest_time"`
 
 	// AutoDraftDailySummary (FR-18) gates whether EOD's Finalize Day
-	// automatically drafts/opens the daily summary doc via gh
-	// copilot. Default false -- open design questions remain about
+	// automatically drafts/opens the daily summary doc via the configured
+	// LLM CLI. Default false -- open design questions remain about
 	// whether EOD is even the right trigger timing, and what should
 	// differentiate the doc's content from Summarize's existing Day
 	// output (see FR-18 questions in
@@ -191,6 +195,7 @@ type Config struct {
 // defaultConfig mirrors the values from dunnit's config-example.zsh.
 func defaultConfig() Config {
 	return Config{
+		LLMCLI:               llmCLIAuto,
 		DayStart:             "08:00",
 		DayEnd:               "17:30",
 		NudgeIntervalMinutes: 60,
@@ -279,6 +284,7 @@ func loadConfig() (Config, error) {
 	if _, err := toml.DecodeFile(path, &cfg); err != nil {
 		return defaultConfig(), fmt.Errorf("decode config: %w", err)
 	}
+	cfg.LLMCLI = normalizeLLMCLI(cfg.LLMCLI)
 	if os.Getenv("DUNNIT_DIR") == "" && cfg.DunnitDir != "" {
 		configuredDunnitDir = cfg.DunnitDir
 	}

@@ -1,6 +1,7 @@
 package dun
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"strconv"
@@ -176,8 +177,8 @@ func formatStandup(lines []string) string {
 	return sb.String()
 }
 
-// summarizeStandupWithCopilot runs the given (already-filtered,
-// hidden items excluded) lines through the same summarizeWithCopilot
+// summarizeStandupWithLLMCLI runs the given (already-filtered,
+// hidden items excluded) lines through the same summarizeWithLLMCLI
 // pipeline used elsewhere, framed for a standup specifically.
 //
 // Prompt reframed 2026-09-03 to explicit classic-scrum structure
@@ -192,7 +193,11 @@ func formatStandup(lines []string) string {
 // Also explicitly instructs the model to surface a "what do you need
 // help with" callout and favor concrete results over a busy-sounding
 // activity log.
-func summarizeStandupWithCopilot(lines []string) (string, error) {
+func summarizeStandupWithLLMCLI(lines []string) (string, error) {
+	return summarizeStandupWithLLMCLIContext(context.Background(), lines)
+}
+
+func summarizeStandupWithLLMCLIContext(ctx context.Context, lines []string) (string, error) {
 	var openBuf strings.Builder
 	for _, item := range getOpenItems() {
 		if item.Category != "TODO" && item.Category != "DOING" && item.Category != "GOAL" {
@@ -208,7 +213,7 @@ func summarizeStandupWithCopilot(lines []string) (string, error) {
 	input := "Completed/notable items:\n" + strings.Join(lines, "\n") +
 		"\n\nCurrently open TODOs/DOING/GOALs (candidates for \"today\"):\n" + openSection
 
-	return summarizeWithCopilotPrompt(
+	return summarizeWithLLMCLIPromptContext(ctx,
 		"Turn this into a classic scrum daily standup update, structured "+
 			"under exactly these three headings: "+
 			"\"What did I do yesterday\", \"What will I do today\", and "+
@@ -241,7 +246,7 @@ func showGeneratedStandupSummary(a fyne.App, parent fyne.Window, summary string)
 // Hide-icon list) seeded with one gathered item per line, plus a
 // bottom "Generate Summary" button that runs whatever's currently in
 // that box (after the user's own edits, additions, or deletions)
-// through summarizeStandupWithCopilot and shows the result via
+// through summarizeStandupWithLLMCLI and shows the result via
 // showGeneratedStandupSummary.
 //
 // Editing here only changes what's fed into *this generation's*
@@ -281,12 +286,17 @@ func showStandupExport(a fyne.App) {
 			dialog.ShowInformation("Nothing to Summarize", "The items box is empty.", w)
 			return
 		}
-		progress := dialog.NewCustomWithoutButtons("Generating Summary", widget.NewLabel("Running gh copilot, please wait\u2026"), w)
+		request := newLLMCLIRequest()
+		progress := dialog.NewCustomWithoutButtons("Generating Summary", llmCLIProgressContent("Running configured LLM CLI, please wait\u2026", request), w)
 		progress.Show()
 		go func() {
-			summary, err := summarizeStandupWithCopilot(visible)
+			summary, err := summarizeStandupWithLLMCLIContext(request.ctx, visible)
+			request.finish()
 			fyne.Do(func() {
 				progress.Hide()
+				if request.canceled() {
+					return
+				}
 				if err != nil {
 					log.Println("Error generating standup summary:", err)
 					dialog.ShowError(err, w)

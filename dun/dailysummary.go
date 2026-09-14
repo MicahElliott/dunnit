@@ -1,6 +1,7 @@
 package dun
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,26 +19,30 @@ func eodReportPath(date time.Time) (dir, path string) {
 }
 
 // draftDailySummary generates initial markdown content for date's
-// EOD report via the existing gh copilot pipeline (summarize.go),
+// EOD report via the existing configured LLM CLI pipeline (summarize.go),
 // scoped to just that single day's ledger. Returns "" (with the
-// error) if there's nothing to summarize or the copilot call fails.
+// error) if there's nothing to summarize or the LLM CLI call fails.
 //
-// hasRealLedgerContent (not a bare "" check) guards the copilot call:
+// hasRealLedgerContent (not a bare "" check) guards the LLM CLI call:
 // gatherLedgerTextForDate/concatLedgerFiles always emit a
 // "# ledger-....txt" header line for any file that exists, even one
 // with zero actual entries in it -- a bare emptiness check on that
 // result is therefore always false (non-empty) even when there's
 // nothing real to summarize, which previously let a near-empty ledger
-// through to gh copilot and got back a confused response describing
+// through to configured LLM CLI and got back a confused response describing
 // the missing content instead of a real summary (real bug, hit via
 // both auto-draft-at-EOD and the manual "EOD Report..." tray
 // item).
 func draftDailySummary(date time.Time) (string, error) {
+	return draftDailySummaryContext(context.Background(), date)
+}
+
+func draftDailySummaryContext(ctx context.Context, date time.Time) (string, error) {
 	ledgerText := gatherLedgerTextForDate(date)
 	if !hasRealLedgerContent(ledgerText) {
 		return "", nil
 	}
-	return summarizeWithCopilot(ledgerText)
+	return summarizeWithLLMCLIContext(ctx, ledgerText)
 }
 
 // hasRealLedgerContent reports whether ledgerText (as produced by
@@ -60,6 +65,10 @@ func hasRealLedgerContent(ledgerText string) bool {
 // never overwrites existing hand-edited content (FR-18's core
 // guarantee). Returns the file path and whether it was newly created.
 func ensureEODReport(date time.Time) (path string, created bool, err error) {
+	return ensureEODReportContext(context.Background(), date)
+}
+
+func ensureEODReportContext(ctx context.Context, date time.Time) (path string, created bool, err error) {
 	dir, path := eodReportPath(date)
 	if _, statErr := os.Stat(path); statErr == nil {
 		return path, false, nil // already exists, leave it alone
@@ -67,7 +76,7 @@ func ensureEODReport(date time.Time) (path string, created bool, err error) {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return path, false, err
 	}
-	content, err := draftDailySummary(date)
+	content, err := draftDailySummaryContext(ctx, date)
 	if err != nil {
 		return path, false, err
 	}

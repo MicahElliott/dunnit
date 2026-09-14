@@ -25,6 +25,8 @@ func showSettings(a fyne.App) {
 	dunnitDir := widget.NewEntry()
 	dunnitDir.SetText(cfg.DunnitDir)
 	dunnitDir.SetPlaceHolder("Leave blank for default")
+	llmCLISelect := widget.NewSelect(llmCLISettingOptions(), nil)
+	llmCLISelect.SetSelected(llmCLISettingLabel(cfg.LLMCLI))
 	browseDir := widget.NewButtonWithIcon("", theme.FolderOpenIcon(), func() {
 		dialog.ShowFolderOpen(func(uri fyne.ListableURI, err error) {
 			if err != nil {
@@ -104,6 +106,7 @@ func showSettings(a fyne.App) {
 
 	form := widget.NewForm(
 		widget.NewFormItem("Dunnit Data Directory", container.NewBorder(nil, nil, nil, browseDir, dunnitDir)),
+		widget.NewFormItem("LLM CLI for Reports", llmCLISelect),
 		widget.NewFormItem("Enable Git Sync", gitSync),
 		widget.NewFormItem("Day Start (HH:MM)", dayStart),
 		widget.NewFormItem("Day End (HH:MM)", dayEnd),
@@ -167,6 +170,7 @@ func showSettings(a fyne.App) {
 		// RecurringMeetings, FR-15) aren't silently wiped out on save.
 		newCfg := cfg
 		newCfg.DunnitDir = strings.TrimSpace(dunnitDir.Text)
+		newCfg.LLMCLI = llmCLISettingFromLabel(llmCLISelect.Selected)
 		newCfg.GitSyncEnabled = gitSync.Checked
 		newCfg.DayStart = dayStart.Text
 		newCfg.DayEnd = dayEnd.Text
@@ -220,7 +224,9 @@ func showSettings(a fyne.App) {
 	})
 
 	saveButton := widget.NewButton("Save", saveSettings)
-	content := container.NewVScroll(container.NewVBox(form,
+	content := container.NewVScroll(container.NewVBox(
+		widget.NewLabel("AI reports use the selected CLI's existing login; Dunnit never asks for or stores tokens."),
+		form,
 		widget.NewLabelWithStyle("Kickoff / Review", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		periodForm,
 		widget.NewLabelWithStyle("Faves (Daybook picker's default bucket)", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),

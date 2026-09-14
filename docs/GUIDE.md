@@ -128,6 +128,63 @@ week/month/quarter/year scale.
 See the tray menu's **Kickoff**/**Review** submenus for the full set
 of periods, and the README for setup/config details.
 
+## AI / LLM CLI setup
+
+Dunnit's report features can use a locally installed command-line client.
+Dunnit does not ask for, receive, or store API tokens. Set up and authenticate
+the CLI itself, then choose the client in **Settings → LLM CLI for Reports**.
+
+The available choices are:
+
+- **Auto (recommended)** — uses the first available client in this order:
+  `copilot`, `claude`, `codex`, `gemini`, then `llm`.
+- **Copilot** — GitHub Copilot CLI.
+- **Claude Code** — Anthropic's Claude Code CLI.
+- **Codex** — OpenAI Codex CLI.
+- **Gemini** — Google Gemini CLI.
+- **llm** — Simon Willison's `llm` CLI and whichever model/provider it has
+  configured.
+
+Pin a client when you care which model, account, privacy policy, cost, or
+response style is used. Auto selection only falls through when a client is
+missing. If a client starts and then reports an authentication, network, or
+model error, Dunnit reports that error instead of retrying with another client;
+retrying could charge another provider and produce a different report.
+
+Install and authenticate the client outside Dunnit using its own setup flow:
+
+- [Copilot programmatic use and setup](https://docs.github.com/en/copilot/how-tos/copilot-cli/automate-copilot-cli/run-cli-programmatically)
+- [Claude Code CLI reference and setup](https://code.claude.com/docs/en/cli-usage)
+- [Codex CLI](https://github.com/openai/codex)
+- [Gemini CLI authentication](https://geminicli.com/docs/get-started/authentication/)
+- [`llm` setup](https://llm.datasette.io/en/stable/setup.html)
+
+Reports send the selected period's ledger text to the selected client. Treat
+that text according to the client's account, local history, provider logging,
+retention, quota, and billing policies. Dunnit asks the `llm` client not to
+copy prompts and responses into its local log by passing `--no-log`; this does
+not control retention by the remote model provider or by the other clients.
+
+The report commands are one-shot and run without waiting for keyboard input.
+Dunnit disables or restricts tools, MCP servers, extensions, project
+instructions, and file access where each client supports those controls. The
+ledger is still user-controlled text, so entries that look like instructions
+can affect a model's response. Review generated reports before sharing them,
+especially private/shareable status reports and annual reviews.
+
+Each client may use a different default model and may have a different context
+window. Long annual or multi-month reports can therefore be slower, cost more,
+or exceed a provider's limit. Dunnit keeps its existing hierarchical review
+flows, but a provider error may require a shorter period or a different pinned
+client. Scheduled reports are also provider calls: enable them only when their
+latency, quota, and cost are acceptable to you.
+
+If Dunnit says no supported client is available, install one of the clients
+above or pin a client that is already on your `PATH`. If it identifies a client
+but reports an authentication error, run that client's login or setup command
+in a terminal and try the report again. Dunnit does not perform login probes,
+because those can open a browser or otherwise make network requests.
+
 ## Best Practices / How-To
 
 - Tag entries with `#hashtags` (project names, ticket numbers, people)
