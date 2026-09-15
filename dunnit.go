@@ -1,10 +1,16 @@
 package main
 
 import (
-	"fmt"
 	"dun/dun"
+	_ "embed"
+	"fmt"
 	"os"
+
+	"fyne.io/fyne/v2"
 )
+
+//go:embed Icon.png
+var appIcon []byte
 
 func main() {
 	// Any invocation with command-line args is treated as the tiny
@@ -23,6 +29,7 @@ func main() {
 	fmt.Println("Starting Dunnit")
 
 	a := dun.MakeUI()
+	(*a).SetIcon(fyne.NewStaticResource("Icon.png", appIcon))
 	w := dun.BuildMainWindow(*a)
 	s := dun.Schedule(*a, w)
 	defer s.Shutdown()
