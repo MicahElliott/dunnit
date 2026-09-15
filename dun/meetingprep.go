@@ -119,10 +119,18 @@ func lastN(entries []taggedEntry, n int) []taggedEntry {
 // is normally hidden, and this is a tray-invoked, occasional workflow
 // with no dependency on Daybook being open.
 func showMeetingPrepDialog(a fyne.App) {
+	showMeetingPrepDialogForTag(a, "")
+}
+
+// showMeetingPrepDialogForTag is the scheduler-aware form of Meeting Prep.
+// A recurring meeting can provide its tag so the first view is immediately
+// useful instead of opening with an empty filter.
+func showMeetingPrepDialogForTag(a fyne.App, initialTag string) {
 	w := a.NewWindow("Dunnit: Meeting Prep")
 
 	tagEntry := widget.NewEntry()
 	tagEntry.SetPlaceHolder("#tag (e.g. #jeff, #boss)")
+	tagEntry.SetText(initialTag)
 
 	weeksSelect := widget.NewSelect([]string{"1", "2", "3", "4", "12"}, nil)
 	weeksSelect.SetSelected("2")
@@ -176,6 +184,9 @@ func showMeetingPrepDialog(a fyne.App) {
 	weeksSelect.OnChanged = func(string) { refreshHistory() }
 	catFilterSelect.OnChanged = func(string) { refreshHistory() }
 	onlyNewCheck.OnChanged = func(bool) { refreshHistory() }
+	if initialTag != "" {
+		refreshHistory()
+	}
 
 	noteEntry := widget.NewMultiLineEntry()
 	noteEntry.SetPlaceHolder("New agenda note for this meeting\u2026")

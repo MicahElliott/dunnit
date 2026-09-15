@@ -32,8 +32,9 @@ that day.
 
 - New file `dunnit/recurring.go`:
   - `RecurringItem` struct (`Category`, `Text`, `Cadence` one of
-    daily/weekly/monthly, `DOW`, `DayOfMonth`) -- deliberately
-    simpler than `RecurringMeeting` (no time-of-day).
+    daily/weekly/monthly, `DOW`, `DayOfMonth`, optional `Time`). Untimed
+    items remain SOD/SOM suggestions; timed items also get a native reminder
+    and a prefilled Daybook popup.
   - `isDueToday`, `clampDayOfMonth` (31 clamps to e.g. 28/30 in
     shorter months), `alreadyLoggedToday` (dedup against today's open
     items by exact category+text match), `dueRecurringItems(cfg, now,
@@ -61,9 +62,9 @@ management dialog's add/edit/delete behavior end-to-end.
 
 - No manual click-through testing performed yet (per repo convention,
   that's on the human).
-- Editing an existing recurring item isn't supported by the GUI --
-  only add/delete. Edit-in-place could be added if it turns out to be
-  needed (currently: delete + re-add).
+- Recurring item and meeting management windows now share the same inline
+  edit/delete interaction and cadence ordering. The two forms remain
+  separate because meetings are tag-focused while items are category-focused.
 - No dedup/interaction consideration for a recurring item whose text
   happens to collide with a manually-logged item that isn't an exact
   string match (e.g. slightly reworded) -- `alreadyLoggedToday` only

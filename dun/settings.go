@@ -21,7 +21,7 @@ func SetThings() {
 // (day_start, day_end, hourly_minute, lunch_time).
 func showSettings(a fyne.App) {
 	cfg := LoadConfig()
-	w := a.NewWindow("Dunnit Settings")
+	w := a.NewWindow("Dunnit: Settings")
 	dunnitDir := widget.NewEntry()
 	dunnitDir.SetText(cfg.DunnitDir)
 	dunnitDir.SetPlaceHolder("Leave blank for default")

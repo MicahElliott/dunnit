@@ -46,9 +46,9 @@ type Config struct {
 	LunchTime string `toml:"lunch_time"`
 
 	// RecurringMeetings is the FR-15 mini-calendar: a small,
-	// purely user-entered list of weekly recurring meeting slots
-	// (tag + day-of-week + time), used by FR-16's pre-meeting
-	// nudge. No real calendar/.ics/EventKit integration.
+	// purely user-entered recurring meeting slots (tag + cadence + time),
+	// used by FR-16's pre-meeting and post-meeting nudges. No real
+	// calendar/.ics/EventKit integration.
 	RecurringMeetings []RecurringMeeting `toml:"recurring_meeting"`
 
 	// WeeklyDigestDay/Time (FR-19) configure when the proactive
@@ -91,7 +91,8 @@ type Config struct {
 	// RECURRING-ITEMS-DESIGN-SEED.md): a small, hand-maintained list
 	// of items to be suggested (not auto-seeded) on a daily/weekly/
 	// monthly cadence. Daily/weekly are surfaced in SOD; monthly in
-	// SOM. Managed via showRecurringItemsDialog (recurring.go).
+	// SOM. An optional time turns an item into a timed native reminder.
+	// Managed via showRecurringItemsDialog (recurring.go).
 	RecurringItems []RecurringItem `toml:"recurring_item"`
 
 	// SkipUSFederalHolidays, when true, treats the 11 US federal

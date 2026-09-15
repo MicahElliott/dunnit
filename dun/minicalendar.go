@@ -2,8 +2,8 @@ package dun
 
 import (
 	"errors"
-	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -11,6 +11,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -49,14 +50,71 @@ type RecurringMeeting struct {
 }
 
 // meetingCadenceOptions are the choices for a RecurringMeeting's
-// cadence -- "Weekly" is the original/default shape (day-of-week +
-// every-N-weeks interval); "Daily" fires every day (or every weekday,
-// per WeekendPolicy), replacing what used to require 5 separate
-// weekly rows (one per weekday) for something like a daily standup.
+// cadence -- "Weekly" is the original/default shape (day-of-week);
+// biweekly odd/even and monthly/quarterly are explicit choices, while
+// "Daily" fires every day (or every weekday, per WeekendPolicy).
 var meetingCadenceOptions = []string{"daily", "weekly", "biweekly-odd", "biweekly-even", "monthly", "quarterly"}
+
+var meetingCadenceRank = map[string]int{
+	"daily":         0,
+	"weekly":        1,
+	"biweekly-odd":  2,
+	"biweekly-even": 3,
+	"monthly":       4,
+	"quarterly":     5,
+}
 
 // dowNames indexes by time.Weekday (0=Sunday..6=Saturday).
 var dowNames = []string{"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}
+
+func safeDOW(dow int) string {
+	if dow < 0 || dow >= len(dowNames) {
+		return dowNames[time.Monday]
+	}
+	return dowNames[dow]
+}
+
+func sortRecurringMeetings(meetings []RecurringMeeting) {
+	sort.SliceStable(meetings, func(i, j int) bool {
+		a, b := meetings[i], meetings[j]
+		ra, rb := meetingCadenceRank[a.Cadence], meetingCadenceRank[b.Cadence]
+		if ra != rb {
+			return ra < rb
+		}
+		if a.Time != b.Time {
+			return a.Time < b.Time
+		}
+		if a.DOW != b.DOW {
+			return a.DOW < b.DOW
+		}
+		if a.DayOfMonth != b.DayOfMonth {
+			return a.DayOfMonth < b.DayOfMonth
+		}
+		return a.Tag < b.Tag
+	})
+}
+
+func recurringMeetingDetail(m RecurringMeeting) string {
+	switch m.Cadence {
+	case "daily":
+		detail := "daily " + m.Time
+		if m.WeekendPolicy == "skip" {
+			detail += " (weekdays only)"
+		}
+		return detail
+	case "monthly", "quarterly":
+		return m.Cadence + " day " + strconv.Itoa(m.DayOfMonth) + " " + m.Time
+	case "biweekly-odd", "biweekly-even":
+		return m.Cadence + " " + safeDOW(m.DOW) + " " + m.Time
+	default:
+		// IntervalWeeks remains readable for legacy configs, but new
+		// weekly entries no longer expose an every-N-weeks control.
+		if m.IntervalWeeks > 1 {
+			return "weekly legacy " + strconv.Itoa(m.IntervalWeeks) + "-week interval " + safeDOW(m.DOW) + " " + m.Time
+		}
+		return "weekly " + safeDOW(m.DOW) + " " + m.Time
+	}
+}
 
 // showMiniCalendarDialog lets the user add/edit/delete recurring
 // meeting entries (FR-15), persisted in config.toml's
@@ -64,36 +122,9 @@ var dowNames = []string{"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", 
 func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 	cfg := LoadConfig()
 	meetings := append([]RecurringMeeting(nil), cfg.RecurringMeetings...)
-
-	list := widget.NewList(
-		func() int { return len(meetings) },
-		func() fyne.CanvasObject {
-			return widget.NewLabel("template")
-		},
-		func(i widget.ListItemID, o fyne.CanvasObject) {
-			m := meetings[i]
-			var detail string
-			if m.Cadence == "daily" {
-				detail = "daily " + m.Time
-				if m.WeekendPolicy == "skip" {
-					detail += " (weekdays only)"
-				}
-			} else if m.Cadence == "monthly" || m.Cadence == "quarterly" {
-				detail = m.Cadence + " day " + strconv.Itoa(m.DayOfMonth) + " " + m.Time
-			} else {
-				interval := m.IntervalWeeks
-				if interval <= 0 {
-					interval = 1
-				}
-				every := "every week"
-				if interval > 1 {
-					every = fmt.Sprintf("every %d weeks", interval)
-				}
-				detail = dowNames[m.DOW] + " " + m.Time + " (" + every + ")"
-			}
-			o.(*widget.Label).SetText(m.Tag + " \u2014 " + detail)
-		},
-	)
+	meetingsBox := container.NewVBox()
+	var refreshMeetings func()
+	var beginMeetingEdit func(int)
 
 	tagEntry := newTagAutoEntry()
 	tagEntry.SetPlaceHolder("#tag (e.g. #dsu, #boss)")
@@ -120,7 +151,7 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 	weekendSelect.SetSelected(weekendPolicyOptions[0])
 	weekendSelect.Hide()
 
-	// timeEntry/intervalEntry are wrapped in fixed-size GridWrap
+	// timeEntry is wrapped in a fixed-size GridWrap
 	// containers (same fix as minsInput in ui.go) -- otherwise Fyne's
 	// default layout can render a plain widget.Entry at an oddly
 	// narrow width alongside other fixed-width siblings in an HBox.
@@ -128,12 +159,6 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 	timeEntry.SetPlaceHolder("HH:MM")
 	timeWrapper := container.NewGridWrap(fyne.NewSize(80, timeEntry.MinSize().Height), timeEntry)
 
-	intervalEntry := widget.NewEntry()
-	intervalEntry.SetPlaceHolder("1")
-	intervalEntry.SetText("1")
-	intervalWrapper := container.NewGridWrap(fyne.NewSize(50, intervalEntry.MinSize().Height), intervalEntry)
-	intervalLabel := widget.NewLabel("every")
-	weekLabel := widget.NewLabel("week(s)")
 	domEntry := widget.NewEntry()
 	domEntry.SetPlaceHolder("day 1-31")
 	domWrapper := container.NewGridWrap(fyne.NewSize(70, domEntry.MinSize().Height), domEntry)
@@ -144,9 +169,6 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 		monthly := c == "monthly" || c == "quarterly"
 		if daily {
 			dowSelect.Hide()
-			intervalLabel.Hide()
-			intervalWrapper.Hide()
-			weekLabel.Hide()
 			weekendSelect.Show()
 		} else {
 			weekendSelect.Hide()
@@ -157,19 +179,11 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 				dowSelect.Show()
 				domWrapper.Hide()
 			}
-			if monthly || c == "biweekly-odd" || c == "biweekly-even" {
-				intervalLabel.Hide()
-				intervalWrapper.Hide()
-				weekLabel.Hide()
-			} else {
-				intervalLabel.Show()
-				intervalWrapper.Show()
-				weekLabel.Show()
-			}
 		}
 	}
 
 	saveAll := func() {
+		sortRecurringMeetings(meetings)
 		newCfg := cfg
 		newCfg.RecurringMeetings = meetings
 		if err := writeConfig(newCfg); err != nil {
@@ -177,7 +191,41 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 		}
 	}
 
-	addBtn := widget.NewButton("Add", func() {
+	editingIndex := -1
+	var addBtn *widget.Button
+	cancelEditBtn := widget.NewButton("Cancel", nil)
+	cancelEditBtn.Hide()
+	resetForm := func() {
+		editingIndex = -1
+		tagEntry.SetText("")
+		cadenceSelect.SetSelected("weekly")
+		dowSelect.SetSelected(dowNames[time.Monday])
+		weekendSelect.SetSelected(weekendPolicyOptions[0])
+		timeEntry.SetText("")
+		domEntry.SetText("")
+		cadenceSelect.OnChanged("weekly")
+		addBtn.SetText("Add")
+		cancelEditBtn.Hide()
+	}
+	beginMeetingEdit = func(index int) {
+		if index < 0 || index >= len(meetings) {
+			return
+		}
+		m := meetings[index]
+		editingIndex = index
+		tagEntry.SetText(m.Tag)
+		cadenceSelect.SetSelected(m.Cadence)
+		if m.DOW >= 0 && m.DOW < len(dowNames) {
+			dowSelect.SetSelected(dowNames[m.DOW])
+		}
+		weekendSelect.SetSelected(weekendPolicyFor(m.WeekendPolicy))
+		timeEntry.SetText(m.Time)
+		domEntry.SetText(strconv.Itoa(m.DayOfMonth))
+		cadenceSelect.OnChanged(m.Cadence)
+		addBtn.SetText("Save")
+		cancelEditBtn.Show()
+	}
+	addBtn = widget.NewButton("Add", func() {
 		tag := normalizeTag(tagEntry.Text)
 		if tag == "" {
 			dialog.ShowError(errors.New("tag is required"), parent)
@@ -187,86 +235,75 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 			dialog.ShowError(errors.New("time must be HH:MM (24-hour)"), parent)
 			return
 		}
+		var meeting RecurringMeeting
 		if cadenceSelect.Selected == "daily" {
 			weekendPolicy := ""
 			if weekendSelect.Selected == weekendPolicyOptions[1] {
 				weekendPolicy = "skip"
 			}
-			meetings = append(meetings, RecurringMeeting{
+			meeting = RecurringMeeting{
 				Tag:           tag,
 				Cadence:       "daily",
 				Time:          timeEntry.Text,
 				WeekendPolicy: weekendPolicy,
-			})
-			saveAll()
-			list.Refresh()
-			tagEntry.SetText("")
-			timeEntry.SetText("")
-			return
-		}
-		if cadenceSelect.Selected == "monthly" || cadenceSelect.Selected == "quarterly" {
+			}
+		} else if cadenceSelect.Selected == "monthly" || cadenceSelect.Selected == "quarterly" {
 			day, err := strconv.Atoi(strings.TrimSpace(domEntry.Text))
 			if err != nil || day < 1 || day > 31 {
 				dialog.ShowError(errors.New("day of month must be 1-31"), parent)
 				return
 			}
-			meetings = append(meetings, RecurringMeeting{Tag: tag, Cadence: cadenceSelect.Selected, Time: timeEntry.Text, DayOfMonth: day, AnchorDate: time.Now().Format("2006-01-02")})
-			saveAll()
-			list.Refresh()
-			tagEntry.SetText("")
-			timeEntry.SetText("")
-			domEntry.SetText("")
-			return
-		}
-		interval, err := strconv.Atoi(strings.TrimSpace(intervalEntry.Text))
-		if err != nil || interval <= 0 {
-			dialog.ShowError(errors.New("every N weeks must be a positive number"), parent)
-			return
-		}
-		dow := 0
-		for i, n := range dowNames {
-			if n == dowSelect.Selected {
-				dow = i
+			meeting = RecurringMeeting{Tag: tag, Cadence: cadenceSelect.Selected, Time: timeEntry.Text, DayOfMonth: day, AnchorDate: time.Now().Format("2006-01-02")}
+		} else {
+			dow := 0
+			for i, n := range dowNames {
+				if n == dowSelect.Selected {
+					dow = i
+				}
 			}
+			meeting = RecurringMeeting{Tag: tag, Cadence: cadenceSelect.Selected, DOW: dow, Time: timeEntry.Text, IntervalWeeks: 1, AnchorDate: time.Now().Format("2006-01-02")}
 		}
-		meetings = append(meetings, RecurringMeeting{
-			Tag:           tag,
-			Cadence:       cadenceSelect.Selected,
-			DOW:           dow,
-			Time:          timeEntry.Text,
-			IntervalWeeks: interval,
-			AnchorDate:    time.Now().Format("2006-01-02"),
-		})
-		saveAll()
-		list.Refresh()
-		tagEntry.SetText("")
-		timeEntry.SetText("")
-		intervalEntry.SetText("1")
-	})
-
-	var selected widget.ListItemID = -1
-	list.OnSelected = func(id widget.ListItemID) { selected = id }
-	deleteBtn := widget.NewButton("Delete Selected", func() {
-		if selected < 0 || selected >= len(meetings) {
-			return
+		if editingIndex >= 0 && editingIndex < len(meetings) {
+			meeting.AnchorDate = meetings[editingIndex].AnchorDate
+			meetings[editingIndex] = meeting
+		} else {
+			meetings = append(meetings, meeting)
 		}
-		meetings = append(meetings[:selected], meetings[selected+1:]...)
 		saveAll()
-		list.Refresh()
-		selected = -1
+		refreshMeetings()
+		resetForm()
 	})
+	cancelEditBtn.OnTapped = resetForm
+	refreshMeetings = func() {
+		sortRecurringMeetings(meetings)
+		meetingsBox.RemoveAll()
+		if len(meetings) == 0 {
+			meetingsBox.Add(widget.NewLabel("No recurring meetings yet."))
+		}
+		for i, m := range meetings {
+			i := i
+			editBtn := newHoverIconButton(theme.Icon(theme.IconNameDocumentCreate), "Edit", func() { beginMeetingEdit(i) })
+			deleteBtn := newHoverIconButton(theme.Icon(theme.IconNameDelete), "Delete", func() {
+				meetings = append(meetings[:i], meetings[i+1:]...)
+				saveAll()
+				refreshMeetings()
+			})
+			meetingsBox.Add(container.NewBorder(nil, nil, nil, container.NewHBox(editBtn, deleteBtn), widget.NewLabel(m.Tag+" \u2014 "+recurringMeetingDetail(m))))
+		}
+		meetingsBox.Refresh()
+	}
+	refreshMeetings()
 
 	content := container.NewBorder(
 		container.NewVBox(
-			widget.NewLabel("Recurring Meetings"),
+			widget.NewLabelWithStyle("🗓️ Recurring Meetings", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 			widget.NewRichTextFromMarkdown("*Use these tags throughout your weeks any time a meeting topic thought comes to mind. They\u2019ll be collected and presented to you just before your meeting starts.*"),
 			tagEntry,
 			tagSuggestions,
-			container.NewHBox(cadenceSelect, dowSelect, domWrapper, timeWrapper, intervalLabel, intervalWrapper, weekLabel, weekendSelect, addBtn),
+			container.NewHBox(cadenceSelect, dowSelect, domWrapper, timeWrapper, weekendSelect, addBtn, cancelEditBtn),
 		),
-		deleteBtn,
-		nil, nil,
-		list,
+		nil, nil, nil,
+		container.NewVScroll(meetingsBox),
 	)
 
 	w := a.NewWindow("Dunnit: Recurring Meetings")
@@ -298,17 +335,29 @@ func nextOccurrence(m RecurringMeeting, now time.Time) time.Time {
 		return candidate
 	}
 	if m.Cadence == "monthly" || m.Cadence == "quarterly" {
-		day := m.DayOfMonth
-		if day < 1 {
-			day = 1
-		}
 		monthStep := 1
 		if m.Cadence == "quarterly" {
 			monthStep = 3
 		}
-		candidate := time.Date(now.Year(), now.Month(), day, hh, mm, 0, 0, now.Location())
+		month := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+		if m.Cadence == "quarterly" {
+			if anchor, err := time.ParseInLocation("2006-01-02", m.AnchorDate, now.Location()); err == nil {
+				months := (month.Year()-anchor.Year())*12 + int(month.Month()-anchor.Month())
+				if months < 0 {
+					month = time.Date(anchor.Year(), anchor.Month(), 1, 0, 0, 0, 0, now.Location())
+					months = 0
+				}
+				if remainder := months % monthStep; remainder != 0 {
+					month = month.AddDate(0, monthStep-remainder, 0)
+				}
+			}
+		}
+		day := clampDayOfMonth(m.DayOfMonth, month)
+		candidate := time.Date(month.Year(), month.Month(), day, hh, mm, 0, 0, now.Location())
 		if !candidate.After(now) {
-			candidate = candidate.AddDate(0, monthStep, 0)
+			nextMonth := candidate.AddDate(0, monthStep, 0)
+			day = clampDayOfMonth(m.DayOfMonth, time.Date(nextMonth.Year(), nextMonth.Month(), 1, 0, 0, 0, 0, now.Location()))
+			candidate = time.Date(nextMonth.Year(), nextMonth.Month(), day, hh, mm, 0, 0, now.Location())
 		}
 		return candidate
 	}
@@ -318,7 +367,11 @@ func nextOccurrence(m RecurringMeeting, now time.Time) time.Time {
 		interval = 1
 	}
 
-	daysAhead := (m.DOW - int(now.Weekday()) + 7) % 7
+	dow := m.DOW
+	if dow < 0 || dow >= len(dowNames) {
+		dow = int(time.Monday)
+	}
+	daysAhead := (dow - int(now.Weekday()) + 7) % 7
 	candidate := time.Date(now.Year(), now.Month(), now.Day(), hh, mm, 0, 0, now.Location()).AddDate(0, 0, daysAhead)
 	if candidate.Before(now) {
 		candidate = candidate.AddDate(0, 0, 7)
@@ -362,44 +415,77 @@ func dueForPreMeetingNudge(m RecurringMeeting, now time.Time, window time.Durati
 	return delta > 0 && delta <= window
 }
 
-// lastOccurrence returns the most recent past occurrence of m at or
-// before now (the mirror of nextOccurrence). Used by FR-36's post-
-// meeting nudge, which looks backward instead of forward.
-func lastOccurrence(m RecurringMeeting, now time.Time) time.Time {
-	next := nextOccurrence(m, now)
-	if next.Equal(now) {
-		return next
-	}
-	// nextOccurrence never returns a time <= now, so the actual most
-	// recent past occurrence is exactly one cadence period before
-	// whatever it returns when starting the search from just after
-	// that prior occurrence. Simplest robust approach: step backward
-	// one cadence unit at a time (a day for "daily", a week at a time
-	// respecting IntervalWeeks for "weekly") until we find an
-	// occurrence at or before now.
-	if m.Cadence == "daily" {
-		candidate := next.AddDate(0, 0, -1)
-		for candidate.After(now) || (m.WeekendPolicy == "skip" && (candidate.Weekday() == time.Saturday || candidate.Weekday() == time.Sunday)) {
-			candidate = candidate.AddDate(0, 0, -1)
+// meetingOccursOnDate reports whether a recurring meeting occurs on date.
+// It is used by lastOccurrence so all supported cadence types share the
+// same after-meeting timing rules.
+func meetingOccursOnDate(m RecurringMeeting, date time.Time) bool {
+	switch m.Cadence {
+	case "daily":
+		return m.WeekendPolicy != "skip" || (date.Weekday() != time.Saturday && date.Weekday() != time.Sunday)
+	case "monthly":
+		return date.Day() == clampDayOfMonth(m.DayOfMonth, date)
+	case "quarterly":
+		if date.Day() != clampDayOfMonth(m.DayOfMonth, date) {
+			return false
 		}
-		return candidate
+		anchor, err := time.ParseInLocation("2006-01-02", m.AnchorDate, date.Location())
+		if err != nil {
+			return int(date.Month())%3 == 1
+		}
+		months := (date.Year()-anchor.Year())*12 + int(date.Month()-anchor.Month())
+		return months >= 0 && months%3 == 0
+	default:
+		if int(date.Weekday()) != m.DOW {
+			return false
+		}
+		if m.Cadence == "biweekly-odd" || m.Cadence == "biweekly-even" {
+			_, week := date.ISOWeek()
+			return (m.Cadence == "biweekly-odd" && week%2 == 1) || (m.Cadence == "biweekly-even" && week%2 == 0)
+		}
+		interval := m.IntervalWeeks
+		if interval <= 0 {
+			interval = 1
+		}
+		if interval == 1 {
+			return true
+		}
+		anchor, err := time.ParseInLocation("2006-01-02", m.AnchorDate, date.Location())
+		if err != nil {
+			return true
+		}
+		dateUTC := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
+		anchorUTC := time.Date(anchor.Year(), anchor.Month(), anchor.Day(), 0, 0, 0, 0, time.UTC)
+		days := int(dateUTC.Sub(anchorUTC).Hours() / 24)
+		return days >= 0 && days%(7*interval) == 0
 	}
-	interval := m.IntervalWeeks
-	if interval <= 0 {
-		interval = 1
-	}
-	candidate := next.AddDate(0, 0, -7*interval)
-	for candidate.After(now) {
-		candidate = candidate.AddDate(0, 0, -7*interval)
-	}
-	return candidate
 }
 
-// dueForPostMeetingNudge was FR-36's original post-meeting-window
-// check (fired 15-45 min after a meeting's start, since duration
-// isn't tracked). Removed 2026-09-03: Post-Meeting Capture now opens
-// alongside Meeting Prep at meeting *start* instead (sched.go), so
-// there's no separate after-the-fact window to check for. Left as a
-// comment (not deleted outright) in case a future "actually track
-// meeting end" feature wants this shape again -- if reintroduced,
-// this exact function signature is a good starting point.
+// lastOccurrence returns the most recent past occurrence of m at or
+// before now (the mirror of nextOccurrence). Used by the post-meeting
+// nudge, which looks backward instead of forward.
+func lastOccurrence(m RecurringMeeting, now time.Time) time.Time {
+	hour, minute := parseHM(m.Time)
+	for daysBack := 0; daysBack <= 3660; daysBack++ {
+		date := now.AddDate(0, 0, -daysBack)
+		if !meetingOccursOnDate(m, date) {
+			continue
+		}
+		candidate := time.Date(date.Year(), date.Month(), date.Day(), hour, minute, 0, 0, now.Location())
+		if !candidate.After(now) {
+			return candidate
+		}
+	}
+	return time.Time{}
+}
+
+// dueForPostMeetingNudge reports whether the last meeting occurrence is in
+// the 15-45 minute post-meeting window. Duration is not tracked, so this
+// window is the practical approximation for a meeting summary prompt.
+func dueForPostMeetingNudge(m RecurringMeeting, now time.Time) bool {
+	last := lastOccurrence(m, now)
+	if last.IsZero() {
+		return false
+	}
+	delta := now.Sub(last)
+	return delta > 15*time.Minute && delta <= 45*time.Minute
+}

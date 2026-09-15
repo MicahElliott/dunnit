@@ -196,46 +196,42 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 	// still inside the window. A "#dsu" tag (FR-17) triggers the
 	// deterministic standup export instead of the generic Meeting
 	// Prep dialog; every other tag still gets Meeting Prep (FR-12).
-	// The same job also checks FR-36's post-meeting capture window
-	// (~15-45 min after a meeting's start, since duration isn't
-	// tracked) and suggests that instead, independently deduped via
-	// firedPostFor.
-	// FR-16: pre-meeting nudge, checking every 15 min (per Micah's
-	// call -- simplest fixed interval, not tied to NudgeIntervalMinutes)
-	// whether any FR-15 recurring meeting's next occurrence starts
-	// within the next ~15 min. firedFor dedupes so the same occurrence
-	// doesn't nudge repeatedly across multiple 15-min checks while
-	// still inside the window. A "#dsu" tag (FR-17) triggers the
-	// deterministic standup export instead of the generic Meeting
-	// Prep dialog; every other tag still gets Meeting Prep (FR-12),
-	// plus (2026-09-03, moved from a separate 15-45-min-*after*-start
-	// nudge, per feedback that filling it in *during* the meeting is
-	// more useful than trying to recall details afterward) FR-36's
-	// Post-Meeting Capture window, opened alongside Meeting Prep so
-	// both are available right as the meeting starts and can be
-	// filled in live.
-	firedFor := map[string]time.Time{} // "tag" -> occurrence time already nudged for
+	// Post-Meeting Capture is deliberately a separate after-start check
+	// below so a meeting summary never opens at the same time as prep.
+	firedFor := map[string]time.Time{} // occurrence key -> occurrence time already nudged for
+	firedPostFor := map[string]time.Time{}
 	_, err = s.NewJob(
 		gocron.DurationJob(15*time.Minute),
 		gocron.NewTask(func() {
 			now := time.Now()
 			cfg := LoadConfig()
-			for _, m := range cfg.RecurringMeetings {
+			for i, m := range cfg.RecurringMeetings {
 				if dueForPreMeetingNudge(m, now, 15*time.Minute) {
 					occ := nextOccurrence(m, now)
-					if fired, ok := firedFor[m.Tag]; !ok || !fired.Equal(occ) {
-						firedFor[m.Tag] = occ
+					key := fmt.Sprintf("%d:%s", i, occ.Format(time.RFC3339))
+					if fired, ok := firedFor[key]; !ok || !fired.Equal(occ) {
+						firedFor[key] = occ
 						a.SendNotification(fyne.NewNotification(
 							"Dunnit", "Upcoming meeting "+m.Tag+" at "+m.Time))
-						m := m // capture for closure
+						m := m
 						fyne.Do(func() {
 							if strings.EqualFold(m.Tag, "#dsu") {
 								showStandupExport(a)
 							} else {
-								showMeetingPrepDialog(a)
-								showPostMeetingCapture(a, m.Tag)
+								showMeetingPrepDialogForTag(a, m.Tag)
 							}
 						})
+					}
+				}
+				if dueForPostMeetingNudge(m, now) {
+					occ := lastOccurrence(m, now)
+					key := fmt.Sprintf("%d:%s", i, occ.Format(time.RFC3339))
+					if fired, ok := firedPostFor[key]; !ok || !fired.Equal(occ) {
+						firedPostFor[key] = occ
+						a.SendNotification(fyne.NewNotification(
+							"Dunnit", "Meeting summary for "+m.Tag))
+						m := m
+						fyne.Do(func() { showPostMeetingCapture(a, m.Tag) })
 					}
 				}
 			}
@@ -243,6 +239,40 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 	)
 	if err != nil {
 		fmt.Println("Error scheduling pre-meeting nudge job:", err)
+	}
+
+	// Timed recurring items use the native notification channel and raise
+	// Daybook with the item ready to review. Untimed items retain their SOD/
+	// SOM suggestion behavior. A two-minute tolerance absorbs scheduler
+	// drift while the occurrence key prevents duplicate alerts.
+	firedRecurringItems := map[string]time.Time{}
+	_, err = s.NewJob(
+		gocron.DurationJob(time.Minute),
+		gocron.NewTask(func() {
+			now := time.Now()
+			cfg := LoadConfig()
+			for i, item := range cfg.RecurringItems {
+				if !dueForRecurringItemReminder(item, now, 2*time.Minute) {
+					continue
+				}
+				occ, ok := recurringItemOccurrence(item, now)
+				if !ok {
+					continue
+				}
+				key := fmt.Sprintf("%d:%s", i, occ.Format(time.RFC3339))
+				if fired, ok := firedRecurringItems[key]; ok && fired.Equal(occ) {
+					continue
+				}
+				firedRecurringItems[key] = occ
+				a.SendNotification(fyne.NewNotification(
+					"Dunnit", "Recurring item: "+item.Category+" "+item.Text))
+				item := item
+				fyne.Do(func() { ShowRecurringItemReminder(w, item) })
+			}
+		}),
+	)
+	if err != nil {
+		fmt.Println("Error scheduling recurring item reminder job:", err)
 	}
 
 	// FR-19: proactive weekly digest, fires once on the configured

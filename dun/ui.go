@@ -49,6 +49,15 @@ func LastActivityAt() time.Time {
 // rather than wherever focus happened to be left (or nowhere).
 var mainInputEntry *closeShortcutEntry
 
+// prepareDaybookAutoPopup selects the category used by a scheduler-raised
+// Daybook window. It is installed by BuildMainWindow once the picker exists.
+var prepareDaybookAutoPopup func()
+
+// prepareRecurringItemReminder fills Daybook for a timed recurring item. It
+// is separate from prepareDaybookAutoPopup so a scheduled item can retain its
+// own category and text instead of being reset to the normal DOING default.
+var prepareRecurringItemReminder func(RecurringItem)
+
 const daybookAutoHideAfter = 3 * time.Minute
 
 var (
@@ -101,6 +110,18 @@ func stopDaybookAutoHide() {
 	}
 }
 
+// hideDaybook hides the tray window and cancels any pending auto-hide timer.
+func hideDaybook(w fyne.Window) {
+	daybookAutoHideMu.Lock()
+	daybookAutoHideEnabled = false
+	if daybookAutoHideTimer != nil {
+		daybookAutoHideTimer.Stop()
+		daybookAutoHideTimer = nil
+	}
+	daybookAutoHideMu.Unlock()
+	w.Hide()
+}
+
 func armDaybookAutoHide(w fyne.Window) {
 	daybookAutoHideMu.Lock()
 	if daybookAutoHideTimer != nil {
@@ -113,8 +134,7 @@ func armDaybookAutoHide(w fyne.Window) {
 			active := daybookAutoHideEnabled
 			daybookAutoHideMu.Unlock()
 			if active && mainInputEntry != nil && strings.TrimSpace(mainInputEntry.Text) == "" {
-				daybookAutoHideEnabled = false
-				w.Hide()
+				hideDaybook(w)
 			}
 		})
 	})
@@ -127,6 +147,9 @@ func ShowDaybook(w fyne.Window, autoHide bool) {
 	if trayRefreshAll != nil {
 		trayRefreshAll()
 	}
+	if autoHide && prepareDaybookAutoPopup != nil {
+		prepareDaybookAutoPopup()
+	}
 	daybookAutoHideEnabled = autoHide
 	if !autoHide {
 		stopDaybookAutoHide()
@@ -136,6 +159,15 @@ func ShowDaybook(w fyne.Window, autoHide bool) {
 	FocusMainInput()
 	if autoHide && mainInputEntry != nil && strings.TrimSpace(mainInputEntry.Text) == "" {
 		armDaybookAutoHide(w)
+	}
+}
+
+// ShowRecurringItemReminder raises Daybook with a configured recurring item
+// ready to review and save, while retaining the normal auto-popup behavior.
+func ShowRecurringItemReminder(w fyne.Window, item RecurringItem) {
+	ShowDaybook(w, true)
+	if prepareRecurringItemReminder != nil {
+		prepareRecurringItemReminder(item)
 	}
 }
 
@@ -454,7 +486,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 
 	// TODO show day's GOALs
 
-	input := newCloseShortcutEntry(fyne.KeyW, fyne.KeyModifierShortcutDefault, func() { w4.Hide() })
+	input := newCloseShortcutEntry(fyne.KeyW, fyne.KeyModifierShortcutDefault, func() { hideDaybook(w4) })
 	input.SetPlaceHolder("Enter text\u2026")
 	mainInputEntry = input
 	previousInputChanged := input.Entry.OnChanged
@@ -611,6 +643,50 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 			category.Refresh()
 		})
 	groupFilter.SetSelected(defaultGroupFilter)
+
+	// selectCategoryCode is used by timed recurring-item reminders. If the
+	// selected category is outside the current quick-filter, switch to its
+	// group first so the category can still be selected visibly.
+	selectCategoryCode := func(code string) {
+		var label string
+		for _, c := range Categories {
+			if c.Code == code {
+				label = c.Label()
+				break
+			}
+		}
+		if label == "" {
+			return
+		}
+		containsLabel := func(options []string) bool {
+			for _, option := range options {
+				if option == label {
+					return true
+				}
+			}
+			return false
+		}
+		if !containsLabel(category.Options) {
+			switch GroupForCode(code) {
+			case "end":
+				groupFilter.SetSelected("End")
+			case "hilite":
+				groupFilter.SetSelected("Hilite")
+			default:
+				groupFilter.SetSelected("Plan")
+			}
+		}
+		category.SetSelected(label)
+		selectedCat = code
+		setMinsWrapperVisibility(code)
+	}
+	prepareDaybookAutoPopup = func() {
+		selectCategoryCode("DOING")
+	}
+	prepareRecurringItemReminder = func(item RecurringItem) {
+		selectCategoryCode(item.Category)
+		input.SetText(item.Text)
+	}
 
 	// refreshCategoryPicker re-reads the favorites and category filters
 	// into the already-open Daybook. Settings used to rebuild only the
@@ -983,6 +1059,9 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 		refreshCompleted()
 		refreshReflections()
 		refreshLastItem()
+		if daybookAutoHideEnabled {
+			hideDaybook(w4)
+		}
 	}
 	input.OnSubmitted = func(string) { saveEntry() }
 	minsInput.OnSubmitted = func(string) { saveEntry() }
@@ -1073,9 +1152,10 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	// -- this is the last row in the window with nothing after it, so
 	// NewBorder's Tab-order-scrambling quirk doesn't matter).
 	tangentialRow := container.NewBorder(nil, nil, nil, container.NewHBox(
+		widget.NewButton("Hide", func() { hideDaybook(w4) }),
 		widget.NewButton("Snooze", func() {
 			Snooze(defaultSnoozeDuration())
-			w4.Hide()
+			hideDaybook(w4)
 		}),
 		widget.NewButton("Help...", func() { showHelp(a) }),
 	))
@@ -1113,11 +1193,11 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 
 	w4.SetContent(contentPad)
 	w4.Resize(fyne.NewSize(560, 400))
-	w4.SetCloseIntercept(func() { w4.Hide() })
+	w4.SetCloseIntercept(func() { hideDaybook(w4) })
 	w4.Canvas().AddShortcut(&desktop.CustomShortcut{
 		KeyName:  fyne.KeyW,
 		Modifier: fyne.KeyModifierShortcutDefault, // Cmd+W on macOS, Ctrl+W elsewhere
-	}, func(fyne.Shortcut) { w4.Hide() })
+	}, func(fyne.Shortcut) { hideDaybook(w4) })
 
 	trayRefreshAll = func() {
 		refreshCategoryPicker()
