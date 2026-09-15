@@ -448,14 +448,19 @@ func categoryGroupOrder(group string) []string {
 // belongs to group ("end"/"hilite"), in first-seen order. Used by
 // Daybook's Completed ("end") and Reflections ("hilite") sections --
 // the general-purpose sibling of getOpenItems, which is specific to
-// openTrackedCategories ("plan"). Strips the "(via CATEGORY)" suffix
+// openTrackedCategories ("plan"). EODOnly metadata such as PRODUCTIVITY
+// and MEETING_HOURS is deliberately omitted from Hilites. Strips the
+// "(via CATEGORY)" suffix
 // (see convertedSuffix) from DONE entries converted from an open
 // item, same as getCompletedItems did -- harmless no-op for any other
 // category, which never carries that suffix.
 func getCategoryGroupItems(group string) []OpenItem {
 	codes := make(map[string]bool)
-	for _, c := range categoryGroupOrder(group) {
-		codes[c] = true
+	for _, c := range Categories {
+		if c.Group != group || c.EODOnly {
+			continue
+		}
+		codes[c.Code] = true
 	}
 	var out []OpenItem
 	for i, line := range readLedgerLines() {

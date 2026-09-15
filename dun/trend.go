@@ -42,9 +42,13 @@ func sentimentScore(s string) (int, bool) {
 // only -- no new capture (FR-20 has no new data requirement).
 func gatherTrendPoints(days int) []trendPoint {
 	since := time.Now().AddDate(0, 0, -days)
+	excludeTags := LoadConfig().ReportExcludeTags
 	byDate := map[string]*trendPoint{}
 	for _, e := range AllLedgerEntries() {
 		if e.Date.Before(since) {
+			continue
+		}
+		if lineHasExcludedTag(e.Text, excludeTags) {
 			continue
 		}
 		key := e.Date.Format("20060102")

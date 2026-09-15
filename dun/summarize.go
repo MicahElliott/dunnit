@@ -146,17 +146,24 @@ func concatLedgerFiles(files []string) string {
 		if err != nil {
 			continue
 		}
-		sb.WriteString("# " + filepath.Base(path) + "\n")
+		var lines []string
 		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {
 			line := scanner.Text()
 			if lineHasExcludedTag(line, excludeTags) {
 				continue
 			}
+			lines = append(lines, line)
+		}
+		f.Close()
+		if len(lines) == 0 {
+			continue
+		}
+		sb.WriteString("# " + filepath.Base(path) + "\n")
+		for _, line := range lines {
 			sb.WriteString(line)
 			sb.WriteString("\n")
 		}
-		f.Close()
 	}
 	return sb.String()
 }
@@ -228,6 +235,25 @@ func concatLedgerFilesFiltered(files []string, categories map[string]bool) strin
 	return sb.String()
 }
 
+// filterExcludedTagLines removes lines containing configured report-exclude
+// tags from already-rendered text, such as a saved Review report reused as
+// source material for a larger Review. Raw ledger input is filtered by
+// concatLedgerFiles; this handles the second source type without changing
+// the saved report on disk.
+func filterExcludedTagLines(text string, excludeTags []string) string {
+	if len(excludeTags) == 0 {
+		return text
+	}
+	var kept []string
+	for _, line := range strings.Split(text, "\n") {
+		if lineHasExcludedTag(line, excludeTags) {
+			continue
+		}
+		kept = append(kept, line)
+	}
+	return strings.Join(kept, "\n")
+}
+
 // showSummarizeDialog lets the user pick a period, then runs the
 // summary and displays the result in a new window.
 //
@@ -275,7 +301,7 @@ func runSummarize(a fyne.App, period summaryPeriod) {
 	progress.SetOnClosed(request.close)
 	progress.SetContent(windowPad(llmCLIProgressContent(
 		"Asking configured LLM CLI to summarize, please wait\u2026\n"+
-			"The generated report will be copied to your clipboard automatically.", request)))
+			"The generated report will offer Markdown and HTML copy actions.", request)))
 	progress.Show()
 
 	go func() {
@@ -293,11 +319,15 @@ func runSummarize(a fyne.App, period summaryPeriod) {
 			if err != nil {
 				w.SetContent(windowPad(widget.NewLabel("Error running configured LLM CLI:\n" + err.Error())))
 			} else {
-				a.Clipboard().SetContent(summary)
 				body := widget.NewMultiLineEntry()
 				body.SetText(summary)
 				body.Wrapping = fyne.TextWrapWord
-				w.SetContent(windowPad(container.NewVScroll(body)))
+				w.SetContent(windowPad(container.NewBorder(
+					nil,
+					reportCopyButtons(a, summary),
+					nil, nil,
+					container.NewVScroll(body),
+				)))
 			}
 			w.Resize(fyne.NewSize(600, 500))
 			w.Show()

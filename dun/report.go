@@ -39,7 +39,7 @@ func writeReportFile(path, text string) error {
 }
 
 // showGeneratedReport displays a markdown report in a small
-// standalone window with Copy (clipboard) and Save (writes to
+// standalone window with Markdown/HTML Copy (clipboard) and Save (writes to
 // savePath) actions, plus Close -- the shared shape behind what were
 // previously separate near-duplicate implementations
 // (showGeneratedStandupSummary in standup.go, SOM's inline digest
@@ -53,9 +53,7 @@ func showGeneratedReport(a fyne.App, title, savePath, text string) {
 
 	w := a.NewWindow(title)
 
-	copyBtn := widget.NewButtonWithIcon("Copy", theme.Icon(theme.IconNameContentCopy), func() {
-		a.Clipboard().SetContent(text)
-	})
+	copyButtons := reportCopyButtons(a, text)
 	saveBtn := widget.NewButtonWithIcon("Save", theme.Icon(theme.IconNameDocumentSave), func() {
 		if err := writeReportFile(savePath, text); err != nil {
 			dialog.ShowError(err, w)
@@ -65,12 +63,26 @@ func showGeneratedReport(a fyne.App, title, savePath, text string) {
 	})
 
 	w.SetContent(windowPad(container.NewBorder(nil,
-		container.NewHBox(copyBtn, saveBtn, widget.NewButton("Close", func() { w.Close() })),
+		container.NewHBox(copyButtons.Objects[0], copyButtons.Objects[1], saveBtn, widget.NewButton("Close", func() { w.Close() })),
 		nil, nil,
 		scroll,
 	)))
 	w.Resize(fyne.NewSize(520, 420))
 	w.Show()
+}
+
+// reportCopyButtons returns the two clipboard actions shared by generated
+// report windows. Reports are authored as Markdown, while HTML is useful for
+// pasting into rich-text editors and email.
+func reportCopyButtons(a fyne.App, text string) *fyne.Container {
+	return container.NewHBox(
+		widget.NewButtonWithIcon("Copy as Markdown", theme.Icon(theme.IconNameContentCopy), func() {
+			a.Clipboard().SetContent(text)
+		}),
+		widget.NewButtonWithIcon("Copy as HTML", theme.Icon(theme.IconNameContentCopy), func() {
+			a.Clipboard().SetContent(markdownToHTML(text))
+		}),
+	)
 }
 
 // markdownToHTML renders md as a minimal standalone HTML document via

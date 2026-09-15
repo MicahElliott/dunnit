@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strconv"
+	"sync"
 
 	"bufio"
 	"fyne.io/fyne/v2/driver/desktop"
@@ -47,6 +48,14 @@ func LastActivityAt() time.Time {
 // menu's "Show") can request keyboard focus land there directly,
 // rather than wherever focus happened to be left (or nowhere).
 var mainInputEntry *closeShortcutEntry
+
+const daybookAutoHideAfter = 3 * time.Minute
+
+var (
+	daybookAutoHideMu      sync.Mutex
+	daybookAutoHideTimer   *time.Timer
+	daybookAutoHideEnabled bool
+)
 
 // trayApp/trayWindow cache BuildMainWindow's fyne.App/main-window
 // references so RebuildTrayMenu (called after Settings saves a
@@ -81,6 +90,53 @@ func FocusMainInput() {
 			c.Focus(mainInputEntry)
 		}
 	})
+}
+
+func stopDaybookAutoHide() {
+	daybookAutoHideMu.Lock()
+	defer daybookAutoHideMu.Unlock()
+	if daybookAutoHideTimer != nil {
+		daybookAutoHideTimer.Stop()
+		daybookAutoHideTimer = nil
+	}
+}
+
+func armDaybookAutoHide(w fyne.Window) {
+	daybookAutoHideMu.Lock()
+	if daybookAutoHideTimer != nil {
+		daybookAutoHideTimer.Stop()
+	}
+	daybookAutoHideTimer = time.AfterFunc(daybookAutoHideAfter, func() {
+		fyne.Do(func() {
+			daybookAutoHideMu.Lock()
+			daybookAutoHideTimer = nil
+			active := daybookAutoHideEnabled
+			daybookAutoHideMu.Unlock()
+			if active && mainInputEntry != nil && strings.TrimSpace(mainInputEntry.Text) == "" {
+				daybookAutoHideEnabled = false
+				w.Hide()
+			}
+		})
+	})
+	daybookAutoHideMu.Unlock()
+}
+
+// ShowDaybook raises the main window, refreshing its date-sensitive sections
+// first. Scheduler nudges pass autoHide=true; tray/manual shows stay open.
+func ShowDaybook(w fyne.Window, autoHide bool) {
+	if trayRefreshAll != nil {
+		trayRefreshAll()
+	}
+	daybookAutoHideEnabled = autoHide
+	if !autoHide {
+		stopDaybookAutoHide()
+	}
+	w.Show()
+	w.RequestFocus()
+	FocusMainInput()
+	if autoHide && mainInputEntry != nil && strings.TrimSpace(mainInputEntry.Text) == "" {
+		armDaybookAutoHide(w)
+	}
 }
 
 // snoozedUntil tracks a "not now, remind me later" request (FR-26) --
@@ -401,6 +457,18 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	input := newCloseShortcutEntry(fyne.KeyW, fyne.KeyModifierShortcutDefault, func() { w4.Hide() })
 	input.SetPlaceHolder("Enter text\u2026")
 	mainInputEntry = input
+	previousInputChanged := input.Entry.OnChanged
+	input.Entry.OnChanged = func(text string) {
+		previousInputChanged(text)
+		if !daybookAutoHideEnabled {
+			return
+		}
+		if strings.TrimSpace(text) == "" {
+			armDaybookAutoHide(w4)
+		} else {
+			stopDaybookAutoHide()
+		}
+	}
 	// input.Resize(fyne.NewSize(100.0, 50.0))
 
 	// Tag autocomplete (FR-10): as the user types a "#tag" fragment,
@@ -838,11 +906,9 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 
 	// reflectionsBox displays today's "hilite"-group entries
 	// (TIL/KUDOS/WIN/PSA/OVERCOMING/INNOVATION/LEADERSHIP/IMPACT/
-	// MILESTONE/CAREER -- excludes the EODOnly SUMMARY/PRODUCTIVITY/
-	// MEETING_HOURS codes only in the sense that those are rare to
-	// see mid-day, though if present they'd still show here; EODOnly
-	// only gates the *picker*, not this readback), grouped by category
-	// with sub-headings, same pattern as Completed/Planned.
+	// MILESTONE/CAREER), excluding EODOnly SUMMARY/PRODUCTIVITY/
+	// MEETING_HOURS metadata, grouped by category with sub-headings,
+	// same pattern as Completed/Planned.
 	reflectionsBox := container.NewVBox()
 	showExcludedReflections := false
 	var refreshReflections func()
@@ -1053,25 +1119,25 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 		Modifier: fyne.KeyModifierShortcutDefault, // Cmd+W on macOS, Ctrl+W elsewhere
 	}, func(fyne.Shortcut) { w4.Hide() })
 
+	trayRefreshAll = func() {
+		refreshCategoryPicker()
+		refreshOpenItems()
+		refreshCompleted()
+		refreshReflections()
+		refreshLastItem()
+		if refreshStartOfDayNotice != nil {
+			refreshStartOfDayNotice()
+		}
+	}
+
 	// Menu
 	if desk, ok := a.(desktop.App); ok {
 		trayApp = a
 		trayWindow = w4
-		trayRefreshAll = func() {
-			refreshCategoryPicker()
-			refreshOpenItems()
-			refreshCompleted()
-			refreshReflections()
-			refreshLastItem()
-			if refreshStartOfDayNotice != nil {
-				refreshStartOfDayNotice()
-			}
-		}
 		desk.SetSystemTrayMenu(buildTrayMenu(a, w4))
 	}
 
-	w4.Show()
-	FocusMainInput()
+	ShowDaybook(w4, false)
 
 	return w4
 }
@@ -1258,12 +1324,7 @@ func buildTrayMenu(a fyne.App, w4 fyne.Window) *fyne.Menu {
 	// rather than by FR number or chronology.
 	menuItems := []*fyne.MenuItem{
 		fyne.NewMenuItem("Show", func() {
-			if trayRefreshAll != nil {
-				trayRefreshAll()
-			}
-			w4.Show()
-			w4.RequestFocus()
-			FocusMainInput()
+			ShowDaybook(w4, false)
 		}),
 		fyne.NewMenuItemSeparator(),
 		kickoffItem,

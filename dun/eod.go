@@ -146,13 +146,11 @@ func showEODWindow(a fyne.App) {
 	}
 	summaryPreviewScroll := container.NewVScroll(summaryPreview)
 	summaryPreviewScroll.SetMinSize(fyne.NewSize(0, 160))
-	// copySummaryBtn copies the raw (unrendered) summary text to the
-	// clipboard -- e.g. for pasting into Slack/email/a status doc
-	// elsewhere. Same a.Clipboard().SetContent pattern used by every
-	// other "Copy" action in this codebase (Summarize, Status Report,
-	// Annual Review, etc).
-	copySummaryBtn := widget.NewButton("Copy", func() {
+	copyMarkdownSummaryBtn := widget.NewButton("Copy as Markdown", func() {
 		a.Clipboard().SetContent(summary.Text)
+	})
+	copyHTMLSummaryBtn := widget.NewButton("Copy as HTML", func() {
+		a.Clipboard().SetContent(markdownToHTML(summary.Text))
 	})
 	draftRequest := newLLMCLIRequest()
 	w.SetOnClosed(draftRequest.close)
@@ -163,7 +161,7 @@ func showEODWindow(a fyne.App) {
 		draftStopBtn,
 		widget.NewLabelWithStyle("Preview:", fyne.TextAlignLeading, fyne.TextStyle{Italic: true}),
 		summaryPreviewScroll,
-		copySummaryBtn,
+		container.NewHBox(copyMarkdownSummaryBtn, copyHTMLSummaryBtn),
 	)
 	go func() {
 		today := time.Now()

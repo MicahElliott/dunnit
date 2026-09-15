@@ -281,10 +281,14 @@ func gatherReviewSourceMaterial(period summaryPeriod, from, to time.Time) review
 	var subReports []string
 	for _, f := range found {
 		body, err := os.ReadFile(f.Path)
-		if err != nil || strings.TrimSpace(string(body)) == "" {
+		if err != nil {
 			continue
 		}
-		subReports = append(subReports, string(body))
+		filteredBody := filterExcludedTagLines(string(body), LoadConfig().ReportExcludeTags)
+		if strings.TrimSpace(filteredBody) == "" {
+			continue
+		}
+		subReports = append(subReports, filteredBody)
 		day := f.From
 		for !day.After(f.To) && !day.After(to) {
 			if !day.Before(from) {

@@ -26,6 +26,23 @@ func TestParseOpenItems(t *testing.T) {
 	}
 }
 
+func TestGetCategoryGroupItemsExcludesEODOnlyFromHilites(t *testing.T) {
+	withTempDunnitDir(t)
+	writeLedgerLinesForDate(t, time.Now(), []string{
+		"[17:00:00] PRODUCTIVITY 4",
+		"[17:01:00] MEETING_HOURS 2.5",
+		"[17:02:00] WIN shipped the fix",
+	})
+
+	items := getCategoryGroupItems("hilite")
+	if len(items) != 1 {
+		t.Fatalf("got %d Hilites, want 1: %+v", len(items), items)
+	}
+	if items[0].Category != "WIN" {
+		t.Fatalf("Hilite = %+v, want WIN only", items[0])
+	}
+}
+
 func TestParseOpenItems_InflectedDoneResolvesSource(t *testing.T) {
 	lines := []string{
 		"[08:00:00] TODO write report",

@@ -101,9 +101,7 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 			a.SendNotification(fyne.NewNotification(
 				"Dunnit", "What are you working on?"))
 			fyne.Do(func() {
-				w.Show()
-				w.RequestFocus()
-				FocusMainInput()
+				ShowDaybook(w, true)
 			})
 		}),
 	)
@@ -121,9 +119,7 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 				a.SendNotification(fyne.NewNotification(
 					"Dunnit Lunchtime", "How are your goals coming along?"))
 				fyne.Do(func() {
-					w.Show()
-					w.RequestFocus()
-					FocusMainInput()
+					ShowDaybook(w, true)
 				})
 			}),
 		)
