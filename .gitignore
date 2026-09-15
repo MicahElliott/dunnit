@@ -1,5 +1,8 @@
-/dunnit
 /Dunnit.app
 *.tar.xz
 foo.*
 /Dunnit-*-macos.zip
+/dunnit
+/Dunnit.app
+/Dunnit-v*-macos.zip
+/tmp
