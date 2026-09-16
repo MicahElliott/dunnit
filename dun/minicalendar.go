@@ -157,7 +157,7 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 	// narrow width alongside other fixed-width siblings in an HBox.
 	timeEntry := widget.NewEntry()
 	timeEntry.SetPlaceHolder("HH:MM")
-	timeWrapper := container.NewGridWrap(fyne.NewSize(80, timeEntry.MinSize().Height), timeEntry)
+	timeWrapper := container.NewGridWrap(fyne.NewSize(88, timeEntry.MinSize().Height), timeEntry)
 
 	domEntry := widget.NewEntry()
 	domEntry.SetPlaceHolder("day 1-31")
@@ -225,7 +225,11 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 		addBtn.SetText("Save")
 		cancelEditBtn.Show()
 	}
+	var addItem func()
 	addBtn = widget.NewButton("Add", func() {
+		addItem()
+	})
+	addItem = func() {
 		tag := normalizeTag(tagEntry.Text)
 		if tag == "" {
 			dialog.ShowError(errors.New("tag is required"), parent)
@@ -272,8 +276,11 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 		saveAll()
 		refreshMeetings()
 		resetForm()
-	})
+	}
 	cancelEditBtn.OnTapped = resetForm
+	tagEntry.OnSubmitted = func(string) { addItem() }
+	timeEntry.OnSubmitted = func(string) { addItem() }
+	domEntry.OnSubmitted = func(string) { addItem() }
 	refreshMeetings = func() {
 		sortRecurringMeetings(meetings)
 		meetingsBox.RemoveAll()
@@ -282,33 +289,39 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 		}
 		for i, m := range meetings {
 			i := i
-			editBtn := newHoverIconButton(theme.Icon(theme.IconNameDocumentCreate), "Edit", func() { beginMeetingEdit(i) })
-			deleteBtn := newHoverIconButton(theme.Icon(theme.IconNameDelete), "Delete", func() {
+			editBtn := widget.NewButtonWithIcon("", theme.Icon(theme.IconNameDocumentCreate), func() { beginMeetingEdit(i) })
+			deleteBtn := widget.NewButtonWithIcon("", theme.Icon(theme.IconNameDelete), func() {
 				meetings = append(meetings[:i], meetings[i+1:]...)
 				saveAll()
 				refreshMeetings()
 			})
-			meetingsBox.Add(container.NewBorder(nil, nil, nil, container.NewHBox(editBtn, deleteBtn), widget.NewLabel(m.Tag+" \u2014 "+recurringMeetingDetail(m))))
+			meetingsBox.Add(container.NewBorder(nil, nil, nil, container.NewHBox(editBtn, deleteBtn), recurringEntryLabel(m.Tag, recurringMeetingDetail(m))))
 		}
 		meetingsBox.Refresh()
 	}
 	refreshMeetings()
 
-	content := container.NewBorder(
-		container.NewVBox(
-			widget.NewLabelWithStyle("🗓️ Recurring Meetings", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
-			widget.NewRichTextFromMarkdown("*Use these tags throughout your weeks any time a meeting topic thought comes to mind. They\u2019ll be collected and presented to you just before your meeting starts.*"),
-			tagEntry,
-			tagSuggestions,
-			container.NewHBox(cadenceSelect, dowSelect, domWrapper, timeWrapper, weekendSelect, addBtn, cancelEditBtn),
-		),
-		nil, nil, nil,
-		container.NewVScroll(meetingsBox),
+	heading := widget.NewLabelWithStyle("🗓️ Recurring Meetings", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	helpLine := widget.NewLabelWithStyle("📝 Use these tags throughout your weeks any time a meeting topic thought comes to mind. They’ll be collected and presented to you just before your meeting starts. And summaries will be shown after.", fyne.TextAlignLeading, fyne.TextStyle{Italic: true})
+	helpLine.Wrapping = fyne.TextWrapWord
+	helpLine.SizeName = theme.SizeNameCaptionText
+	actionsRow := container.NewHBox(cadenceSelect, dowSelect, domWrapper, timeWrapper, weekendSelect, addBtn, cancelEditBtn)
+	meetingsScroll := container.NewVScroll(meetingsBox)
+	meetingsScroll.SetMinSize(fyne.NewSize(0, 170))
+
+	content := container.NewVBox(
+		heading,
+		helpLine,
+		tagEntry,
+		tagSuggestions,
+		actionsRow,
+		container.NewPadded(widget.NewSeparator()),
+		meetingsScroll,
 	)
 
 	w := a.NewWindow("Dunnit: Recurring Meetings")
 	w.SetContent(windowPad(content))
-	w.Resize(fyne.NewSize(560, 420))
+	w.Resize(fyne.NewSize(520, 440))
 	w.Show()
 }
 

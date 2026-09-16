@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
@@ -210,8 +211,16 @@ func recurringItemsSuggestionBox(items []RecurringItem, onAdded func()) fyne.Can
 	return box
 }
 
+// recurringEntryLabel renders the user-entered part with Daybook's green tag
+// treatment and de-emphasizes the recurrence details after the em dash.
+func recurringEntryLabel(text, detail string) fyne.CanvasObject {
+	detailText := canvas.NewText(" — "+detail, theme.Color(theme.ColorNameForeground))
+	detailText.TextStyle = fyne.TextStyle{Italic: true}
+	return container.New(newTightRowLayout(), itemTextLabel(text), detailText)
+}
+
 // showRecurringItemsDialog lets the user add/edit/delete recurring
-// TODO/GOAL/KUDOS entries, persisted in config.toml's recurring_item
+// TODO/GOAL entries, persisted in config.toml's recurring_item
 // array-of-tables (see Config.RecurringItems). Each existing item gets
 // inline edit and delete controls, with an optional time for an active
 // Daybook reminder.
@@ -254,28 +263,26 @@ func showRecurringItemsDialog(a fyne.App, parent fyne.Window) {
 			if r.Time != "" {
 				detail += " at " + r.Time
 			}
-			editBtn := newHoverIconButton(theme.Icon(theme.IconNameDocumentCreate), "Edit", func() {
+			editBtn := widget.NewButtonWithIcon("", theme.Icon(theme.IconNameDocumentCreate), func() {
 				beginRecurringItemEdit(i)
 			})
 			row := container.NewBorder(nil, nil, nil,
-				container.NewHBox(editBtn, newHoverIconButton(theme.Icon(theme.IconNameDelete), "Delete", func() {
+				container.NewHBox(editBtn, widget.NewButtonWithIcon("", theme.Icon(theme.IconNameDelete), func() {
 					items = append(items[:i], items[i+1:]...)
 					saveAll()
 					refreshItems()
 				})),
-				widget.NewLabel(r.Category+": "+r.Text+" \u2014 "+detail))
+				recurringEntryLabel(r.Category+": "+r.Text, detail))
 			itemsBox.Add(row)
 		}
 		itemsBox.Refresh()
 	}
 	refreshItems()
 
-	// recurringItemCategories deliberately restricts this feature's
-	// category choices to TODO/GOAL/KUDOS -- the categories that
-	// actually make sense repeated on a schedule (unlike e.g. WAITING/
-	// QUESTION/FIXME/RISK, which are reactive/situational, not
-	// something you'd pre-schedule).
-	recurringItemCategories := []string{"TODO", "GOAL", "KUDOS"}
+	// Recurring items are repeated actions or aims. KUDOS is a notable
+	// event recorded when it happens, while the other plan categories are
+	// either reactive or already covered by the recurring-meeting flow.
+	recurringItemCategories := []string{"TODO", "GOAL"}
 	catSelect := widget.NewSelect(recurringItemCategories, nil)
 	catSelect.SetSelected("TODO")
 
@@ -284,7 +291,7 @@ func showRecurringItemsDialog(a fyne.App, parent fyne.Window) {
 
 	timeEntry := widget.NewEntry()
 	timeEntry.SetPlaceHolder("HH:MM (optional)")
-	timeWrapper := container.NewGridWrap(fyne.NewSize(118, timeEntry.MinSize().Height), timeEntry)
+	timeWrapper := container.NewGridWrap(fyne.NewSize(132, timeEntry.MinSize().Height), timeEntry)
 
 	cadenceSelect := widget.NewSelect(cadenceOptions, nil)
 	cadenceSelect.SetSelected("daily")
@@ -325,6 +332,7 @@ func showRecurringItemsDialog(a fyne.App, parent fyne.Window) {
 	cancelEditBtn.Hide()
 	resetForm := func() {
 		editingIndex = -1
+		catSelect.SetOptions(recurringItemCategories)
 		catSelect.SetSelected("TODO")
 		textEntry.SetText("")
 		timeEntry.SetText("")
@@ -342,6 +350,20 @@ func showRecurringItemsDialog(a fyne.App, parent fyne.Window) {
 		}
 		r := items[index]
 		editingIndex = index
+		catOptions := append([]string(nil), recurringItemCategories...)
+		foundCategory := false
+		for _, option := range catOptions {
+			if option == r.Category {
+				foundCategory = true
+				break
+			}
+		}
+		if !foundCategory {
+			// Keep legacy values such as KUDOS editable without
+			// offering them for new recurring items.
+			catOptions = append(catOptions, r.Category)
+		}
+		catSelect.SetOptions(catOptions)
 		catSelect.SetSelected(r.Category)
 		textEntry.SetText(r.Text)
 		timeEntry.SetText(r.Time)
@@ -407,27 +429,34 @@ func showRecurringItemsDialog(a fyne.App, parent fyne.Window) {
 	// (ui.go) and SOD's quick-add field.
 	textEntry.OnSubmitted = func(string) { addItem() }
 	domEntry.OnSubmitted = func(string) { addItem() }
+	timeEntry.OnSubmitted = func(string) { addItem() }
 
 	helpLine := widget.NewLabelWithStyle("📝 Untimed entries are suggested in Start of Day / Start of Month. Add an optional HH:MM time for a native reminder and a prefilled Daybook popup.", fyne.TextAlignLeading, fyne.TextStyle{Italic: true})
 	helpLine.Wrapping = fyne.TextWrapWord
+	helpLine.SizeName = theme.SizeNameCaptionText
+
+	heading := widget.NewLabelWithStyle("🔁 Recurring Items", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 
 	// entryRow stretches textEntry to fill remaining width (same
 	// stretchRowLayout approach as ui.go's doneWrapper), rather than
 	// letting Fyne's default layout render it at an oddly narrow
 	// width.
-	entryRow := container.New(newStretchRowLayout(textEntry), catSelect, textEntry, addBtn)
+	entryRow := container.New(newStretchRowLayout(textEntry), catSelect, textEntry)
+	actionsRow := container.NewHBox(cadenceSelect, weekendSelect, dowSelect, domWrapper, timeWrapper, addBtn, cancelEditBtn)
+	itemsScroll := container.NewVScroll(itemsBox)
+	itemsScroll.SetMinSize(fyne.NewSize(0, 170))
 
 	content := container.NewVBox(
+		heading,
 		helpLine,
 		entryRow,
-		container.NewHBox(cadenceSelect, weekendSelect, dowSelect, domWrapper, timeWrapper, cancelEditBtn),
-		widget.NewLabelWithStyle("📝 Recurring Items", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
-		widget.NewSeparator(),
-		itemsBox,
+		actionsRow,
+		container.NewPadded(widget.NewSeparator()),
+		itemsScroll,
 	)
 
 	w := a.NewWindow("Dunnit: Recurring Items")
 	w.SetContent(windowPad(content))
-	w.Resize(fyne.NewSize(480, 420))
+	w.Resize(fyne.NewSize(520, 440))
 	w.Show()
 }
