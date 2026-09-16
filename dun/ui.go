@@ -897,7 +897,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 				// back to them, placed at the bottom of the expanded
 				// "Show all" view rather than its own always-visible
 				// row.
-				openItemsBox.Add(widget.NewButton("Browse SOMEDAY Items...", func() {
+				openItemsBox.Add(widget.NewButton("Browse SOMEDAY Items…", func() {
 					showSomedayBrowserWindow(a)
 				}))
 			}
@@ -1160,7 +1160,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 			Snooze(defaultSnoozeDuration())
 			hideDaybook(w4)
 		}),
-		widget.NewButton("Help...", func() { showHelp(a) }),
+		widget.NewButton("Help…", func() { showHelp(a) }),
 	))
 
 	content := container.NewVBox(
@@ -1236,10 +1236,10 @@ func buildTrayMenu(a fyne.App, w4 fyne.Window) *fyne.Menu {
 	}
 
 	meetingsMenu := fyne.NewMenu("Meetings",
-		fyne.NewMenuItem("Meeting Prep...", func() { showMeetingPrepDialog(a) }),
-		fyne.NewMenuItem("Post-Meeting Capture...", func() { showPostMeetingCapture(a, "") }),
-		fyne.NewMenuItem("Standup Summary...", func() { showStandupExport(a) }),
-		fyne.NewMenuItem("Recurring Meetings...", func() {
+		fyne.NewMenuItem("Meeting Prep…", func() { showMeetingPrepDialog(a) }),
+		fyne.NewMenuItem("Post-Meeting Capture…", func() { showPostMeetingCapture(a, "") }),
+		fyne.NewMenuItem("Standup Summary…", func() { showStandupExport(a) }),
+		fyne.NewMenuItem("Recurring Meetings…", func() {
 			showMiniCalendarDialog(a, w4)
 		}),
 	)
@@ -1247,12 +1247,12 @@ func buildTrayMenu(a fyne.App, w4 fyne.Window) *fyne.Menu {
 	meetingsItem.ChildMenu = meetingsMenu
 
 	reportsMenu := fyne.NewMenu("Reports",
-		fyne.NewMenuItem("Summarize...", func() { showSummarizeDialog(a) }),
-		fyne.NewMenuItem("Standup Summary...", func() { showStandupExport(a) }),
-		fyne.NewMenuItem("Status Report...", func() { showStatusReportDialog(a) }),
-		fyne.NewMenuItem("Annual Review...", func() { showAnnualReviewDialog(a) }),
-		fyne.NewMenuItem("Trend View...", func() { showTrendView(a) }),
-		fyne.NewMenuItem("Reports Library...", func() { showReportsLibraryWindow(a) }),
+		fyne.NewMenuItem("Summarize…", func() { showSummarizeDialog(a) }),
+		fyne.NewMenuItem("Standup Summary…", func() { showStandupExport(a) }),
+		fyne.NewMenuItem("Status Report…", func() { showStatusReportDialog(a) }),
+		fyne.NewMenuItem("Annual Review…", func() { showAnnualReviewDialog(a) }),
+		fyne.NewMenuItem("Trend View…", func() { showTrendView(a) }),
+		fyne.NewMenuItem("Reports Library…", func() { showReportsLibraryWindow(a) }),
 	)
 	reportsItem := fyne.NewMenuItem("Reports", nil)
 	reportsItem.ChildMenu = reportsMenu
@@ -1273,22 +1273,22 @@ func buildTrayMenu(a fyne.App, w4 fyne.Window) *fyne.Menu {
 	cfg := LoadConfig()
 	var kickoffItems, reviewItems []*fyne.MenuItem
 	if kickoffEnabled(cfg, periodDay) {
-		kickoffItems = append(kickoffItems, fyne.NewMenuItem("Day...", func() { showSODWindow(a) }))
+		kickoffItems = append(kickoffItems, fyne.NewMenuItem("Day…", func() { showSODWindow(a) }))
 	}
 	if kickoffEnabled(cfg, periodWeek) {
-		kickoffItems = append(kickoffItems, fyne.NewMenuItem("Week...", func() { showPeriodKickoffWindow(a, periodWeek, time.Now()) }))
+		kickoffItems = append(kickoffItems, fyne.NewMenuItem("Week…", func() { showPeriodKickoffWindow(a, periodWeek, time.Now()) }))
 	}
 	if kickoffEnabled(cfg, periodMonth) {
-		kickoffItems = append(kickoffItems, fyne.NewMenuItem("Month...", func() { showMonthKickoffWindow(a, time.Now()) }))
+		kickoffItems = append(kickoffItems, fyne.NewMenuItem("Month…", func() { showMonthKickoffWindow(a, time.Now()) }))
 	}
 	if kickoffEnabled(cfg, periodQuarter) {
-		kickoffItems = append(kickoffItems, fyne.NewMenuItem("Quarter...", func() { showPeriodKickoffWindow(a, periodQuarter, time.Now()) }))
+		kickoffItems = append(kickoffItems, fyne.NewMenuItem("Quarter…", func() { showPeriodKickoffWindow(a, periodQuarter, time.Now()) }))
 	}
 	if kickoffEnabled(cfg, periodYear) {
-		kickoffItems = append(kickoffItems, fyne.NewMenuItem("Year...", func() { showPeriodKickoffWindow(a, periodYear, time.Now()) }))
+		kickoffItems = append(kickoffItems, fyne.NewMenuItem("Year…", func() { showPeriodKickoffWindow(a, periodYear, time.Now()) }))
 	}
 	if reviewEnabled(cfg, periodDay) {
-		reviewItems = append(reviewItems, fyne.NewMenuItem("Day...", func() { showEODWindow(a) }))
+		reviewItems = append(reviewItems, fyne.NewMenuItem("Day…", func() { showEODWindow(a) }))
 	}
 	// Week/Month/Quarter/Year Review all route through
 	// showPeriodPicker first (docs/kickoff-review-design.md's "which
@@ -1296,7 +1296,7 @@ func buildTrayMenu(a fyne.App, w4 fyne.Window) *fyne.Menu {
 	// lets the user pick this period (so far), last period, or a
 	// short back-list instead of always landing on the wrong month.
 	if reviewEnabled(cfg, periodWeek) {
-		reviewItems = append(reviewItems, fyne.NewMenuItem("Week...", func() {
+		reviewItems = append(reviewItems, fyne.NewMenuItem("Week…", func() {
 			showPeriodPicker(a, cfg, periodWeek, func(anchor time.Time) {
 				showPeriodReviewWindow(a, periodWeek, anchor)
 			})
@@ -1306,21 +1306,21 @@ func buildTrayMenu(a fyne.App, w4 fyne.Window) *fyne.Menu {
 	// showMonthKickoffWindow), matching the generic Week/Quarter/Year
 	// pattern -- see docs/kickoff-review-design.md's "Scope note".
 	if reviewEnabled(cfg, periodMonth) {
-		reviewItems = append(reviewItems, fyne.NewMenuItem("Month...", func() {
+		reviewItems = append(reviewItems, fyne.NewMenuItem("Month…", func() {
 			showPeriodPicker(a, cfg, periodMonth, func(anchor time.Time) {
 				showMonthReviewWindow(a, anchor)
 			})
 		}))
 	}
 	if reviewEnabled(cfg, periodQuarter) {
-		reviewItems = append(reviewItems, fyne.NewMenuItem("Quarter...", func() {
+		reviewItems = append(reviewItems, fyne.NewMenuItem("Quarter…", func() {
 			showPeriodPicker(a, cfg, periodQuarter, func(anchor time.Time) {
 				showPeriodReviewWindow(a, periodQuarter, anchor)
 			})
 		}))
 	}
 	if reviewEnabled(cfg, periodYear) {
-		reviewItems = append(reviewItems, fyne.NewMenuItem("Year...", func() {
+		reviewItems = append(reviewItems, fyne.NewMenuItem("Year…", func() {
 			showPeriodPicker(a, cfg, periodYear, func(anchor time.Time) {
 				showPeriodReviewWindow(a, periodYear, anchor)
 			})
@@ -1332,30 +1332,30 @@ func buildTrayMenu(a fyne.App, w4 fyne.Window) *fyne.Menu {
 	reviewItem.ChildMenu = fyne.NewMenu("Review", reviewItems...)
 
 	ledgerMenu := fyne.NewMenu("Ledger",
-		fyne.NewMenuItem("Show Today's Ledger...", func() {
+		fyne.NewMenuItem("Show Today’s Ledger…", func() {
 			w3 := a.NewWindow("Dunnit: Today")
 			w3.SetContent(windowPad(widget.NewLabel(strings.Join(readLedgerLines(), "\n"))))
 			w3.Resize(fyne.NewSize(500, 400))
 			w3.Show()
 		}),
-		fyne.NewMenuItem("Edit Today's Ledger...", func() {
+		fyne.NewMenuItem("Edit Today’s Ledger…", func() {
 			_, fname := getLedger()
 			openInEditor(fname)
 		}),
-		fyne.NewMenuItem("Undo/Edit Last Entry...", func() {
+		fyne.NewMenuItem("Undo/Edit Last Entry…", func() {
 			showUndoEditLastEntry(a, func() {
 				if trayRefreshAll != nil {
 					trayRefreshAll()
 				}
 			})
 		}),
-		fyne.NewMenuItem("Search...", func() { showSearchDialog(a) }),
-		fyne.NewMenuItem("Navigator...", func() { showNavigatorWindow(a) }),
-		fyne.NewMenuItem("SOMEDAY Items...", func() { showSomedayBrowserWindow(a) }),
-		fyne.NewMenuItem("Recurring Items...", func() {
+		fyne.NewMenuItem("Search…", func() { showSearchDialog(a) }),
+		fyne.NewMenuItem("Navigator…", func() { showNavigatorWindow(a) }),
+		fyne.NewMenuItem("SOMEDAY Items…", func() { showSomedayBrowserWindow(a) }),
+		fyne.NewMenuItem("Recurring Items…", func() {
 			showRecurringItemsDialog(a, w4)
 		}),
-		fyne.NewMenuItem("EOD Report...", func() {
+		fyne.NewMenuItem("EOD Report…", func() {
 			go func() {
 				path, _, err := ensureEODReport(time.Now())
 				if err != nil {
@@ -1419,8 +1419,8 @@ func buildTrayMenu(a fyne.App, w4 fyne.Window) *fyne.Menu {
 		reportsItem,
 		ledgerItem,
 		fyne.NewMenuItemSeparator(),
-		fyne.NewMenuItem("Help...", func() { showHelp(a) }),
-		fyne.NewMenuItem("Settings...", func() { showSettings(a) }),
+		fyne.NewMenuItem("Help…", func() { showHelp(a) }),
+		fyne.NewMenuItem("Settings…", func() { showSettings(a) }),
 	}
 	if syncItem != nil {
 		prefix := append([]*fyne.MenuItem{}, menuItems[:len(menuItems)-3]...)

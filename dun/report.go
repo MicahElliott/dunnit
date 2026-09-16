@@ -46,7 +46,7 @@ func writeReportFile(path, text string) error {
 
 // showGeneratedReport displays a markdown report in a small
 // standalone window with Markdown/rich-text Copy (clipboard) and Save (writes to
-// savePath) actions, plus Close -- the shared shape behind what were
+// savePath) actions, plus Close — the shared shape behind what were
 // previously separate near-duplicate implementations
 // (showGeneratedStandupSummary in standup.go, SOM's inline digest
 // Copy/Save in som.go). title is the window title; savePath is where
@@ -142,33 +142,59 @@ func markdownToPlainText(md string) string {
 	return strings.Join(lines, "\n")
 }
 
-// copyRichText publishes the report as text/html through the host OS's
-// clipboard tools. Fyne's fyne.Clipboard only exposes SetContent(string), so
-// using it alone can never create a rich clipboard flavor for Teams. The
-// platform commands are optional; when absent, readable plain text is copied.
+// copyRichText publishes the report through the host OS's rich clipboard
+// support. Fyne's fyne.Clipboard only exposes SetContent(string), so using it
+// alone can never create a rich clipboard flavor. The platform commands are
+// optional; when absent, readable plain text is copied.
 func copyRichText(a fyne.App, markdown string) {
-	htmlText := markdownHTMLFragment(markdown)
-	if copyNativeHTMLClipboard(htmlText) {
+	if copyNativeRichClipboard(markdown) {
 		return
 	}
 	a.Clipboard().SetContent(markdownToPlainText(markdown))
 }
 
-func copyNativeHTMLClipboard(content string) bool {
+func copyNativeRichClipboard(markdown string) bool {
+	htmlFragment := markdownHTMLFragment(markdown)
 	switch runtime.GOOS {
 	case "darwin":
-		return runClipboardCommand("pbcopy", []string{"-Prefer", "html"}, content)
+		return copyMacOSRichClipboard(markdownToHTML(markdown))
 	case "linux":
-		if _, err := exec.LookPath("wl-copy"); err == nil {
-			if startClipboardCommand("wl-copy", []string{"--type", "text/html"}, content) {
-				return true
+		if os.Getenv("WAYLAND_DISPLAY") != "" || os.Getenv("WAYLAND_SOCKET") != "" {
+			if _, err := exec.LookPath("wl-copy"); err == nil {
+				if startClipboardCommand("wl-copy", []string{"--type", "text/html"}, htmlFragment) {
+					return true
+				}
 			}
 		}
-		if _, err := exec.LookPath("xclip"); err == nil {
-			return startClipboardCommand("xclip", []string{"-selection", "clipboard", "-t", "text/html", "-i"}, content)
+		if os.Getenv("DISPLAY") != "" {
+			if _, err := exec.LookPath("xclip"); err == nil {
+				return startClipboardCommand("xclip", []string{
+					"-selection", "clipboard", "-t", "text/html",
+					"-alt-text", markdownToPlainText(markdown), "-i",
+				}, htmlFragment)
+			}
 		}
 	}
 	return false
+}
+
+// copyMacOSRichClipboard converts HTML to RTF because pbcopy recognises RTF
+// input as rich text. Its -Prefer option belongs to pbpaste and cannot publish
+// an HTML pasteboard flavor.
+func copyMacOSRichClipboard(htmlDocument string) bool {
+	if _, err := exec.LookPath("textutil"); err != nil {
+		return false
+	}
+	convert := exec.Command("textutil", "-stdin", "-format", "html", "-convert", "rtf", "-stdout")
+	convert.Stdin = strings.NewReader(htmlDocument)
+	rtf, err := convert.Output()
+	if err != nil {
+		return false
+	}
+	if len(rtf) == 0 {
+		return false
+	}
+	return runClipboardCommand("pbcopy", nil, string(rtf))
 }
 
 func runClipboardCommand(name string, args []string, content string) bool {

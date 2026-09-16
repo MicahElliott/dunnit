@@ -104,11 +104,11 @@ func showSomedayBrowserWindow(a fyne.App) {
 		for _, item := range items {
 			item := item // capture
 			row := widget.NewLabel(categoryIconPrefix(item.Category) + item.Text)
-			promoteTodoBtn := widget.NewButton("-> TODO", func() {
+			promoteTodoBtn := widget.NewButton("→ TODO", func() {
 				promoteSomedayItem(item, "TODO")
 				refresh()
 			})
-			promoteGoalBtn := widget.NewButton("-> GOAL", func() {
+			promoteGoalBtn := widget.NewButton("→ GOAL", func() {
 				promoteSomedayItem(item, "GOAL")
 				refresh()
 			})

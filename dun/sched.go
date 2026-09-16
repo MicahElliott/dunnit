@@ -163,7 +163,7 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 					return
 				}
 				a.SendNotification(fyne.NewNotification(
-					"Dunnit", "Good morning! Here's where things stand."))
+					"Dunnit", "Good morning! Here’s where things stand."))
 				fyne.Do(func() {
 					showSODWindow(a)
 				})
@@ -183,7 +183,7 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 					return
 				}
 				a.SendNotification(fyne.NewNotification(
-					"Dunnit", "End of day! Let's wrap up."))
+					"Dunnit", "End of day! Let’s wrap up."))
 				fyne.Do(func() {
 					showEODWindow(a)
 				})

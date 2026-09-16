@@ -129,7 +129,7 @@ func showReportsLibraryWindow(a fyne.App) {
 	queryEntry.OnSubmitted = func(string) { refresh() }
 	refresh()
 
-	openBtn := widget.NewButton("Open Selected Line...", func() {
+	openBtn := widget.NewButton("Open Selected Line…", func() {
 		line := results.CursorRow
 		if line < 0 || line >= len(resultReports) {
 			return

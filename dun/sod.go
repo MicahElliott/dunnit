@@ -142,7 +142,7 @@ func showSODWindow(a fyne.App) {
 	}
 	refreshPlan()
 
-	planHeading := "Today's plan"
+	planHeading := "Today’s plan"
 	if !carrySource.IsZero() {
 		planHeading = "Carried into today from " + carrySource.Format("Mon Jan 2")
 	}
@@ -279,7 +279,7 @@ func showSODWindow(a fyne.App) {
 	}
 
 	content := container.NewVBox(
-		widget.NewLabelWithStyle("Let's get your day planned.", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		widget.NewLabelWithStyle("Let’s get your day planned.", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		streakLabel(),
 		reportBox,
 		widget.NewLabelWithStyle(planHeading, fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),

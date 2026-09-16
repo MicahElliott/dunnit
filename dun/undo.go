@@ -269,7 +269,7 @@ func showUndoEditLastEntry(a fyne.App, onChange func()) {
 	lines := readLedgerLines()
 	if len(lines) == 0 {
 		dialog.ShowInformation("Nothing to Undo/Edit",
-			"Today's ledger is empty.", nil)
+			"Today’s ledger is empty.", nil)
 		return
 	}
 	last := lines[len(lines)-1]

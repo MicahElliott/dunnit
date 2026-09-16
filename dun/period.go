@@ -423,15 +423,15 @@ func themePromptFraming(theme string, unitNoun, title string) string {
 	switch theme {
 	case ThemeStatusReport:
 		return fmt.Sprintf(
-			"Summarize this ledger of a %s's activity entries into a "+
+			"Summarize this ledger of a %s’s activity entries into a "+
 				"status report titled %q, using exactly these section "+
-				"headers (Markdown ##): \"What Happened\", \"What's Next\", "+
+				"headers (Markdown ##): \"What Happened\", \"What’s Next\", "+
 				"\"Blockers\" (omit Blockers if there are none worth "+
 				"mentioning). Neutral, third-person tone, suitable to "+
 				"paste into a team update.", unitNoun, title)
 	case ThemeFormalReport:
 		return fmt.Sprintf(
-			"Summarize this ledger of a %s's activity entries into a "+
+			"Summarize this ledger of a %s’s activity entries into a "+
 				"formal report titled %q, using exactly these section "+
 				"headers (Markdown ##): \"Summary\", \"Key Accomplishments\", "+
 				"\"Challenges\", \"Goals for Next Period\". Sober, "+
@@ -439,7 +439,7 @@ func themePromptFraming(theme string, unitNoun, title string) string {
 				"audience.", unitNoun, title)
 	case ThemeBragPreso:
 		return fmt.Sprintf(
-			"Summarize this ledger of a %s's activity entries into a "+
+			"Summarize this ledger of a %s’s activity entries into a "+
 				"slide presentation titled %q, formatted as Pandoc-style "+
 				"Markdown slides: each slide is a level-1 Markdown heading "+
 				"(# Slide Title) followed by a couple of short bullet "+
@@ -449,9 +449,9 @@ func themePromptFraming(theme string, unitNoun, title string) string {
 				"per slide.", unitNoun, title)
 	default: // ThemePersonalNotes, or unrecognized -- fall back to informal
 		return fmt.Sprintf(
-			"Summarize this ledger of a %s's activity entries into "+
+			"Summarize this ledger of a %s’s activity entries into "+
 				"brief personal notes titled %q. Informal, first-person, "+
-				"casual tone -- freeform paragraphs or loose bullet points, "+
+				"casual tone — freeform paragraphs or loose bullet points, "+
 				"no fixed section headers needed.", unitNoun, title)
 	}
 }

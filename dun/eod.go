@@ -174,7 +174,7 @@ func showEODWindow(a fyne.App) {
 		}
 		fyne.Do(draftStopBtn.Show)
 		draft, err := summarizeWithLLMCLIPromptContext(draftRequest.ctx,
-			"Summarize this ledger of a day's activity entries into "+
+			"Summarize this ledger of a day’s activity entries into "+
 				"a brief impact report suitable for a personal end-of-day "+
 				"recap. Be concise and group related work together."+
 				reviewLengthConstraint(periodDay), ledgerText)
@@ -216,12 +216,12 @@ func showEODWindow(a fyne.App) {
 	questionBox, openQuestions, questionChecks := eodOpenItemsSection("QUESTION")
 
 	items := []*widget.FormItem{
-		widget.NewFormItem("Today's Items", todayScroll),
+		widget.NewFormItem("Today’s Items", todayScroll),
 		widget.NewFormItem("Summary", summaryBox),
 		widget.NewFormItem("Productivity (1\u20135)", productivity),
 		widget.NewFormItem("Meeting Hours", meetingHours),
 		widget.NewFormItem("Sentiment", sentiment),
-		widget.NewFormItem("Tomorrow's Goals", goals),
+		widget.NewFormItem("Tomorrow’s Goals", goals),
 	}
 	if len(openTodos) > 0 {
 		items = append(items, widget.NewFormItem("Postpone Open TODOs", todoBox))

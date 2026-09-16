@@ -225,11 +225,11 @@ func showSettings(a fyne.App) {
 
 	saveButton := widget.NewButton("Save", saveSettings)
 	content := container.NewVScroll(container.NewVBox(
-		newExplanatoryLabel("AI reports use the selected CLI's existing login; Dunnit never asks for or stores tokens."),
+		newExplanatoryLabel("AI reports use the selected CLI’s existing login; Dunnit never asks for or stores tokens."),
 		form,
 		widget.NewLabelWithStyle("Kickoff / Review", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		periodForm,
-		widget.NewLabelWithStyle("Faves (Daybook picker's default bucket)", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		widget.NewLabelWithStyle("Faves (Daybook picker’s default bucket)", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		favesGroup,
 		recurringMeetingsBtn, recurringItemsBtn))
 	w.SetContent(container.NewBorder(nil, container.NewPadded(saveButton), nil, nil, windowPad(content)))

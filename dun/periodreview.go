@@ -41,7 +41,7 @@ func okrReviewSection(period summaryPeriod, anchor time.Time) (box fyne.CanvasOb
 	}
 	var rows []krRow
 	vbox := container.NewVBox(
-		widget.NewLabelWithStyle("Score This Period's Key Results", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		widget.NewLabelWithStyle("Score This Period’s Key Results", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 	)
 	for _, o := range objectives {
 		if len(o.KeyResults) == 0 {

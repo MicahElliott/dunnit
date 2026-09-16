@@ -23,7 +23,7 @@ func statusReportPath(anchor, generated time.Time) string {
 
 const privateStatusPrompt = "Summarize the following ledger entries into a " +
 	"status report covering the selected week. Be thorough and candid " +
-	"-- this is a private report for the author's own use, so include " +
+	"— this is a private report for the author’s own use, so include " +
 	"struggles/blockers/personal reflections as well as accomplishments."
 
 const shareableStatusPrompt = "Summarize the following ledger entries into a " +

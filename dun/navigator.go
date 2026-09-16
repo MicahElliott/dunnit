@@ -157,10 +157,10 @@ func showNavigatorWindow(a fyne.App) {
 	tagsEntry.OnChanged = func(string) { refresh() }
 	refresh()
 
-	askAIBtn := widget.NewButton("Ask AI about these...", func() {
+	askAIBtn := widget.NewButton("Ask AI about these…", func() {
 		showNavigatorAskAIDialog(a, w, currentEntries)
 	})
-	histogramBtn := widget.NewButton("Histogram...", func() {
+	histogramBtn := widget.NewButton("Histogram…", func() {
 		showNavigatorHistogramWindow(a, currentEntries)
 	})
 
@@ -216,8 +216,8 @@ func showNavigatorAskAIDialog(a fyne.App, parent fyne.Window, entries []LedgerEn
 		go func() {
 			instructions := fmt.Sprintf(
 				"Answer the following question using only the ledger "+
-					"entries provided below as source material -- be concise, "+
-					"and if the entries don't contain enough information to "+
+					"entries provided below as source material — be concise, "+
+					"and if the entries don’t contain enough information to "+
 					"answer, say so rather than guessing. Question: %q", q)
 			answer, err := summarizeWithLLMCLIPromptContext(request.ctx, instructions, ledgerEntriesToText(entries))
 			request.finish()

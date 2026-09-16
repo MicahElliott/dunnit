@@ -233,14 +233,14 @@ func summarizeStandupWithLLMCLIContext(ctx context.Context, lines []string) (str
 			"\"What did I do yesterday\", \"What will I do today\", and "+
 			"\"Risks / blockers\". Base \"yesterday\" on the completed/"+
 			"notable items given; base \"today\" on the currently-open "+
-			"TODOs/DOING/GOALs given (pick the most relevant ones, don't just "+
-			"dump the whole list verbatim). If there's nothing worth "+
+			"TODOs/DOING/GOALs given (pick the most relevant ones, don’t just "+
+			"dump the whole list verbatim). If there’s nothing worth "+
 			"flagging as a risk or blocker, say so briefly rather than "+
 			"omitting the heading. Explicitly call out anything the "+
 			"person might need help with, as its own short line under "+
 			"Risks/blockers if applicable. Focus on concrete results "+
 			"and outcomes rather than a busy-sounding activity log. Be "+
-			"concise -- bullet points, not prose.", input)
+			"concise — bullet points, not prose.", input)
 }
 
 // showGeneratedStandupSummary displays an AI-generated standup
@@ -283,7 +283,7 @@ func showStandupExport(a fyne.App) {
 	itemsEntry := widget.NewMultiLineEntry()
 	itemsEntry.SetMinRowsVisible(10)
 	if len(lines) == 0 {
-		itemsEntry.SetPlaceHolder("(no standup-worthy entries found for the covered period -- type your own below if you like)")
+		itemsEntry.SetPlaceHolder("(no standup-worthy entries found for the covered period — type your own below if you like)")
 	} else {
 		itemsEntry.SetText(strings.Join(lines, "\n"))
 	}
@@ -327,8 +327,8 @@ func showStandupExport(a fyne.App) {
 			newWindowHeading("📋 Standup Summary"),
 			widget.NewLabel(fmt.Sprintf("Standup items since %s:", standupWindowStartLabel(standupWindowStart(cfg, now)))),
 			newExplanatoryLabel(
-				"Edit freely before generating -- add, remove, or reword lines "+
-					"(one item per line). This only changes what's sent to the "+
+				"Edit freely before generating — add, remove, or reword lines "+
+					"(one item per line). This only changes what’s sent to the "+
 					"summary prompt; it never edits the ledger itself."),
 		),
 		generateBtn,

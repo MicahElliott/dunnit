@@ -161,19 +161,19 @@ func showMonthReviewWindow(a fyne.App, anchor time.Time) {
 	for i, item := range items {
 		i, item := i, item // capture
 		row := widget.NewLabel(item.Category + ": " + item.Text)
-		promoteTodoBtn := widget.NewButton("-> TODO", func() {
+		promoteTodoBtn := widget.NewButton("→ TODO", func() {
 			recordActivity(item.Text, "TODO")
 			handled[i] = true
-			row.SetText("[promoted to TODO] " + item.Text)
+			row.SetText("Promoted to TODO — " + item.Text)
 		})
-		promoteGoalBtn := widget.NewButton("-> GOAL", func() {
+		promoteGoalBtn := widget.NewButton("→ GOAL", func() {
 			recordActivity(item.Text, "GOAL")
 			handled[i] = true
-			row.SetText("[promoted to GOAL] " + item.Text)
+			row.SetText("Promoted to GOAL — " + item.Text)
 		})
 		dropBtn := widget.NewButton("Drop", func() {
 			handled[i] = true
-			row.SetText("[dropped] " + item.Text)
+			row.SetText("Dropped — " + item.Text)
 		})
 		triageBox.Add(container.NewBorder(nil, nil, nil,
 			container.NewHBox(promoteTodoBtn, promoteGoalBtn, dropBtn), row))
