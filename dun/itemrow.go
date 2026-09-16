@@ -63,6 +63,13 @@ func splitTrailingMeta(text string) (core, meta string) {
 	return text[:loc[0]], text[loc[0]:]
 }
 
+// stripDisplayMetadata removes the trailing bookkeeping that is useful in
+// ledger-backed item lists but distracts from prose previews and summaries.
+func stripDisplayMetadata(text string) string {
+	core, _ := splitTrailingMeta(text)
+	return strings.TrimRight(core, " \t")
+}
+
 // itemTextLabel renders text as a row of canvas.Text runs: any
 // trailing display-metadata suffix (see splitTrailingMeta) is peeled
 // off and rendered smaller/grayed out (metaTextColor/

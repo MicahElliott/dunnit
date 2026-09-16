@@ -148,10 +148,9 @@ func showSODWindow(a fyne.App) {
 	}
 	var planNote *widget.Label
 	if !carrySource.IsZero() {
-		planNote = widget.NewLabel("These items are carrying into today. Edit or remove them in Daybook.")
-		planNote.Wrapping = fyne.TextWrapWord
+		planNote = newExplanatoryLabel("These items are carrying into today. Edit or remove them in Daybook.")
 	} else {
-		planNote = widget.NewLabel("Add a TODO below or from Daybook.")
+		planNote = newExplanatoryLabel("Add a TODO below or from Daybook.")
 	}
 	planScroll := container.NewVScroll(planBox)
 	planScroll.SetMinSize(fyne.NewSize(0, 150))
@@ -185,7 +184,7 @@ func showSODWindow(a fyne.App) {
 			return
 		}
 		staleBox.Add(widget.NewLabelWithStyle("Stale TODOs", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
-		staleBox.Add(widget.NewLabel("These have been open for at least seven days."))
+		staleBox.Add(newExplanatoryLabel("These have been open for at least seven days."))
 		for _, item := range staleItems {
 			item := item
 			actions := container.NewHBox(

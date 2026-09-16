@@ -524,8 +524,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	refreshStartOfDayNotice = func() {
 		startOfDayNotice.RemoveAll()
 		if startOfDayPending(LoadConfig(), time.Now()) {
-			notice := widget.NewLabel("Start of Day hasn’t run yet today; run it to bring forward open items.")
-			notice.Wrapping = fyne.TextWrapWord
+			notice := newExplanatoryLabel("Start of Day hasn’t run yet today; run it to bring forward open items.")
 			startOfDayNotice.Add(container.New(newStretchRowLayout(notice), notice,
 				widget.NewButton("Start of Day…", func() { showSODWindow(a) })))
 		}
@@ -682,6 +681,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	}
 	prepareDaybookAutoPopup = func() {
 		selectCategoryCode("DOING")
+		input.SetText("")
 	}
 	prepareRecurringItemReminder = func(item RecurringItem) {
 		selectCategoryCode(item.Category)

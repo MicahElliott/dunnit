@@ -301,7 +301,7 @@ func runSummarize(a fyne.App, period summaryPeriod) {
 	progress.SetOnClosed(request.close)
 	progress.SetContent(windowPad(llmCLIProgressContent(
 		"Asking configured LLM CLI to summarize, please wait\u2026\n"+
-			"The generated report will offer Markdown and HTML copy actions.", request)))
+			"The generated report will offer Markdown and rich-text copy actions.", request)))
 	progress.Show()
 
 	go func() {

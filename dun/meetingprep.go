@@ -206,7 +206,7 @@ func showMeetingPrepDialogForTag(a fyne.App, initialTag string) {
 		widget.NewLabel("Meeting Prep"),
 		container.NewBorder(nil, nil, nil, container.NewHBox(catFilterSelect, weeksSelect, refreshBtn), tagEntry),
 		onlyNewCheck,
-		widget.NewLabel("Recent entries for this tag (editable scratch view \u2014 does not alter the ledger):"),
+		newExplanatoryLabel("Recent entries for this tag (editable scratch view \u2014 does not alter the ledger):"),
 		history,
 		widget.NewLabel("Add a new note:"),
 		noteEntry,

@@ -21,6 +21,21 @@ func TestSplitTrailingMeta(t *testing.T) {
 	}
 }
 
+func TestStripDisplayMetadata(t *testing.T) {
+	cases := map[string]string{
+		"finish the report (via DOING)":      "finish the report",
+		"finish the report @20m (via DOING)": "finish the report",
+		"carry the task (since 2026-09-01)":  "carry the task",
+		"old task ⚠ 4d":                      "old task",
+		"ordinary text with (parentheses)":   "ordinary text with (parentheses)",
+	}
+	for input, want := range cases {
+		if got := stripDisplayMetadata(input); got != want {
+			t.Errorf("stripDisplayMetadata(%q) = %q, want %q", input, got, want)
+		}
+	}
+}
+
 func TestSortItemsByLeadingTagUntaggedLast(t *testing.T) {
 	items := []OpenItem{
 		{Text: "no tag here"},

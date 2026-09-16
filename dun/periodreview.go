@@ -96,7 +96,7 @@ func showPeriodReviewWindow(a fyne.App, period summaryPeriod, anchor time.Time) 
 	themeSelect := widget.NewSelect(themeOptions(), nil)
 	themeSelect.SetSelected(themeDisplayNames[themeFor(cfg, period)])
 
-	statusLabel := widget.NewLabel("Pick a theme, then tap Generate.")
+	statusLabel := newExplanatoryLabel("Pick a theme, then tap Generate.")
 
 	// Existing reports for this exact period, listed up front so
 	// Generate is never the only option -- a user can reopen/view a

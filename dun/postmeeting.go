@@ -87,7 +87,8 @@ func showPostMeetingCapture(a fyne.App, tag string) {
 	}
 
 	content := container.NewVBox(
-		widget.NewLabel("Post-Meeting Capture \u2014 quick multi-category dump, skip any field (one item per line):"),
+		newWindowHeading("📝 Post-Meeting Capture"),
+		newExplanatoryLabel("Quick multi-category dump; skip any field. Use one item per line."),
 		widget.NewForm(formItems...),
 		widget.NewLabelWithStyle("TODO", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		todoEntry,

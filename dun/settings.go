@@ -225,7 +225,7 @@ func showSettings(a fyne.App) {
 
 	saveButton := widget.NewButton("Save", saveSettings)
 	content := container.NewVScroll(container.NewVBox(
-		widget.NewLabel("AI reports use the selected CLI's existing login; Dunnit never asks for or stores tokens."),
+		newExplanatoryLabel("AI reports use the selected CLI's existing login; Dunnit never asks for or stores tokens."),
 		form,
 		widget.NewLabelWithStyle("Kickoff / Review", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		periodForm,

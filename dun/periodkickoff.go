@@ -112,7 +112,7 @@ func okrKickoffSection(a fyne.App, period summaryPeriod, anchor time.Time) fyne.
 		focusRow,
 		objBox,
 		newObjRow,
-		widget.NewLabel("Key Result attaches to the most recently added Objective above:"),
+		newExplanatoryLabel("Key Result attaches to the most recently added Objective above:"),
 		krRow,
 	)
 }
@@ -193,7 +193,7 @@ func showPeriodKickoffWindow(a fyne.App, period summaryPeriod, anchor time.Time)
 	entryRow := container.New(newStretchRowLayout(newItemText), newItemCat, newItemText, addBtn)
 
 	content := container.NewVBox(
-		widget.NewLabel("Kicking off "+label+" \u2014 here\u2019s where things stand:"),
+		newExplanatoryLabel("Kicking off "+label+" \u2014 here\u2019s where things stand:"),
 		listScroll,
 		recurringBox,
 		entryRow,

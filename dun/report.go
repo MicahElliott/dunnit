@@ -45,7 +45,7 @@ func writeReportFile(path, text string) error {
 }
 
 // showGeneratedReport displays a markdown report in a small
-// standalone window with Markdown/HTML Copy (clipboard) and Save (writes to
+// standalone window with Markdown/rich-text Copy (clipboard) and Save (writes to
 // savePath) actions, plus Close -- the shared shape behind what were
 // previously separate near-duplicate implementations
 // (showGeneratedStandupSummary in standup.go, SOM's inline digest
@@ -78,14 +78,14 @@ func showGeneratedReport(a fyne.App, title, savePath, text string) {
 }
 
 // reportCopyButtons returns the two clipboard actions shared by generated
-// report windows. Reports are authored as Markdown, while HTML is useful for
-// pasting into rich-text editors and email.
+// report windows. Reports are authored as Markdown, while rich text is useful
+// for pasting into formatted editors and email.
 func reportCopyButtons(a fyne.App, text string) *fyne.Container {
 	return container.NewHBox(
 		widget.NewButtonWithIcon("Copy as Markdown", theme.Icon(theme.IconNameContentCopy), func() {
 			a.Clipboard().SetContent(text)
 		}),
-		widget.NewButtonWithIcon("Copy as HTML", theme.Icon(theme.IconNameContentCopy), func() {
+		widget.NewButtonWithIcon("Copy as rich text", theme.Icon(theme.IconNameContentCopy), func() {
 			copyRichText(a, text)
 		}),
 	)
@@ -215,7 +215,7 @@ func startClipboardCommand(name string, args []string, content string) bool {
 // Markdown text window (not the read-only showGeneratedReport above --
 // Reviews are meant to be tweakable before saving, per
 // docs/kickoff-review-design.md's Review model) with a live Markdown
-// preview below, and Save/Copy as HTML/Close actions. Save writes the
+// preview below, and Save/Copy as rich text/Close actions. Save writes the
 // *current edited text* (not the original draft) to savePath.
 func showEditableReportWindow(a fyne.App, title, savePath, initialText string) {
 	w := a.NewWindow(title)
@@ -242,7 +242,7 @@ func showEditableReportWindow(a fyne.App, title, savePath, initialText string) {
 		}
 		dialog.ShowInformation("Saved", "Saved to "+savePath, w)
 	})
-	copyHTMLBtn := widget.NewButtonWithIcon("Copy as HTML", theme.Icon(theme.IconNameContentCopy), func() {
+	copyRichTextBtn := widget.NewButtonWithIcon("Copy as rich text", theme.Icon(theme.IconNameContentCopy), func() {
 		copyRichText(a, editor.Text)
 	})
 	closeBtn := widget.NewButton("Close", func() { w.Close() })
@@ -252,7 +252,7 @@ func showEditableReportWindow(a fyne.App, title, savePath, initialText string) {
 		container.NewVBox(
 			widget.NewLabelWithStyle("Preview:", fyne.TextAlignLeading, fyne.TextStyle{Italic: true}),
 			previewScroll,
-			container.NewHBox(saveBtn, copyHTMLBtn, closeBtn),
+			container.NewHBox(saveBtn, copyRichTextBtn, closeBtn),
 		),
 		nil, nil,
 		editorScroll,

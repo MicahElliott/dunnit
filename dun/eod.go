@@ -149,7 +149,7 @@ func showEODWindow(a fyne.App) {
 	copyMarkdownSummaryBtn := widget.NewButton("Copy as Markdown", func() {
 		a.Clipboard().SetContent(summary.Text)
 	})
-	copyHTMLSummaryBtn := widget.NewButton("Copy as HTML", func() {
+	copyRichTextSummaryBtn := widget.NewButton("Copy as rich text", func() {
 		copyRichText(a, summary.Text)
 	})
 	draftRequest := newLLMCLIRequest()
@@ -161,7 +161,7 @@ func showEODWindow(a fyne.App) {
 		draftStopBtn,
 		widget.NewLabelWithStyle("Preview:", fyne.TextAlignLeading, fyne.TextStyle{Italic: true}),
 		summaryPreviewScroll,
-		container.NewHBox(copyMarkdownSummaryBtn, copyHTMLSummaryBtn),
+		container.NewHBox(copyMarkdownSummaryBtn, copyRichTextSummaryBtn),
 	)
 	go func() {
 		today := time.Now()

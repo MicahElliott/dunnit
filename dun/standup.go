@@ -90,6 +90,16 @@ func standupSourceDates(now time.Time) []time.Time {
 	return []time.Time{friday, saturday, sunday}
 }
 
+// standupWindowStartLabel keeps a midnight boundary readable in the
+// standup window. "Tue 00:00" is easy to misread as the end of Tuesday,
+// while "Tue midnight" makes the boundary explicit.
+func standupWindowStartLabel(t time.Time) string {
+	if t.Hour() == 0 && t.Minute() == 0 {
+		return t.Format("Mon") + " midnight"
+	}
+	return t.Format("Mon 15:04")
+}
+
 // ledgerFileForDate returns the ledger file path for date if it
 // exists among allLedgerFiles(), or "" if none.
 func ledgerFileForDate(date time.Time) string {
@@ -150,6 +160,10 @@ func gatherStandupLines(cfg Config, now time.Time) []string {
 			}
 			ts, ok := parseLedgerLineTime(line, date)
 			if !ok || ts.Before(since) {
+				continue
+			}
+			text = stripDisplayMetadata(text)
+			if text == "" {
 				continue
 			}
 			if seen[text] {
@@ -232,7 +246,7 @@ func summarizeStandupWithLLMCLIContext(ctx context.Context, lines []string) (str
 // showGeneratedStandupSummary displays an AI-generated standup
 // summary via the shared showGeneratedReport window (Copy/Save/
 // Close), saving to standup-w<week>-<generation-date>.md.
-func showGeneratedStandupSummary(a fyne.App, parent fyne.Window, summary string) {
+func showGeneratedStandupSummary(a fyne.App, summary string) {
 	_, week := time.Now().ISOWeek()
 	showGeneratedReport(a, "Dunnit: Generated Standup Summary",
 		periodReportPath("standup", "w"+strconv.Itoa(week), time.Now()), summary)
@@ -302,19 +316,20 @@ func showStandupExport(a fyne.App) {
 					dialog.ShowError(err, w)
 					return
 				}
-				showGeneratedStandupSummary(a, w, summary)
+				w.Close()
+				showGeneratedStandupSummary(a, summary)
 			})
 		}()
 	})
 
 	content := container.NewBorder(
 		container.NewVBox(
-			widget.NewLabel(fmt.Sprintf("Standup items since %s:", standupWindowStart(cfg, now).Format("Mon 15:04"))),
-			widget.NewLabelWithStyle(
+			newWindowHeading("📋 Standup Summary"),
+			widget.NewLabel(fmt.Sprintf("Standup items since %s:", standupWindowStartLabel(standupWindowStart(cfg, now)))),
+			newExplanatoryLabel(
 				"Edit freely before generating -- add, remove, or reword lines "+
 					"(one item per line). This only changes what's sent to the "+
-					"summary prompt; it never edits the ledger itself.",
-				fyne.TextAlignLeading, fyne.TextStyle{Italic: true}),
+					"summary prompt; it never edits the ledger itself."),
 		),
 		generateBtn,
 		nil, nil,

@@ -1,6 +1,36 @@
 package dun
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
+
+func TestStandupWindowStartLabel(t *testing.T) {
+	location := time.FixedZone("test", -7*60*60)
+	cases := []struct {
+		name string
+		when time.Time
+		want string
+	}{
+		{
+			name: "midnight is named explicitly",
+			when: time.Date(2026, time.September, 15, 0, 0, 0, 0, location),
+			want: "Tue midnight",
+		},
+		{
+			name: "timed boundary keeps clock format",
+			when: time.Date(2026, time.September, 15, 9, 30, 0, 0, location),
+			want: "Tue 09:30",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := standupWindowStartLabel(tc.when); got != tc.want {
+				t.Fatalf("standupWindowStartLabel() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
 
 func TestStandupCategories_IncludesEndAndHiliteExcludingInternalMarkers(t *testing.T) {
 	want := map[string]bool{

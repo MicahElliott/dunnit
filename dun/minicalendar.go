@@ -301,23 +301,21 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 	}
 	refreshMeetings()
 
-	heading := widget.NewLabelWithStyle("🗓️ Recurring Meetings", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
-	helpLine := widget.NewLabelWithStyle("📝 Use these tags throughout your weeks any time a meeting topic thought comes to mind. They’ll be collected and presented to you just before your meeting starts. And summaries will be shown after.", fyne.TextAlignLeading, fyne.TextStyle{Italic: true})
-	helpLine.Wrapping = fyne.TextWrapWord
-	helpLine.SizeName = theme.SizeNameCaptionText
+	heading := newWindowHeading("🗓️ Recurring Meetings")
+	helpLine := newExplanatoryLabel("📝 Use these tags throughout your weeks any time a meeting topic thought comes to mind. They’ll be collected and presented to you just before your meeting starts. And summaries will be shown after.")
 	actionsRow := container.NewHBox(cadenceSelect, dowSelect, domWrapper, timeWrapper, weekendSelect, addBtn, cancelEditBtn)
 	meetingsScroll := container.NewVScroll(meetingsBox)
 	meetingsScroll.SetMinSize(fyne.NewSize(0, 170))
 
-	content := container.NewVBox(
+	form := container.NewVBox(
 		heading,
 		helpLine,
 		tagEntry,
 		tagSuggestions,
 		actionsRow,
 		container.NewPadded(widget.NewSeparator()),
-		meetingsScroll,
 	)
+	content := container.NewBorder(form, nil, nil, nil, meetingsScroll)
 
 	w := a.NewWindow("Dunnit: Recurring Meetings")
 	w.SetContent(windowPad(content))

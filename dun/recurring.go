@@ -431,11 +431,9 @@ func showRecurringItemsDialog(a fyne.App, parent fyne.Window) {
 	domEntry.OnSubmitted = func(string) { addItem() }
 	timeEntry.OnSubmitted = func(string) { addItem() }
 
-	helpLine := widget.NewLabelWithStyle("📝 Untimed entries are suggested in Start of Day / Start of Month. Add an optional HH:MM time for a native reminder and a prefilled Daybook popup.", fyne.TextAlignLeading, fyne.TextStyle{Italic: true})
-	helpLine.Wrapping = fyne.TextWrapWord
-	helpLine.SizeName = theme.SizeNameCaptionText
+	helpLine := newExplanatoryLabel("📝 Untimed entries are suggested in Start of Day / Start of Month. Add an optional HH:MM time for a native reminder and a prefilled Daybook popup.")
 
-	heading := widget.NewLabelWithStyle("🔁 Recurring Items", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	heading := newWindowHeading("🔁 Recurring Items")
 
 	// entryRow stretches textEntry to fill remaining width (same
 	// stretchRowLayout approach as ui.go's doneWrapper), rather than
@@ -446,14 +444,14 @@ func showRecurringItemsDialog(a fyne.App, parent fyne.Window) {
 	itemsScroll := container.NewVScroll(itemsBox)
 	itemsScroll.SetMinSize(fyne.NewSize(0, 170))
 
-	content := container.NewVBox(
+	form := container.NewVBox(
 		heading,
 		helpLine,
 		entryRow,
 		actionsRow,
 		container.NewPadded(widget.NewSeparator()),
-		itemsScroll,
 	)
+	content := container.NewBorder(form, nil, nil, nil, itemsScroll)
 
 	w := a.NewWindow("Dunnit: Recurring Items")
 	w.SetContent(windowPad(content))
