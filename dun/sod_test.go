@@ -53,3 +53,18 @@ func TestStartOfDayPending(t *testing.T) {
 		})
 	}
 }
+
+func TestLastActiveLedgerDateUsesNewestPriorDay(t *testing.T) {
+	loc := time.Local
+	now := time.Date(2026, time.September, 16, 5, 0, 0, 0, loc)
+	entries := []LedgerEntry{
+		{Date: time.Date(2026, time.September, 14, 0, 0, 0, 0, loc)},
+		{Date: time.Date(2026, time.September, 15, 0, 0, 0, 0, loc)},
+		{Date: now},
+	}
+
+	got, ok := lastActiveLedgerDate(entries, now)
+	if !ok || got.Format("2006-01-02") != "2026-09-15" {
+		t.Fatalf("lastActiveLedgerDate() = %v, %v; want 2026-09-15, true", got, ok)
+	}
+}

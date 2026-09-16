@@ -3,11 +3,13 @@ package dun
 import (
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -25,6 +27,7 @@ var sodContextCategories = map[string]bool{
 	"RISK":     true,
 	"WAITING":  true,
 	"QUESTION": true,
+	"FIXME":    true,
 }
 
 func dayReflection(entries []LedgerEntry, date time.Time) string {
@@ -54,13 +57,35 @@ func dayReflection(entries []LedgerEntry, date time.Time) string {
 	return strings.Join(parts, " · ")
 }
 
-func sodReport(date time.Time) string {
-	_, path := eodReportPath(date)
-	contents, err := os.ReadFile(path)
+func lastEODReport(now time.Time) (date time.Time, report, path string) {
+	var latest time.Time
+	err := filepath.Walk(DunnitDir(), func(candidate string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return nil
+		}
+		name := filepath.Base(candidate)
+		datePart := strings.TrimSuffix(strings.TrimPrefix(name, "eod-"), ".md")
+		if datePart == name || !strings.HasPrefix(name, "eod-") || !strings.HasSuffix(name, ".md") {
+			return nil
+		}
+		candidateDate, parseErr := time.ParseInLocation("Mon-20060102", datePart, time.Local)
+		if parseErr != nil || candidateDate.Format("Mon-20060102") != datePart || !candidateDate.Before(now) || !candidateDate.After(latest) {
+			return nil
+		}
+		contents, readErr := os.ReadFile(candidate)
+		if readErr != nil || strings.TrimSpace(string(contents)) == "" {
+			return nil
+		}
+		latest = candidateDate
+		date = candidateDate
+		report = strings.TrimSpace(string(contents))
+		path = candidate
+		return nil
+	})
 	if err != nil {
-		return ""
+		log.Println("Error scanning for the last EOD report:", err)
 	}
-	return strings.TrimSpace(string(contents))
+	return date, report, path
 }
 
 // markStartOfDayRun records that today's Day Kickoff/Start of Day routine
@@ -87,6 +112,10 @@ func markStartOfDayRun() {
 // EOD reflection, and offers a quick-entry field for today's plan.
 func showSODWindow(a fyne.App) {
 	now := time.Now()
+	// Ledger files may have been changed by git sync or another Dunnit
+	// process since the five-minute index refresh. SOD is a daily boundary,
+	// so its date/context decisions should always use the current files.
+	InvalidateLedgerCaches()
 	carrySource, _ := carryForwardDailyPlan(now)
 	entries := AllLedgerEntries()
 	lastActive, hasLastActive := lastActiveLedgerDate(entries, now)
@@ -146,37 +175,59 @@ func showSODWindow(a fyne.App) {
 	contextScroll := container.NewVScroll(contextBox)
 	contextScroll.SetMinSize(fyne.NewSize(0, 100))
 
-	staleItems := staleDailyPlanItems(now)
 	staleBox := container.NewVBox()
-	if len(staleItems) > 0 {
+	var refreshStale func()
+	refreshStale = func() {
+		staleBox.RemoveAll()
+		staleItems := staleDailyPlanItems(time.Now())
+		if len(staleItems) == 0 {
+			staleBox.Refresh()
+			return
+		}
 		staleBox.Add(widget.NewLabelWithStyle("Stale TODOs", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
 		staleBox.Add(widget.NewLabel("These have been open for at least seven days."))
 		for _, item := range staleItems {
-			staleBox.Add(widget.NewLabel(categoryIconPrefix(item.Category) + stripCarryForwardSince(item.Text) + staleBadge(item.Text)))
+			item := item
+			actions := container.NewHBox(
+				newHoverIconButton(theme.Icon(theme.IconNameDelete), "Delete", func() {
+					recordDiscarded(item)
+					refreshStale()
+					refreshPlan()
+				}),
+				newHoverIconButton(theme.Icon(theme.IconNameHistory), "Postpone", func() {
+					recordPostponed(item)
+					refreshStale()
+					refreshPlan()
+				}),
+				newHoverIconButton(theme.Icon(theme.IconNameConfirm), "Done", func() {
+					recordConvertedDone(item)
+					refreshStale()
+					refreshPlan()
+				}),
+			)
+			staleBox.Add(container.NewBorder(nil, nil, nil, actions,
+				itemTextLabel(categoryIconPrefix(item.Category)+stripCarryForwardSince(item.Text)+staleBadge(item.Text))))
 		}
-		staleBox.Add(widget.NewButton("Move stale TODOs to SOMEDAY", func() {
-			for _, item := range staleItems {
-				recordPostponed(item)
-			}
-			staleBox.RemoveAll()
-			staleBox.Refresh()
-			refreshPlan()
-		}))
+		staleBox.Refresh()
 	}
+	refreshStale()
 
 	reportBox := container.NewVBox()
 	if hasLastActive {
 		if reflection := dayReflection(entries, lastActive); reflection != "" {
 			reportBox.Add(widget.NewLabel("Last active day: " + lastActive.Format("Mon Jan 2") + " · " + reflection))
 		}
-		if report := sodReport(lastActive); report != "" {
-			reportText := widget.NewRichTextFromMarkdown(report)
-			reportText.Wrapping = fyne.TextWrapWord
-			reportScroll := container.NewVScroll(reportText)
-			reportScroll.SetMinSize(fyne.NewSize(0, 120))
-			reportBox.Add(widget.NewLabelWithStyle("Last EOD report", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
-			reportBox.Add(reportScroll)
-		}
+	}
+	if reportDate, report, reportPath := lastEODReport(now); !reportDate.IsZero() {
+		reportText := widget.NewRichTextFromMarkdown(report)
+		reportText.Wrapping = fyne.TextWrapWord
+		reportScroll := container.NewVScroll(reportText)
+		reportScroll.SetMinSize(fyne.NewSize(0, 240))
+		reportBox.Add(widget.NewLabelWithStyle("Last EOD report — "+reportDate.Format("Mon Jan 2"), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
+		reportBox.Add(reportScroll)
+		reportBox.Add(widget.NewButton("See full EOD report", func() {
+			showGeneratedReport(a, "Dunnit: EOD Report — "+reportDate.Format("Mon Jan 2"), reportPath, report)
+		}))
 	}
 
 	// Recurring items (daily/weekly cadence) are suggestions the user

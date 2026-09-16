@@ -143,17 +143,23 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 			gocron.DailyJob(1, gocron.NewAtTimes(gocron.NewAtTime(uint(sh), uint(sm), 0))),
 			gocron.NewTask(func() {
 				now := time.Now()
-				if isOffDay(LoadConfig(), now) {
+				cfg := LoadConfig()
+				if isOffDay(cfg, now) {
 					return
 				}
 				if isFirstWeekdayOfMonth(now) {
 					a.SendNotification(fyne.NewNotification(
 						"Dunnit", "Start of a new month!"))
 					fyne.Do(func() {
-						showSODWindow(a)
+						if startOfDayPending(cfg, now) {
+							showSODWindow(a)
+						}
 						showMonthReviewWindow(a, periodOffsetAnchor(periodMonth, now, -1))
 						showMonthKickoffWindow(a, now)
 					})
+					return
+				}
+				if !startOfDayPending(cfg, now) {
 					return
 				}
 				a.SendNotification(fyne.NewNotification(

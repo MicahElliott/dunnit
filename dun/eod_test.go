@@ -59,3 +59,41 @@ func TestEODReportPathUsesDescriptorAndWeekday(t *testing.T) {
 		t.Fatalf("eodReportPath() base = %q, want %q", got, want)
 	}
 }
+
+func TestMarkdownToPlainTextRemovesFormatting(t *testing.T) {
+	tests := []struct {
+		name string
+		md   string
+		want string
+	}{
+		{name: "bold and heading", md: "# Report\n\n**Shipped** the fix", want: "Report\n\nShipped the fix"},
+		{name: "link", md: "See [the report](https://example.com)", want: "See the report"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := markdownToPlainText(tt.md); got != tt.want {
+				t.Fatalf("markdownToPlainText() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestLastEODReportUsesNewestExistingReport(t *testing.T) {
+	withTempDunnitDir(t)
+	now := time.Now()
+	older := now.AddDate(0, 0, -2)
+	yesterday := now.AddDate(0, 0, -1)
+	_, olderPath := eodReportPath(older)
+	_, yesterdayPath := eodReportPath(yesterday)
+	if err := writeReportFile(olderPath, "# older"); err != nil {
+		t.Fatalf("write older report: %v", err)
+	}
+	if err := writeReportFile(yesterdayPath, "# yesterday"); err != nil {
+		t.Fatalf("write yesterday report: %v", err)
+	}
+
+	date, report, path := lastEODReport(now)
+	if date.Format("2006-01-02") != yesterday.Format("2006-01-02") || report != "# yesterday" || path != yesterdayPath {
+		t.Fatalf("lastEODReport() = %v, %q, %q; want yesterday report", date, report, path)
+	}
+}

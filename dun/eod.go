@@ -150,7 +150,7 @@ func showEODWindow(a fyne.App) {
 		a.Clipboard().SetContent(summary.Text)
 	})
 	copyHTMLSummaryBtn := widget.NewButton("Copy as HTML", func() {
-		a.Clipboard().SetContent(markdownToHTML(summary.Text))
+		copyRichText(a, summary.Text)
 	})
 	draftRequest := newLLMCLIRequest()
 	w.SetOnClosed(draftRequest.close)
