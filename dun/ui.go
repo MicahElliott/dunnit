@@ -226,40 +226,46 @@ func defaultSnoozeDuration() time.Duration {
 // append a ledger entry the same way Daybook's Save button does --
 // same tag-cache invalidation and ledger-index invalidation. Does NOT validate that category is a
 // real Category code; callers should check that themselves (see
-// CategoryExists in categories.go) before calling.
-func RecordActivity(text, category string) {
-	recordActivity(text, category)
+// CategoryExists in categories.go) before calling. It returns any
+// filesystem error so command-line callers can report failed writes.
+func RecordActivity(text, category string) error {
+	return recordActivity(text, category)
 }
 
-func recordActivity(text, category string) {
+func recordActivity(text, category string) error {
 	text = normalizeLedgerText(text)
 	log.Println("Content was:", text)
 	fpath, fname := getLedger()
 	if err := os.MkdirAll(fpath, 0755); err != nil {
+		err = fmt.Errorf("make ledger directory %q: %w", fpath, err)
 		log.Println("Error making ledger dir:", err)
-		return
+		return err
 	}
 	f, err := os.OpenFile(fname, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
+		err = fmt.Errorf("open ledger %q: %w", fname, err)
 		log.Println("Error opening ledger:", err)
-		return
+		return err
 	}
 	stamp := time.Now().Format("[15:04:05]")
 	outstr := stamp + " " + category + " " + text + "\n"
 	if _, err := f.WriteString(outstr); err != nil {
+		err = fmt.Errorf("write ledger %q: %w", fname, err)
 		log.Println("Error writing ledger:", err)
 		_ = f.Close()
-		return
+		return err
 	}
 	if err := f.Close(); err != nil {
+		err = fmt.Errorf("close ledger %q: %w", fname, err)
 		log.Println("Error closing ledger:", err)
-		return
+		return err
 	}
 	lastActivityAt = time.Now()
 	if len(extractTags(text)) > 0 {
 		InvalidateTagCache()
 	}
 	InvalidateLedgerIndex()
+	return nil
 }
 
 func normalizeLedgerText(text string) string {
@@ -795,8 +801,11 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 		}
 		excludeTags := LoadConfig().ReportExcludeTags
 		addRow := func(item OpenItem) {
+			// Planned's icon-only controls stay as plain Fyne buttons.
+			// A hover tooltip is a full-canvas overlay in Fyne, so it can
+			// take the first click while the button is unfocused.
 			actions := []fyne.CanvasObject{
-				newHoverIconButton(theme.Icon(theme.IconNameContentClear), "Discard", func() {
+				widget.NewButtonWithIcon("", theme.Icon(theme.IconNameContentClear), func() {
 					recordDiscarded(item)
 					fyne.Do(func() {
 						refreshOpenItems()
@@ -804,7 +813,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 						showToast(w4.Canvas(), "Discarded")
 					})
 				}),
-				newHoverIconButton(theme.Icon(theme.IconNameHistory), "Postpone", func() {
+				widget.NewButtonWithIcon("", theme.Icon(theme.IconNameHistory), func() {
 					recordPostponed(item)
 					fyne.Do(func() {
 						refreshOpenItems()
@@ -812,7 +821,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 						showToast(w4.Canvas(), "Postponed (to SOMEDAY)")
 					})
 				}),
-				newHoverIconButton(theme.Icon(theme.IconNameConfirm), "Done", func() {
+				widget.NewButtonWithIcon("", theme.Icon(theme.IconNameConfirm), func() {
 					showEditItemDialogForCategory(w4, item, "DONE", func() {
 						minsInput.SetText("")
 						refreshOpenItems()
@@ -824,7 +833,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 				}),
 			}
 			if item.Category == "TODO" {
-				actions = append(actions, newHoverIconButton(theme.Icon(theme.IconNameMediaPlay), "Start", func() {
+				actions = append(actions, widget.NewButtonWithIcon("", theme.Icon(theme.IconNameMediaPlay), func() {
 					if err := startPlannedItem(item); err != nil {
 						log.Println("Error starting planned item:", err)
 					}
@@ -836,7 +845,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 					})
 				}))
 			}
-			actions = append(actions, newHoverIconButton(theme.Icon(theme.IconNameDocumentCreate), "Edit", func() {
+			actions = append(actions, widget.NewButtonWithIcon("", theme.Icon(theme.IconNameDocumentCreate), func() {
 				showEditItemDialog(w4, item, func() {
 					fyne.Do(func() {
 						refreshOpenItems()

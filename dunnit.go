@@ -55,6 +55,9 @@ func runCLI(args []string) int {
 		fmt.Fprintln(os.Stderr, "usage: dunnit CATEGORY 'message to record'")
 		return 1
 	}
-	dun.RecordActivity(message, category)
+	if err := dun.RecordActivity(message, category); err != nil {
+		fmt.Fprintf(os.Stderr, "dunnit: could not record entry: %v\n", err)
+		return 1
+	}
 	return 0
 }
