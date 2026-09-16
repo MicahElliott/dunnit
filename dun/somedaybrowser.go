@@ -66,8 +66,9 @@ func gatherSomedayItems() []OpenItem {
 // marker so gatherSomedayItems stops listing it afterward. Mirrors
 // recordConvertedDone/recordPostponed's shape (todos.go).
 func promoteSomedayItem(item OpenItem, newCategory string) {
-	recordActivity(item.Text, newCategory)
-	recordActivity(item.Text+convertedSuffix(somedayCategory), "DISCARDED")
+	text := inflectLifecycleText(item.Text, newCategory)
+	recordActivity(text, newCategory)
+	recordActivity(text+convertedSuffix(somedayCategory), "DISCARDED")
 }
 
 // discardSomedayItem marks a browsed SOMEDAY item as permanently

@@ -48,3 +48,31 @@ func TestPastTenseLeadingWord(t *testing.T) {
 		}
 	}
 }
+
+func TestPresentParticiple(t *testing.T) {
+	cases := map[string]string{
+		"send": "sending", "write": "writing", "make": "making",
+		"run": "running", "fix": "fixing", "try": "trying",
+		"tie": "tying", "Send": "Sending", "FIX": "FIXING",
+	}
+	for in, want := range cases {
+		if got := PresentParticiple(in); got != want {
+			t.Errorf("PresentParticiple(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestBaseTenseLeadingWord(t *testing.T) {
+	cases := map[string]string{
+		"Sent the report":        "Send the report",
+		"Sending the report @5m": "Send the report @5m",
+		"Shipped the fix":        "Ship the fix",
+		"Creating a task":        "Create a task",
+		"Walk the dog":           "Walk the dog",
+	}
+	for in, want := range cases {
+		if got := BaseTenseLeadingWord(in); got != want {
+			t.Errorf("BaseTenseLeadingWord(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

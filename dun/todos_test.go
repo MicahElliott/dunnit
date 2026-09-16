@@ -49,11 +49,57 @@ func TestParseOpenItems_InflectedDoneResolvesSource(t *testing.T) {
 		"[08:05:00] DONE wrote report (via TODO)",
 		"[09:00:00] TODO fix the login bug",
 		"[09:05:00] DONE fixed the login bug (via TODO)",
+		"[10:00:00] DOING send the update",
+		"[10:05:00] DONE sent the update (via DOING)",
 	}
 
 	open := parseOpenItems(lines)
 	if len(open) != 0 {
 		t.Fatalf("expected inflected DONE entries to resolve TODOs, got %+v", open)
+	}
+}
+
+func TestParseOpenItems_CollapsesInflectedLifecycleStates(t *testing.T) {
+	open := parseOpenItems([]string{
+		"[08:00:00] TODO send the update",
+		"[09:00:00] DOING sending the update",
+	})
+	if len(open) != 1 || open[0].Category != "DOING" {
+		t.Fatalf("expected one current DOING item, got %+v", open)
+	}
+}
+
+func TestLifecycleInflectionCycle(t *testing.T) {
+	cases := []struct {
+		category string
+		text     string
+		want     string
+	}{
+		{"TODO", "Send the update", "Send the update"},
+		{"DOING", "Send the update", "Sending the update"},
+		{"DONE", "Send the update", "Sent the update"},
+		{"TODO", "Sent the update (via DOING)", "Send the update"},
+		{"DOING", "Sent the update (via DOING)", "Sending the update"},
+	}
+	for _, tt := range cases {
+		t.Run(tt.category+"/"+tt.text, func(t *testing.T) {
+			if got := inflectLifecycleText(tt.text, tt.category); got != tt.want {
+				t.Errorf("inflectLifecycleText(%q, %q) = %q, want %q", tt.text, tt.category, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRecordPostponedNormalizesDoingText(t *testing.T) {
+	withTempDunnitDir(t)
+	recordPostponed(OpenItem{Category: "DOING", Text: "Sending the update"})
+	lines := readLedgerLines()
+	if len(lines) != 1 {
+		t.Fatalf("postponed lifecycle lines = %v", lines)
+	}
+	category, text, ok := parseLedgerLine(lines[0])
+	if !ok || category != "SOMEDAY" || text != "Send the update (via DOING)" {
+		t.Fatalf("postponed lifecycle line = %q", lines[0])
 	}
 }
 
@@ -97,7 +143,7 @@ func TestPlannedLifecycleTransitionsPreserveRowAndResolve(t *testing.T) {
 		t.Fatalf("repeated startPlannedItem: %v", err)
 	}
 	lines := readLedgerLines()
-	wantDoing := "[08:00:00] DOING ship the fix @12m"
+	wantDoing := "[08:00:00] DOING shipping the fix @12m"
 	if len(lines) != 1 || lines[0] != wantDoing {
 		t.Fatalf("start changed row to %q, want %q", lines, wantDoing)
 	}
@@ -106,7 +152,7 @@ func TestPlannedLifecycleTransitionsPreserveRowAndResolve(t *testing.T) {
 	if err := completePlannedItem(item); err != nil {
 		t.Fatalf("completePlannedItem: %v", err)
 	}
-	wantDone := "[08:00:00] DONE ship the fix @12m (via DOING)"
+	wantDone := "[08:00:00] DONE shipped the fix @12m (via DOING)"
 	lines = readLedgerLines()
 	if len(lines) != 1 || lines[0] != wantDone {
 		t.Fatalf("complete changed row to %q, want %q", lines, wantDone)
@@ -134,7 +180,7 @@ func TestDittoLifecycleItemKeepsOneRowAndAccumulatesMinutes(t *testing.T) {
 		t.Fatalf("DONE Ditto: %v", err)
 	}
 	lines := readLedgerLines()
-	if len(lines) != 1 || lines[0] != "[08:00:00] DOING ship the fix @10m" {
+	if len(lines) != 1 || lines[0] != "[08:00:00] DOING shipping the fix @10m" {
 		t.Fatalf("DONE Ditto produced %q", lines)
 	}
 
@@ -146,11 +192,11 @@ func TestDittoLifecycleItemKeepsOneRowAndAccumulatesMinutes(t *testing.T) {
 		t.Fatalf("DOING Ditto: %v", err)
 	}
 	lines = readLedgerLines()
-	if len(lines) != 1 || lines[0] != "[08:00:00] DOING ship the fix @17m" {
+	if len(lines) != 1 || lines[0] != "[08:00:00] DOING shipping the fix @17m" {
 		t.Fatalf("repeated Ditto produced %q", lines)
 	}
 
-	if err := completePlannedItem(OpenItem{Category: "DOING", Text: "ship the fix @17m", LineIndex: 0}); err != nil {
+	if err := completePlannedItem(OpenItem{Category: "DOING", Text: "shipping the fix @17m", LineIndex: 0}); err != nil {
 		t.Fatalf("complete Ditto item: %v", err)
 	}
 	if got := parseEntryMins(readLedgerLines()[0]); got != 17 {
@@ -186,7 +232,7 @@ func TestCompletePlannedEndpointResolvesLifecycle(t *testing.T) {
 	}, "WASTED", "abandon the experiment @7m"); err != nil {
 		t.Fatalf("completePlannedEndpoint: %v", err)
 	}
-	if got := readLedgerLines(); len(got) != 1 || got[0] != "[08:00:00] WASTED abandon the experiment @7m (via DOING)" {
+	if got := readLedgerLines(); len(got) != 1 || got[0] != "[08:00:00] WASTED abandoned the experiment @7m (via DOING)" {
 		t.Fatalf("endpoint transition = %v", got)
 	}
 	if open := getOpenItems(); len(open) != 0 {

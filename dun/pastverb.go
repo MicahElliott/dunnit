@@ -49,6 +49,17 @@ var irregularPastTense = map[string]string{
 	"wear": "wore", "win": "won", "wind": "wound", "wring": "wrung",
 }
 
+// irregularPresentParticiple contains the common verbs whose -ing form
+// cannot be recovered reliably by the spelling rules below. The map is
+// deliberately small for the same reason as irregularPastTense: these are
+// task-leading verbs, not an attempt to model all of English.
+var irregularPresentParticiple = map[string]string{
+	"be": "being", "do": "doing", "go": "going", "have": "having",
+	"make": "making", "take": "taking", "write": "writing", "run": "running",
+	"come": "coming", "give": "giving", "get": "getting", "use": "using",
+	"lie": "lying", "tie": "tying", "die": "dying", "see": "seeing",
+}
+
 // isVowel reports whether r is an English vowel letter (lowercase
 // check only -- callers always pass an already-lowercased rune).
 func isVowel(r rune) bool {
@@ -155,6 +166,95 @@ func PastTense(verb string) string {
 	}
 }
 
+// PresentParticiple returns the present-participle form used for an active
+// DOING item, preserving the original's casing pattern. It applies the
+// common -e, -ie, and short-vowel/consonant spelling rules after checking
+// the small irregular table.
+func PresentParticiple(verb string) string {
+	if verb == "" {
+		return verb
+	}
+	for _, r := range verb {
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') {
+			return verb
+		}
+	}
+	lower := strings.ToLower(verb)
+	if participle, ok := irregularPresentParticiple[lower]; ok {
+		return matchCase(verb, participle)
+	}
+	switch {
+	case strings.HasSuffix(lower, "ie"):
+		return matchCase(verb, lower[:len(lower)-2]+"ying")
+	case strings.HasSuffix(lower, "e") && !strings.HasSuffix(lower, "ee"):
+		return matchCase(verb, lower[:len(lower)-1]+"ing")
+	case shouldDoubleFinalConsonant(lower):
+		return matchCase(verb, lower+string(lower[len(lower)-1])+"ing")
+	default:
+		return matchCase(verb, lower+"ing")
+	}
+}
+
+// BaseTense returns the base form of a common simple-past or present-
+// participle verb, preserving casing. Unknown words are returned unchanged;
+// this makes it safe to use while re-inflecting user-authored text.
+func BaseTense(verb string) string {
+	if verb == "" {
+		return verb
+	}
+	for _, r := range verb {
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') {
+			return verb
+		}
+	}
+	lower := strings.ToLower(verb)
+	for base, past := range irregularPastTense {
+		if lower == past {
+			return matchCase(verb, base)
+		}
+	}
+	for base, participle := range irregularPresentParticiple {
+		if lower == participle {
+			return matchCase(verb, base)
+		}
+	}
+
+	switch {
+	case strings.HasSuffix(lower, "ing"):
+		stem := lower[:len(lower)-3]
+		if len(stem) > 1 && stem[len(stem)-1] == stem[len(stem)-2] {
+			stem = stem[:len(stem)-1]
+		}
+		if base, ok := silentEInflectionBases[stem]; ok {
+			stem = base
+		}
+		return matchCase(verb, stem)
+	case strings.HasSuffix(lower, "ied"):
+		return matchCase(verb, lower[:len(lower)-3]+"y")
+	case strings.HasSuffix(lower, "ed"):
+		stem := lower[:len(lower)-2]
+		if len(stem) > 1 && stem[len(stem)-1] == stem[len(stem)-2] {
+			stem = stem[:len(stem)-1]
+		}
+		if base, ok := silentEInflectionBases[stem]; ok {
+			stem = base
+		}
+		return matchCase(verb, stem)
+	default:
+		return verb
+	}
+}
+
+// These stems are ambiguous after removing -ing/-ed ("mak" could be make,
+// while "walk" should remain walk). They cover the common silent-e verbs
+// most likely to begin a short plan item.
+var silentEInflectionBases = map[string]string{
+	"clos": "close", "com": "come", "creat": "create", "danc": "dance",
+	"hat": "hate", "lov": "love", "mak": "make", "mov": "move",
+	"not": "note", "prov": "prove", "tak": "take", "us": "use",
+	"writ": "write",
+}
+
 // PastTenseLeadingWord converts only the first whitespace-delimited
 // word of text to past tense (via PastTense), leaving everything else
 // -- including all remaining whitespace/punctuation/words -- exactly
@@ -168,4 +268,22 @@ func PastTenseLeadingWord(text string) string {
 		return PastTense(text)
 	}
 	return PastTense(text[:idx]) + text[idx:]
+}
+
+// PresentParticipleLeadingWord and BaseTenseLeadingWord apply their
+// respective conversion to only the first whitespace-delimited word.
+func PresentParticipleLeadingWord(text string) string {
+	idx := strings.IndexAny(text, " \t")
+	if idx == -1 {
+		return PresentParticiple(text)
+	}
+	return PresentParticiple(text[:idx]) + text[idx:]
+}
+
+func BaseTenseLeadingWord(text string) string {
+	idx := strings.IndexAny(text, " \t")
+	if idx == -1 {
+		return BaseTense(text)
+	}
+	return BaseTense(text[:idx]) + text[idx:]
 }

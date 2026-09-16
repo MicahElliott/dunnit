@@ -813,7 +813,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 					})
 				}),
 				newHoverIconButton(theme.Icon(theme.IconNameConfirm), "Done", func() {
-					showCompleteItemDialog(w4, item, func() {
+					showEditItemDialogForCategory(w4, item, "DONE", func() {
 						minsInput.SetText("")
 						refreshOpenItems()
 						refreshCompleted()
@@ -840,6 +840,8 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 				showEditItemDialog(w4, item, func() {
 					fyne.Do(func() {
 						refreshOpenItems()
+						refreshCompleted()
+						refreshLastItem()
 						itemsAccordion.Refresh()
 					})
 				})
@@ -955,6 +957,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 					newHoverIconButton(theme.Icon(theme.IconNameDocumentCreate), "Edit", func() {
 						showEditItemDialog(w4, item, func() {
 							fyne.Do(func() {
+								refreshOpenItems()
 								refreshCompleted()
 								refreshLastItem()
 								itemsAccordion.Refresh()

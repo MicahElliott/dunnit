@@ -38,12 +38,17 @@ func isLifecycleCategory(cat string) bool {
 	return cat == "TODO" || cat == "DOING"
 }
 
+func isLifecycleEndpoint(cat string) bool {
+	return cat == "DONE" || cat == "FAIL" || cat == "WASTED"
+}
+
 // openItemKey identifies the logical item represented by an open ledger
 // entry. TODO and DOING intentionally share a key so state transitions and
 // daily carry-forward copies collapse to one current item.
 func openItemKey(category, text string) string {
 	if isLifecycleCategory(category) {
 		category = "TODO/DOING"
+		text = BaseTenseLeadingWord(text)
 	}
 	return category + "\x00" + stripCarryForwardSince(text)
 }
@@ -85,7 +90,8 @@ func convertedSuffix(category string) string {
 // and DISCARDED entries retain the original text.
 func resolutionMatches(sourceText, resolvedText string) bool {
 	return resolvedText == sourceText ||
-		resolvedText == PastTenseLeadingWord(sourceText)
+		resolvedText == PastTenseLeadingWord(sourceText) ||
+		resolvedText == inflectLifecycleText(sourceText, "DONE")
 }
 
 // parseLedgerLine splits a ledger line "[HH:MM:SS] CATEGORY text"
@@ -168,14 +174,39 @@ func getOpenItems() []OpenItem {
 // recordConvertedDone logs a DONE entry referencing an original open
 // item's text, marking it as resolved (FR-07). The original line is
 // left untouched (append-only ledger design). item.Text's leading
-// word is flipped to past tense first (PastTenseLeadingWord,
+// word is normalized to the terminal past tense (inflectLifecycleText,
 // pastverb.go) -- Plan items are typically phrased as imperatives
 // ("Fix the login bug"), which reads oddly once marked DONE, so this
 // converts it to "Fixed the login bug" instead. Purely cosmetic;
-// harmless no-op if the leading word isn't a recognized/regular verb
-// (returned unchanged by PastTense in that case).
+// harmless no-op if the leading word isn't a recognized/regular verb.
 func recordConvertedDone(item OpenItem) {
-	recordActivity(PastTenseLeadingWord(item.Text)+convertedSuffix(item.Category), "DONE")
+	recordActivity(inflectLifecycleText(item.Text, "DONE")+convertedSuffix(item.Category), "DONE")
+}
+
+// inflectLifecycleText normalizes a lifecycle item's leading verb for its
+// target category: TODO is base/future-facing, DOING is present participle,
+// and terminal categories use simple past. Resolution metadata is removed
+// before inflection and is added by the transition that needs it.
+func inflectLifecycleText(text, category string) string {
+	if !isLifecycleCategory(category) && !isLifecycleEndpoint(category) {
+		return text
+	}
+	base := BaseTenseLeadingWord(stripResolutionSuffix(text))
+	switch {
+	case category == "DOING":
+		return PresentParticipleLeadingWord(base)
+	case isLifecycleEndpoint(category):
+		return PastTenseLeadingWord(base)
+	default:
+		return base
+	}
+}
+
+func transitionLifecycleText(text, fromCategory, toCategory string) string {
+	// BaseTenseLeadingWord is intentionally applied regardless of the source
+	// category, making this safe for text already normalized for the selector
+	// or for older ledger rows that still contain their original imperative.
+	return inflectLifecycleText(text, toCategory)
 }
 
 // completePlannedItem changes a TODO/DOING row to DONE in place, preserving
@@ -192,12 +223,11 @@ func completePlannedEndpoint(item OpenItem, endpoint, text string) error {
 	if !isLifecycleCategory(item.Category) || item.LineIndex < 0 {
 		return nil
 	}
-	switch endpoint {
-	case "DONE", "FAIL", "WASTED":
-	default:
+	if !isLifecycleEndpoint(endpoint) {
 		return nil
 	}
-	return replaceLedgerLineAt(item.LineIndex, endpoint, strings.TrimSpace(text)+convertedSuffix(item.Category))
+	return replaceLedgerLineAt(item.LineIndex, endpoint,
+		strings.TrimSpace(inflectLifecycleText(text, endpoint))+convertedSuffix(item.Category))
 }
 
 // startPlannedItem changes a TODO row to DOING in place. Repeated attempts
@@ -206,7 +236,7 @@ func startPlannedItem(item OpenItem) error {
 	if item.Category != "TODO" || item.LineIndex < 0 {
 		return nil
 	}
-	return replaceLedgerLineCategoryAt(item.LineIndex, "DOING")
+	return replaceLedgerLineAt(item.LineIndex, "DOING", transitionLifecycleText(item.Text, item.Category, "DOING"))
 }
 
 // dittoLifecycleItem turns the latest DONE lifecycle row back into DOING or
@@ -216,7 +246,7 @@ func dittoLifecycleItem(item OpenItem, delta int) error {
 		return nil
 	}
 	if item.Category == "DONE" {
-		return replaceLedgerLineAt(item.LineIndex, "DOING", stripResolutionSuffix(item.Text))
+		return replaceLedgerLineAt(item.LineIndex, "DOING", transitionLifecycleText(item.Text, item.Category, "DOING"))
 	}
 	if item.Category == "DOING" && delta > 0 {
 		return replaceLedgerLineTextAt(item.LineIndex, incrementEntryMins(item.Text, delta))
@@ -229,7 +259,7 @@ func dittoLifecycleItem(item OpenItem, delta int) error {
 // completed -- for deliberately deferring an item so the Upcoming
 // list doesn't grow unbounded. The original line is left untouched.
 func recordPostponed(item OpenItem) {
-	recordActivity(item.Text+convertedSuffix(item.Category), "SOMEDAY")
+	recordActivity(inflectLifecycleText(item.Text, "TODO")+convertedSuffix(item.Category), "SOMEDAY")
 }
 
 // recordDiscarded logs a DISCARDED entry referencing an original open
@@ -238,7 +268,7 @@ func recordPostponed(item OpenItem) {
 // later) since a discarded item isn't expected to come back. The
 // original line is left untouched.
 func recordDiscarded(item OpenItem) {
-	recordActivity(item.Text+convertedSuffix(item.Category), "DISCARDED")
+	recordActivity(inflectLifecycleText(item.Text, "TODO")+convertedSuffix(item.Category), "DISCARDED")
 }
 
 // groupOpenItemsByCategory buckets items by category, preserving
