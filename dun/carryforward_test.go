@@ -29,8 +29,8 @@ func TestCarryForwardDailyPlan_CopiesUnresolvedItem(t *testing.T) {
 	if !ok || cat != "TODO" {
 		t.Fatalf("expected a TODO line, got %q", lines[0])
 	}
-	if !strings.HasPrefix(text, "finish the report") || !strings.Contains(text, "(since ") {
-		t.Errorf("expected carried-forward text to keep original text and add a (since ...) suffix, got %q", text)
+	if !strings.HasPrefix(text, "finish the report") || !strings.Contains(text, " s/") {
+		t.Errorf("expected carried-forward text to keep original text and add an s/YYYY-MM-DD suffix, got %q", text)
 	}
 }
 
@@ -57,8 +57,8 @@ func TestCarryForwardDailyPlan_DeduplicatesHistoricalAndTodayItems(t *testing.T)
 
 	yesterday := time.Now().AddDate(0, 0, -1)
 	writeLedgerLinesForDate(t, yesterday, []string{
-		"[09:00:00] TODO repeated task (since 2026-09-07)",
-		"[09:01:00] TODO repeated task (since 2026-09-07)",
+		"[09:00:00] TODO repeated task s/2026-09-07",
+		"[09:01:00] TODO repeated task s/2026-09-07",
 	})
 	InvalidateLedgerCaches()
 
@@ -112,8 +112,28 @@ func TestCarryForwardDailyPlan_PreservesOriginalSinceDate(t *testing.T) {
 	}
 	_, text, _ := parseLedgerLine(lines[0])
 	wantSince := twoDaysAgo.Format("2006-01-02")
-	if !strings.Contains(text, "(since "+wantSince+")") {
+	if !strings.Contains(text, " s/"+wantSince) {
 		t.Errorf("expected since date %q preserved, got text %q", wantSince, text)
+	}
+}
+
+func TestCarryForwardSinceSuffixUsesFullDate(t *testing.T) {
+	date := time.Date(2026, time.September, 11, 9, 0, 0, 0, time.Local)
+	if got := carryForwardSinceSuffix(date); got != " s/2026-09-11" {
+		t.Fatalf("carryForwardSinceSuffix(%v) = %q, want %q", date, got, " s/2026-09-11")
+	}
+}
+
+func TestParseCarryForwardSinceAcceptsFullDate(t *testing.T) {
+	since, ok := parseCarryForwardSince("task s/2026-09-11")
+	if !ok || since.Format("2006-01-02") != "2026-09-11" {
+		t.Fatalf("carry date = %v, %v", since, ok)
+	}
+	if _, ok := parseCarryForwardSince("task s/2026-99-99"); ok {
+		t.Fatal("invalid carry date parsed successfully")
+	}
+	if _, ok := parseCarryForwardSince("task (since 2026-09-11)"); ok {
+		t.Fatal("legacy carry date parsed successfully")
 	}
 }
 
@@ -247,12 +267,12 @@ func TestLegacyOngoingIsNotActiveOrCarried(t *testing.T) {
 }
 
 func TestStaleBadge(t *testing.T) {
-	fresh := "do a thing (since " + time.Now().Format("2006-01-02") + ")"
+	fresh := "do a thing s/" + time.Now().Format("2006-01-02")
 	if got := staleBadge(fresh); got != "" {
 		t.Errorf("expected no stale badge for a fresh item, got %q", got)
 	}
 
-	old := "do a thing (since " + time.Now().AddDate(0, 0, -10).Format("2006-01-02") + ")"
+	old := "do a thing s/" + time.Now().AddDate(0, 0, -10).Format("2006-01-02")
 	if got := staleBadge(old); got == "" {
 		t.Errorf("expected a stale badge for a 10-day-old item, got none")
 	}
@@ -264,13 +284,17 @@ func TestStaleBadge(t *testing.T) {
 }
 
 func TestStripCarryForwardSince(t *testing.T) {
-	in := "finish the report (since 2026-08-28)"
+	in := "finish the report s/2026-08-28"
 	want := "finish the report"
 	if got := stripCarryForwardSince(in); got != want {
 		t.Errorf("stripCarryForwardSince(%q) = %q, want %q", in, got, want)
 	}
 	if got := stripCarryForwardSince(want); got != want {
 		t.Errorf("stripCarryForwardSince(%q) = %q, want unchanged %q", want, got, want)
+	}
+	legacy := "finish the report (since 2026-08-28)"
+	if got := stripCarryForwardSince(legacy); got != legacy {
+		t.Errorf("stripCarryForwardSince(%q) = %q, want unchanged %q", legacy, got, legacy)
 	}
 }
 

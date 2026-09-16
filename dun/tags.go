@@ -195,13 +195,13 @@ func rankTagsByScore(stats map[string]*tagStat) []string {
 }
 
 // formatTagWithCount renders a tag with its usage count in
-// parentheses, e.g. "#boss (12)".
+// parentheses, e.g. "#boss(12)".
 func formatTagWithCount(tag string, st *tagStat) string {
-	return fmt.Sprintf("%s (%d)", tag, st.count)
+	return fmt.Sprintf("%s(%d)", tag, st.count)
 }
 
 // commonAndRecentTags returns up to limit tags from ledger history,
-// each formatted with its usage count (e.g. "#boss (12)"), ranked by
+// each formatted with its usage count (e.g. "#boss(12)"), ranked by
 // frecency (blended frequency + recency, see gatherTagStats) with
 // all-but-the-most-recent numeric tag (e.g. "#12345") filtered out
 // per Micah's preference -- those are typically accidental/pasted
@@ -226,16 +226,32 @@ func commonAndRecentTags(limit int) []string {
 // (e.g. "#boss") to insert into the entry box on click, plus the
 // count to still display alongside it.
 func commonAndRecentTagsWithCounts(limit int) (tags []string, counts []int) {
-	stats := filterNumericTags(gatherTagStats())
+	tags, stats := commonAndRecentTagsWithStats(limit)
+	counts = make([]int, len(tags))
+	for i, tag := range tags {
+		counts[i] = stats[tag].count
+	}
+	return tags, counts
+}
+
+// commonAndRecentTagsWithStats returns the ranked tags and their stats from
+// one history scan, so callers can render both counts and hover details
+// without rescanning the ledger for each tag.
+func commonAndRecentTagsWithStats(limit int) (tags []string, stats map[string]*tagStat) {
+	stats = filterNumericTags(gatherTagStats())
 	ranked := rankTagsByScore(stats)
 	if len(ranked) > limit {
 		ranked = ranked[:limit]
 	}
-	counts = make([]int, len(ranked))
-	for i, tag := range ranked {
-		counts[i] = stats[tag].count
+	return ranked, stats
+}
+
+func tagUsageTooltip(tag string, stat *tagStat) string {
+	if stat == nil {
+		return ""
 	}
-	return ranked, counts
+	return fmt.Sprintf("%s used %d times; last used %s", tag, stat.count,
+		stat.lastSeen.Format("2006-01-02"))
 }
 
 // matchingTags returns tags from candidates that contain fragment as

@@ -3,6 +3,7 @@ package dun
 import (
 	"image/color"
 	"net/url"
+	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -24,19 +25,29 @@ var tagLinkColor = color.NRGBA{R: 0x1a, G: 0x73, B: 0xe8, A: 0xff}
 // receive Tapped.
 type tagLink struct {
 	widget.BaseWidget
-	text  string
-	onTap func()
+	text    string
+	tooltip string
+	onTap   func()
+
+	popup      *tooltipPopup
+	hoverTimer *time.Timer
 }
 
-func newTagLink(text string, onTap func()) *tagLink {
-	t := &tagLink{text: text, onTap: onTap}
+func newTagLink(text, tooltip string, onTap func()) *tagLink {
+	t := &tagLink{text: text, tooltip: tooltip, onTap: onTap}
 	t.ExtendBaseWidget(t)
 	return t
 }
 
 func (t *tagLink) CreateRenderer() fyne.WidgetRenderer {
-	txt := canvas.NewText(t.text, tagLinkColor)
-	return &tagLinkRenderer{txt: txt}
+	tag, count := splitTagCount(t.text)
+	tagText := canvas.NewText(tag, tagLinkColor)
+	if count == "" {
+		return &tagLinkRenderer{tag: tagText}
+	}
+	countText := canvas.NewText(count, metaTextColor)
+	countText.TextSize = theme.TextSize() * metaTextSizeRatio
+	return &tagLinkRenderer{tag: tagText, count: countText}
 }
 
 func (t *tagLink) Tapped(*fyne.PointEvent) {
@@ -45,9 +56,15 @@ func (t *tagLink) Tapped(*fyne.PointEvent) {
 	}
 }
 
-func (t *tagLink) MouseIn(*desktop.MouseEvent)    {}
+func (t *tagLink) MouseIn(*desktop.MouseEvent) {
+	t.hoverTimer = time.AfterFunc(hoverButtonTooltipDelay, func() {
+		fyne.Do(t.showTooltip)
+	})
+}
+
 func (t *tagLink) MouseMoved(*desktop.MouseEvent) {}
-func (t *tagLink) MouseOut()                      {}
+
+func (t *tagLink) MouseOut() { t.hideTooltip() }
 
 func (t *tagLink) Cursor() desktop.Cursor {
 	return desktop.PointerCursor
@@ -58,26 +75,93 @@ var _ desktop.Hoverable = (*tagLink)(nil)
 var _ desktop.Cursorable = (*tagLink)(nil)
 
 type tagLinkRenderer struct {
-	txt *canvas.Text
+	tag   *canvas.Text
+	count *canvas.Text
 }
 
 func (r *tagLinkRenderer) Layout(size fyne.Size) {
-	r.txt.Resize(size)
+	r.tag.Resize(fyne.NewSize(r.tag.MinSize().Width, size.Height))
+	if r.count != nil {
+		r.count.Move(fyne.NewPos(r.tag.MinSize().Width, 0))
+		r.count.Resize(fyne.NewSize(r.count.MinSize().Width, size.Height))
+	}
 }
 
 func (r *tagLinkRenderer) MinSize() fyne.Size {
-	return r.txt.MinSize()
+	tagSize := r.tag.MinSize()
+	if r.count == nil {
+		return tagSize
+	}
+	countSize := r.count.MinSize()
+	return fyne.NewSize(tagSize.Width+countSize.Width, maxFloat32(tagSize.Height, countSize.Height))
 }
 
 func (r *tagLinkRenderer) Refresh() {
-	canvas.Refresh(r.txt)
+	canvas.Refresh(r.tag)
+	if r.count != nil {
+		canvas.Refresh(r.count)
+	}
 }
 
 func (r *tagLinkRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{r.txt}
+	objects := []fyne.CanvasObject{r.tag}
+	if r.count != nil {
+		objects = append(objects, r.count)
+	}
+	return objects
 }
 
 func (r *tagLinkRenderer) Destroy() {}
+
+func splitTagCount(text string) (tag, count string) {
+	idx := strings.LastIndex(text, "(")
+	if idx <= 0 || !strings.HasSuffix(text, ")") {
+		return text, ""
+	}
+	return text[:idx], text[idx:]
+}
+
+func maxFloat32(a, b float32) float32 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func (t *tagLink) showTooltip() {
+	if t.popup != nil || t.tooltip == "" || fyne.CurrentApp() == nil {
+		return
+	}
+	host := fyne.CurrentApp().Driver().CanvasForObject(t)
+	if host == nil {
+		return
+	}
+	label := widget.NewLabel(t.tooltip)
+	ownerPos := fyne.CurrentApp().Driver().AbsolutePositionForObject(t)
+	popup := &tooltipPopup{
+		host:        host,
+		ownerPos:    ownerPos,
+		ownerSize:   t.Size(),
+		tooltipPos:  tooltipPositionAbove(ownerPos, label),
+		label:       label,
+		ownerTapped: func() { t.Tapped(nil) },
+	}
+	popup.ExtendBaseWidget(popup)
+	popup.Resize(host.Size())
+	t.popup = popup
+	host.Overlays().Add(popup)
+}
+
+func (t *tagLink) hideTooltip() {
+	if t.hoverTimer != nil {
+		t.hoverTimer.Stop()
+		t.hoverTimer = nil
+	}
+	if t.popup != nil {
+		t.popup.Hide()
+		t.popup = nil
+	}
+}
 
 // urlLink is the compact clickable link used inside entry rows. It keeps the
 // label small and blue, but deliberately leaves it un-underlined; the pointer

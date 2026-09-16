@@ -120,8 +120,10 @@ func replaceEntryMins(text string, mins int) string {
 			insertAt = idx
 		}
 	}
-	if since := strings.LastIndex(core, " (since "); since >= 0 && strings.HasSuffix(core, ")") && since < insertAt {
-		insertAt = since
+	for _, pattern := range []*regexp.Regexp{carryForwardSincePattern} {
+		if match := pattern.FindStringIndex(core); match != nil && match[0] < insertAt {
+			insertAt = match[0]
+		}
 	}
 	return text[:leading] + core[:insertAt] + " @" + strconv.Itoa(mins) + "m" + core[insertAt:] + text[coreEnd:]
 }

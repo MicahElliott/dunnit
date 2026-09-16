@@ -1,47 +1,46 @@
 package dun
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 )
 
 // carryForwardSincePrefix marks a copied-forward open item with its
-// original log date, e.g. " (since 2026-08-28)" -- parallel to
-// todos.go's convertedSuffix convention, not a new tag/marker syntax.
+// original log date, e.g. " s/2026-09-11". The full date keeps the stored
+// marker unambiguous; the row renderer turns it into a compact seedling/date
+// badge.
 // See docs/todo-carryforward-design.md.
-const carryForwardSincePrefix = " (since "
+const carryForwardSincePrefix = " s/"
+
+var carryForwardSincePattern = regexp.MustCompile(` s/(\d{4}-\d{2}-\d{2})$`)
 
 func carryForwardSinceSuffix(date time.Time) string {
-	return carryForwardSincePrefix + date.Format("2006-01-02") + ")"
+	return carryForwardSincePrefix + date.Format("2006-01-02")
 }
 
-// parseCarryForwardSince extracts the "since" date embedded by
-// carryForwardSinceSuffix from text, if present. ok is false if text
-// has no such suffix.
+// parseCarryForwardSince extracts the full date embedded by
+// carryForwardSinceSuffix from text, if present.
 func parseCarryForwardSince(text string) (since time.Time, ok bool) {
-	idx := strings.LastIndex(text, carryForwardSincePrefix)
-	if idx == -1 || !strings.HasSuffix(text, ")") {
+	match := carryForwardSincePattern.FindStringSubmatch(text)
+	if match == nil {
 		return time.Time{}, false
 	}
-	datePart := text[idx+len(carryForwardSincePrefix) : len(text)-1]
-	t, err := time.ParseInLocation("2006-01-02", datePart, time.Local)
+	t, err := time.ParseInLocation("2006-01-02", match[1], time.Local)
 	if err != nil {
 		return time.Time{}, false
 	}
 	return t, true
 }
 
-// stripCarryForwardSince removes a carryForwardSinceSuffix from text
-// if present, otherwise returns text unchanged -- used so
-// re-copying an already-once-carried-forward item doesn't stack a
-// second "(since ...)" suffix on top of the first.
+// stripCarryForwardSince removes the carry-forward suffix from text if
+// present. This prevents re-copying an item from stacking a second marker.
 func stripCarryForwardSince(text string) string {
-	idx := strings.LastIndex(text, carryForwardSincePrefix)
-	if idx == -1 || !strings.HasSuffix(text, ")") {
-		return text
+	if match := carryForwardSincePattern.FindStringIndex(text); match != nil {
+		return text[:match[0]]
 	}
-	return text[:idx]
+	return text
 }
 
 // staleDateFor returns the date an open item's staleness/carry-
@@ -353,7 +352,7 @@ const staleDaysThreshold = 4
 // alone never changes the ledger.
 const staleReviewDays = 7
 
-// staleBadge returns a short display suffix (e.g. " \u26a0 4d") for
+// staleBadge returns a short display suffix (e.g. " ⚠️4d") for
 // an item whose carryForwardSinceSuffix-embedded date is more than
 // staleDaysThreshold days old, or "" if item.Text has no such suffix
 // or isn't old enough yet to flag. Purely a display computation --
@@ -367,5 +366,14 @@ func staleBadge(text string) string {
 	if days < staleDaysThreshold {
 		return ""
 	}
-	return " \u26a0 " + strconv.Itoa(days) + "d"
+	return " ⚠️" + strconv.Itoa(days) + "d"
+}
+
+// openItemDisplayText keeps the stored creation marker available to
+// itemTextLabel, which renders it as a compact seedling/date badge, and adds
+// an age badge once the item is stale enough to deserve attention. All
+// open-item views use this helper so TODO, DOING, and the other tracked
+// categories present the same lifecycle cues.
+func openItemDisplayText(text string) string {
+	return text + staleBadge(text)
 }

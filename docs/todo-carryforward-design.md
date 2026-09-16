@@ -12,7 +12,8 @@ When Start of Day runs, it searches the previous seven calendar days from
 newest to oldest. It chooses the newest day whose unresolved daily-plan items
 include TODO or DOING entries, then copies only those items into today's
 ledger. It does not combine items from multiple days. Each copied item keeps
-its original `(since YYYY-MM-DD)` annotation so its age remains visible.
+its original `s/YYYY-MM-DD` annotation so its age remains visible. The UI
+presents that stored date as a compact `🌱MM/DD` badge.
 
 The carry operation is idempotent from the ledger's contents, which means a
 second machine that has already received the copied lines does not append

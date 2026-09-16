@@ -3,6 +3,7 @@ package dun
 import (
 	"image/color"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -20,8 +21,8 @@ var tagTextColor = color.NRGBA{R: 0, G: 100, B: 0, A: 255}
 
 // metaTextColor is a medium-light gray (not so light it's hard to
 // read) used for trailing display-only metadata appended to an item
-// row's text -- " @N[mhd]" (duration, ui.go's withMins), " (since ...)"
-// (carry-forward annotation, carryforward.go), and " \u26a0 Nd" (the
+// row's text -- " @N[mhd]" (duration, ui.go's withMins), " s/YYYY-MM-DD"
+// (carry-forward annotation, carryforward.go), and " ⚠️Nd" (the
 // stale badge, also carryforward.go) -- so this bookkeeping visually
 // recedes behind the item's actual content.
 var metaTextColor = color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xff}
@@ -33,18 +34,32 @@ const metaTextSizeRatio = 0.85
 
 // trailingMetaPattern matches one or more of the known trailing
 // display-metadata suffixes back-to-back at the very end of an item's
-// text: " @N[mhd]" (duration), " (since YYYY-MM-DD)" (carry-forward), and
-// " \u26a0 Nd" (stale badge). Matched as a repeating group so any
+// text: " @N[mhd]" (duration), " s/YYYY-MM-DD" (carry-forward), and
+// " ⚠️Nd" (stale badge). Matched as a repeating group so any
 // combination/order of these (in practice at most one or two ever
 // co-occur -- see splitTrailingMeta's doc comment) is captured as one
 // contiguous trailing run.
 var trailingMetaPattern = regexp.MustCompile(
 	`(?:` +
 		` @\d+[mhd]` +
-		`| \(since \d{4}-\d{2}-\d{2}\)` +
+		`| s/\d{4}-\d{2}-\d{2}` +
 		`| \(via [A-Z_]+\)` +
-		`| \x{26a0} \d+d` +
+		`| \x{26a0}\x{fe0f}\d+d` +
 		`)+$`)
+
+var metadataTokenPattern = regexp.MustCompile(
+	`(?:` +
+		` @\d+[mhd]` +
+		`| s/\d{4}-\d{2}-\d{2}` +
+		`| \(via [A-Z_]+\)` +
+		`| \x{26a0}\x{fe0f}\d+d` +
+		`)`)
+
+var (
+	durationMetadataPattern  = regexp.MustCompile(`^@(\d+)([mhd])$`)
+	lifecycleMetadataPattern = regexp.MustCompile(`^\(via ([A-Z_]+)\)$`)
+	ageMetadataPattern       = regexp.MustCompile(`^\x{26a0}\x{fe0f}(\d+)d$`)
+)
 
 // splitTrailingMeta splits text into (core, meta), where meta is the
 // longest trailing run of known display-metadata suffixes (see
@@ -52,8 +67,8 @@ var trailingMetaPattern = regexp.MustCompile(
 // if text has no such trailing suffix. In practice a single row only
 // ever carries one flavor of trailing metadata at a time (Planned
 // rows show at most a stale badge; Endings/Hilites rows show at most
-// a mins suffix -- carry-forward's own "(since ...)" is stripped
-// before display via stripCarryForwardSince), but the pattern handles
+// a mins suffix. Carry-forward's own "s/YYYY-MM-DD" is kept here so it
+// can render as the seedling/date badge; the pattern handles
 // any combination generically rather than assuming that stays true.
 func splitTrailingMeta(text string) (core, meta string) {
 	loc := trailingMetaPattern.FindStringIndex(text)
@@ -94,12 +109,44 @@ func itemTextLabel(text string) fyne.CanvasObject {
 	appendTextAndTags(&runs, core[position:])
 
 	if meta != "" {
-		metaTxt := canvas.NewText(meta, metaTextColor)
-		metaTxt.TextSize = theme.TextSize() * metaTextSizeRatio
-		runs = append(runs, metaTxt)
+		for _, match := range metadataTokenPattern.FindAllStringIndex(meta, -1) {
+			token := meta[match[0]:match[1]]
+			label, tooltip := displayMetadataToken(token)
+			if tooltip == "" {
+				metaTxt := canvas.NewText(label, metaTextColor)
+				metaTxt.TextSize = theme.TextSize() * metaTextSizeRatio
+				runs = append(runs, metaTxt)
+				continue
+			}
+			runs = append(runs, newHoverText(label, metaTextColor,
+				theme.TextSize()*metaTextSizeRatio, tooltip))
+		}
 	}
 
 	return container.New(newTightRowLayout(), runs...)
+}
+
+func displayMetadataToken(token string) (label, tooltip string) {
+	trimmed := strings.TrimSpace(token)
+	if match := durationMetadataPattern.FindStringSubmatch(trimmed); match != nil {
+		label = " \u23f1" + match[1] + match[2]
+		n, _ := strconv.Atoi(match[1])
+		unit := map[byte]string{'m': "min", 'h': "hour", 'd': "day"}[match[2][0]]
+		if n != 1 {
+			unit += "s"
+		}
+		return label, "Spent " + match[1] + " " + unit
+	}
+	if since, ok := parseCarryForwardSince("item" + token); ok {
+		return " 🌱" + since.Format("01/02"), "Created on " + since.Format("2006-01-02")
+	}
+	if match := lifecycleMetadataPattern.FindStringSubmatch(trimmed); match != nil {
+		return token, "Lifecycle source: " + match[1]
+	}
+	if match := ageMetadataPattern.FindStringSubmatch(trimmed); match != nil {
+		return " ⚠️" + match[1] + "d", "Open for " + match[1] + " days"
+	}
+	return token, ""
 }
 
 func appendTextAndTags(runs *[]fyne.CanvasObject, text string) {

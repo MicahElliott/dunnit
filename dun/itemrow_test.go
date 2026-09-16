@@ -1,17 +1,19 @@
 package dun
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestSplitTrailingMeta(t *testing.T) {
 	cases := map[string][2]string{
-		"Fix the login bug":                    {"Fix the login bug", ""},
-		"walk the dog @15m":                    {"walk the dog", " @15m"},
-		"long task @2h":                        {"long task", " @2h"},
-		"multi-day task @4d":                   {"multi-day task", " @4d"},
-		"finish the report (since 2026-08-28)": {"finish the report", " (since 2026-08-28)"},
-		"old todo \u26a0 4d":                   {"old todo", " \u26a0 4d"},
-		"todo (since 2026-08-28) \u26a0 4d":    {"todo", " (since 2026-08-28) \u26a0 4d"},
-		"todo @10m (via DOING)":                {"todo", " @10m (via DOING)"},
+		"Fix the login bug":                {"Fix the login bug", ""},
+		"walk the dog @15m":                {"walk the dog", " @15m"},
+		"long task @2h":                    {"long task", " @2h"},
+		"multi-day task @4d":               {"multi-day task", " @4d"},
+		"finish the report s/2026-08-28":   {"finish the report", " s/2026-08-28"},
+		"old todo \u26a0\ufe0f4d":          {"old todo", " \u26a0\ufe0f4d"},
+		"todo s/2026-08-28 \u26a0\ufe0f4d": {"todo", " s/2026-08-28 \u26a0\ufe0f4d"},
+		"todo @10m (via DOING)":            {"todo", " @10m (via DOING)"},
 	}
 	for in, want := range cases {
 		core, meta := splitTrailingMeta(in)
@@ -21,12 +23,29 @@ func TestSplitTrailingMeta(t *testing.T) {
 	}
 }
 
+func TestDisplayMetadataToken(t *testing.T) {
+	tests := []struct {
+		token, wantLabel, wantTooltip string
+	}{
+		{" @30m", " ⏱30m", "Spent 30 mins"},
+		{" s/2026-09-11", " 🌱09/11", "Created on 2026-09-11"},
+		{" ⚠️5d", " ⚠️5d", "Open for 5 days"},
+	}
+	for _, tt := range tests {
+		label, tooltip := displayMetadataToken(tt.token)
+		if label != tt.wantLabel || tooltip != tt.wantTooltip {
+			t.Errorf("displayMetadataToken(%q) = (%q, %q), want (%q, %q)",
+				tt.token, label, tooltip, tt.wantLabel, tt.wantTooltip)
+		}
+	}
+}
+
 func TestStripDisplayMetadata(t *testing.T) {
 	cases := map[string]string{
 		"finish the report (via DOING)":      "finish the report",
 		"finish the report @20m (via DOING)": "finish the report",
-		"carry the task (since 2026-09-01)":  "carry the task",
-		"old task ⚠ 4d":                      "old task",
+		"carry the task s/2026-09-01":        "carry the task",
+		"old task ⚠️4d":                      "old task",
 		"ordinary text with (parentheses)":   "ordinary text with (parentheses)",
 	}
 	for input, want := range cases {

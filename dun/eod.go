@@ -91,7 +91,7 @@ func eodOpenItemsSection(category string) (box *fyne.Container, items []OpenItem
 		c := widget.NewCheck("", nil)
 		c.SetChecked(false)
 		checks[i] = c
-		box.Add(container.NewHBox(c, itemTextLabel(stripCarryForwardSince(item.Text)+staleBadge(item.Text))))
+		box.Add(container.NewHBox(c, itemTextLabel(openItemDisplayText(item.Text))))
 	}
 	return box, items, checks
 }

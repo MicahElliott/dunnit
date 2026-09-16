@@ -19,6 +19,16 @@ func TestExtractTags_None(t *testing.T) {
 	}
 }
 
+func TestFormatTagWithCountIsCompact(t *testing.T) {
+	if got := formatTagWithCount("#snap", &tagStat{count: 42}); got != "#snap(42)" {
+		t.Fatalf("formatTagWithCount = %q, want %q", got, "#snap(42)")
+	}
+	tag, count := splitTagCount("#snap(42)")
+	if tag != "#snap" || count != "(42)" {
+		t.Fatalf("splitTagCount = (%q, %q), want (%q, %q)", tag, count, "#snap", "(42)")
+	}
+}
+
 func TestMatchingTags(t *testing.T) {
 	candidates := []string{"#boss", "#personal", "#ticketno", "#emacs"}
 

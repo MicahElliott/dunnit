@@ -251,9 +251,9 @@ func TestLifecycleDurationMetadata(t *testing.T) {
 		{"hours", "task @2h", 120, "task @125m"},
 		{"days", "task @4d", 4 * 24 * 60, "task @5765m"},
 		{"completion marker", "task @10m (via DOING)", 10, "task @15m (via DOING)"},
-		{"carry and marker", "task @10m (since 2026-09-01) (via DOING)", 10, "task @15m (since 2026-09-01) (via DOING)"},
+		{"carry and marker", "task @10m s/2026-09-01 (via DOING)", 10, "task @15m s/2026-09-01 (via DOING)"},
+		{"carry", "task s/2026-09-01", 0, "task @5m s/2026-09-01"},
 		{"malformed", "task @xm (via DOING)", 0, "task @xm @5m (via DOING)"},
-		{"missing", "task (since 2026-09-01)", 0, "task @5m (since 2026-09-01)"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

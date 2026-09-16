@@ -856,7 +856,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 				})
 			}))
 			row := container.NewBorder(nil, nil, nil, container.NewHBox(actions...),
-				itemTextLabel(categoryIconPrefix(item.Category)+stripCarryForwardSince(item.Text)+staleBadge(item.Text)))
+				itemTextLabel(categoryIconPrefix(item.Category)+openItemDisplayText(item.Text)))
 			openItemsBox.Add(row)
 		}
 		cats, grouped := groupOpenItemsByCategory(items)
@@ -1096,7 +1096,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 			lastItemRow.Refresh()
 			return
 		}
-		lastItemRow.Add(itemTextLabel("Last doing: " + stripCarryForwardSince(item.Text)))
+		lastItemRow.Add(itemTextLabel("Last doing: " + openItemDisplayText(item.Text)))
 		lastItemRow.Refresh()
 	}
 	refreshLastItem()
@@ -1148,11 +1148,12 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 		input.Refresh()
 		FocusMainInput()
 	}
-	frecentTags, frecentCounts := commonAndRecentTagsWithCounts(8)
+	frecentTags, frecentStats := commonAndRecentTagsWithStats(8)
 	frecentTagsRow := container.NewHBox(widget.NewLabel("Frecent tags:"))
-	for i, tag := range frecentTags {
+	for _, tag := range frecentTags {
 		tag := tag // capture
-		frecentTagsRow.Add(newTagLink(formatTagWithCount(tag, &tagStat{count: frecentCounts[i]}), func() {
+		stat := frecentStats[tag]
+		frecentTagsRow.Add(newTagLink(formatTagWithCount(tag, stat), tagUsageTooltip(tag, stat), func() {
 			insertTagAtCursor(tag)
 		}))
 	}
