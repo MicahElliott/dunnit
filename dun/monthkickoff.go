@@ -44,7 +44,7 @@ func showMonthKickoffWindow(a fyne.App, anchor time.Time) {
 		currentGoalsBox.Add(widget.NewLabel("(no current GOALs logged yet)"))
 	}
 	for _, item := range currentGoals {
-		currentGoalsBox.Add(widget.NewLabel(categoryIconPrefix(item.Category) + item.Text))
+		currentGoalsBox.Add(itemTextLabel(categoryIconPrefix(item.Category) + item.Text))
 	}
 	newGoalsEntry := widget.NewMultiLineEntry()
 	newGoalsEntry.SetPlaceHolder("New/updated GOALs for this month? One per line\u2026")

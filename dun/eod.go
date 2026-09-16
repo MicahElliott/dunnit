@@ -88,10 +88,10 @@ func eodOpenItemsSection(category string) (box *fyne.Container, items []OpenItem
 	box = container.NewVBox()
 	checks = make([]*widget.Check, len(items))
 	for i, item := range items {
-		c := widget.NewCheck(stripCarryForwardSince(item.Text)+staleBadge(item.Text), nil)
+		c := widget.NewCheck("", nil)
 		c.SetChecked(false)
 		checks[i] = c
-		box.Add(c)
+		box.Add(container.NewHBox(c, itemTextLabel(stripCarryForwardSince(item.Text)+staleBadge(item.Text))))
 	}
 	return box, items, checks
 }
@@ -108,15 +108,15 @@ func showEODWindow(a fyne.App) {
 	w := a.NewWindow("Dunnit: End of Day")
 
 	// Today's items, shown first -- read-only, so the user has the
-	// full day in view before answering anything below. Uses a plain
-	// widget.Label rather than a disabled MultiLineEntry: disabling
-	// an Entry recolors its text via theme.ColorNameDisabled, which
-	// (at least with the LightTheme this app forces via
-	// a.Settings().SetTheme) renders too close to the background to
-	// read -- the box looked entirely blank even though the text was
-	// there. Label has no such disabled-state recoloring.
-	todayBody := widget.NewLabel(strings.Join(readLedgerLines(), "\n"))
-	todayBody.Wrapping = fyne.TextWrapWord
+	// full day in view before answering anything below. Render each
+	// line separately so inline entry links remain clickable.
+	todayBody := container.NewVBox()
+	for _, line := range readLedgerLines() {
+		todayBody.Add(itemTextLabel(line))
+	}
+	if len(todayBody.Objects) == 0 {
+		todayBody.Add(widget.NewLabel("Nothing logged yet today."))
+	}
 	// Wrapped in a Scroll for the form (so a long day doesn't blow up
 	// the whole window), but Scroll doesn't inherit its child's
 	// MinSize by default -- without an explicit SetMinSize here, it

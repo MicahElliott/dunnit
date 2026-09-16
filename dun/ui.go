@@ -778,7 +778,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	openItemsBox := container.NewVBox()
 	var refreshOpenItems func()
 	var refreshCompleted func()          // forward decl -- used inside refreshOpenItems's Done button, defined below
-	var refreshLastItem func()           // forward decl -- used inside refreshOpenItems's Done button and saveEntry, defined further below (needs lastItemLabel)
+	var refreshLastItem func()           // forward decl -- used inside refreshOpenItems's Done button and saveEntry, defined further below (needs lastItemRow)
 	var itemsAccordion *widget.Accordion // forward decl -- used inside refreshOpenItems's Done/Postpone/Discard buttons, defined below
 	// showAllPlanned toggles whether Planned's non-TODO categories
 	// (GOAL/WAITING/QUESTION/FIXME/RISK) are shown -- default false
@@ -1083,17 +1083,21 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	// that saveEntry exists.
 	saveBtn.OnTapped = saveEntry
 
-	// lastItemLabel shows the current DOING item just below the buttons
+	// lastItemRow shows the current DOING item just below the buttons
 	// row. Ditto extends this active item; once it reaches DONE it is no
-	// longer offered as the item to continue.
-	lastItemLabel := widget.NewLabel("")
+	// longer offered as the item to continue. It uses the same inline
+	// renderer as the item lists so any link remains clickable.
+	lastItemRow := container.NewHBox()
 	refreshLastItem = func() {
+		lastItemRow.RemoveAll()
 		item, ok := lastDoingItem()
 		if !ok {
-			lastItemLabel.SetText("(nothing doing right now)")
+			lastItemRow.Add(widget.NewLabel("(nothing doing right now)"))
+			lastItemRow.Refresh()
 			return
 		}
-		lastItemLabel.SetText("Last doing: " + stripCarryForwardSince(item.Text))
+		lastItemRow.Add(itemTextLabel("Last doing: " + stripCarryForwardSince(item.Text)))
+		lastItemRow.Refresh()
 	}
 	refreshLastItem()
 
@@ -1114,7 +1118,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 			itemsAccordion.Refresh()
 		}
 	})
-	lastDoneRow := container.NewHBox(dittoBtn, lastItemLabel)
+	lastDoneRow := container.NewHBox(dittoBtn, lastItemRow)
 
 	// showAllTagsBtn opens a standalone window listing every known
 	// tag (KnownTags(), full ledger-history scan) -- "Frecent tags:"

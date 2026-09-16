@@ -116,9 +116,9 @@ func showNavigatorWindow(a fyne.App) {
 	rangeSelect := widget.NewSelect(navigatorDateRangeOptions, nil)
 	rangeSelect.SetSelected("All time")
 
-	results := widget.NewMultiLineEntry()
-	results.Wrapping = fyne.TextWrapOff
-	results.SetMinRowsVisible(18)
+	resultsBox := container.NewVBox()
+	resultsScroll := container.NewVScroll(resultsBox)
+	resultsScroll.SetMinSize(fyne.NewSize(0, 360))
 
 	countLabel := widget.NewLabel("")
 
@@ -138,19 +138,20 @@ func showNavigatorWindow(a fyne.App) {
 
 	refresh := func() {
 		currentEntries = FilterLedgerEntries(buildQuery())
+		resultsBox.RemoveAll()
 		if len(currentEntries) == 0 {
 			countLabel.SetText("No entries found.")
-			results.SetText("")
+			resultsBox.Refresh()
 			return
 		}
 		countLabel.SetText(pluralCount(len(currentEntries), "entry", "entries"))
-		var sb strings.Builder
 		for _, e := range currentEntries {
-			sb.WriteString(e.Date.Format("2006-01-02") + " " +
+			line := e.Date.Format("2006-01-02") + " " +
 				e.Time.Format("15:04:05") + "  " +
-				e.Category + "  " + e.Text + "\n")
+				e.Category + "  " + e.Text
+			resultsBox.Add(itemTextLabel(line))
 		}
-		results.SetText(sb.String())
+		resultsBox.Refresh()
 	}
 	catSelect.OnChanged = func(string) { refresh() }
 	rangeSelect.OnChanged = func(string) { refresh() }
@@ -174,7 +175,7 @@ func showNavigatorWindow(a fyne.App) {
 	content := container.NewVBox(
 		filterRow,
 		container.NewBorder(nil, nil, nil, container.NewHBox(histogramBtn, askAIBtn), countLabel),
-		results,
+		resultsScroll,
 	)
 
 	w.SetContent(windowPad(content))

@@ -103,7 +103,7 @@ func showSomedayBrowserWindow(a fyne.App) {
 		listBox.Add(widget.NewLabel(fmt.Sprintf("%d SOMEDAY item(s):", len(items))))
 		for _, item := range items {
 			item := item // capture
-			row := widget.NewLabel(categoryIconPrefix(item.Category) + item.Text)
+			row := itemTextLabel(categoryIconPrefix(item.Category) + item.Text)
 			promoteTodoBtn := widget.NewButton("→ TODO", func() {
 				promoteSomedayItem(item, "TODO")
 				refresh()

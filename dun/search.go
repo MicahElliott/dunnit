@@ -56,28 +56,29 @@ func showSearchDialog(a fyne.App) {
 	queryEntry := widget.NewEntry()
 	queryEntry.SetPlaceHolder("Search term (tag, category, or keyword)\u2026")
 
-	results := widget.NewMultiLineEntry()
-	results.Wrapping = fyne.TextWrapOff
-	results.SetMinRowsVisible(15)
+	resultsBox := container.NewVBox()
+	resultsScroll := container.NewVScroll(resultsBox)
+	resultsScroll.SetMinSize(fyne.NewSize(0, 300))
 
 	runSearch := func() {
 		matches := searchLedgers(queryEntry.Text)
+		resultsBox.RemoveAll()
 		if len(matches) == 0 {
-			results.SetText("(no matches)")
+			resultsBox.Add(widget.NewLabel("(no matches)"))
+			resultsBox.Refresh()
 			return
 		}
-		var sb strings.Builder
 		for _, m := range matches {
-			sb.WriteString(m.file + ": " + m.line + "\n")
+			resultsBox.Add(itemTextLabel(m.file + ": " + m.line))
 		}
-		results.SetText(sb.String())
+		resultsBox.Refresh()
 	}
 	queryEntry.OnSubmitted = func(string) { runSearch() }
 	searchBtn := widget.NewButton("Search", runSearch)
 
 	content := container.NewVBox(
 		container.NewBorder(nil, nil, nil, searchBtn, queryEntry),
-		results,
+		resultsScroll,
 	)
 
 	w.SetContent(windowPad(content))

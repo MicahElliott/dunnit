@@ -200,6 +200,11 @@ because those can open a browser or otherwise make network requests.
   not ready to commit to; revisit it via the SOMEDAY browser.
 - Prefer the keyboard over the mouse throughout — most entry fields
   and pickers are built for it.
+- Add links inline with Markdown, for example
+  `[Jira #74750](https://example.atlassian.net/browse/ABC-74750)`. Bare
+  `https://...` URLs are also clickable in presentations; Dunnit keeps the
+  full URL in the ledger and may show a compact service label such as
+  `Jira #74750`, `GitHub PR #12`, `Teams`, or `Google Doc`.
 
 For install, configuration, and data-storage details, see the
 top-level [`README`](../README.md) rather than this guide.

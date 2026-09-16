@@ -70,13 +70,10 @@ func stripDisplayMetadata(text string) string {
 	return strings.TrimRight(core, " \t")
 }
 
-// itemTextLabel renders text as a row of canvas.Text runs: any
-// trailing display-metadata suffix (see splitTrailingMeta) is peeled
-// off and rendered smaller/grayed out (metaTextColor/
-// metaTextSizeRatio); within the remaining "core" text, every #tag
-// substring (per extractTags/tagPattern, tags.go) is colored
-// tagTextColor, everything else left in the theme's normal foreground
-// color. Falls back to a single plain run if core has no tags. Used
+// itemTextLabel renders text as a row of canvas.Text and clickable link
+// runs: any trailing display-metadata suffix (see splitTrailingMeta) is
+// peeled off and rendered smaller/grayed out; #tags are colored green and
+// Markdown/bare URLs are rendered as small blue links. Used
 // for item rows in Daybook's Planned/Endings/Hilites sections. Uses
 // tightRowLayout (not container.NewHBox) so adjacent runs render
 // flush against each other -- HBox's normal inter-child theme.Padding
@@ -87,26 +84,14 @@ func itemTextLabel(text string) fyne.CanvasObject {
 	core, meta := splitTrailingMeta(text)
 
 	var runs []fyne.CanvasObject
-	tags := extractTags(core)
-	if len(tags) == 0 {
-		runs = append(runs, canvas.NewText(core, theme.Color(theme.ColorNameForeground)))
-	} else {
-		remaining := core
-		for _, tag := range tags {
-			idx := strings.Index(remaining, tag)
-			if idx == -1 {
-				continue // shouldn't happen, tag came from extractTags(core) itself
-			}
-			if before := remaining[:idx]; before != "" {
-				runs = append(runs, canvas.NewText(before, theme.Color(theme.ColorNameForeground)))
-			}
-			runs = append(runs, canvas.NewText(tag, tagTextColor))
-			remaining = remaining[idx+len(tag):]
-		}
-		if remaining != "" {
-			runs = append(runs, canvas.NewText(remaining, theme.Color(theme.ColorNameForeground)))
-		}
+	links := parseEntryLinks(core)
+	position := 0
+	for _, link := range links {
+		appendTextAndTags(&runs, core[position:link.Start])
+		runs = append(runs, newURLLink(link.Text, link.URL))
+		position = link.End
 	}
+	appendTextAndTags(&runs, core[position:])
 
 	if meta != "" {
 		metaTxt := canvas.NewText(meta, metaTextColor)
@@ -115,4 +100,18 @@ func itemTextLabel(text string) fyne.CanvasObject {
 	}
 
 	return container.New(newTightRowLayout(), runs...)
+}
+
+func appendTextAndTags(runs *[]fyne.CanvasObject, text string) {
+	position := 0
+	for _, match := range tagPattern.FindAllStringIndex(text, -1) {
+		if match[0] > position {
+			*runs = append(*runs, canvas.NewText(text[position:match[0]], theme.Color(theme.ColorNameForeground)))
+		}
+		*runs = append(*runs, canvas.NewText(text[match[0]:match[1]], tagTextColor))
+		position = match[1]
+	}
+	if position < len(text) {
+		*runs = append(*runs, canvas.NewText(text[position:], theme.Color(theme.ColorNameForeground)))
+	}
 }
