@@ -88,3 +88,20 @@ func ensureEODReportContext(ctx context.Context, date time.Time) (path string, c
 	}
 	return path, true, nil
 }
+
+// writeReportFileIfAbsent writes a newly generated EOD report without
+// replacing an existing file. EOD checks this before opening, and O_EXCL
+// keeps that no-overwrite guarantee if another process creates the report
+// while the form is open.
+func writeReportFileIfAbsent(path, text string) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = f.WriteString(text)
+	return err
+}

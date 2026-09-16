@@ -57,6 +57,13 @@ func withinWorkHours(cfg Config, now time.Time) bool {
 	return !now.Before(start) && !now.After(end)
 }
 
+// sendAutoPopupNotification gives every scheduled popup the same OS-level
+// application identity. The app icon is installed before Schedule runs in
+// main, and Fyne passes that icon to each platform notification backend.
+func sendAutoPopupNotification(a fyne.App, message string) {
+	a.SendNotification(fyne.NewNotification("Dunnit", message))
+}
+
 // Schedule sets up the recurring popups (hourly activity prompt, and a
 // lunchtime goals reminder), reading times from config.toml. It shows
 // (raises) the given main window rather than just sending a passive
@@ -98,8 +105,7 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 			if IsDoNotDisturb() {
 				return
 			}
-			a.SendNotification(fyne.NewNotification(
-				"Dunnit", "What are you working on?"))
+			sendAutoPopupNotification(a, "What are you working on?")
 			fyne.Do(func() {
 				ShowDaybook(w, true)
 			})
@@ -116,8 +122,7 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 				if !withinWorkHours(cfg, time.Now()) {
 					return
 				}
-				a.SendNotification(fyne.NewNotification(
-					"Dunnit Lunchtime", "How are your goals coming along?"))
+				sendAutoPopupNotification(a, "How are your goals coming along?")
 				fyne.Do(func() {
 					ShowDaybook(w, true)
 				})
@@ -148,8 +153,7 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 					return
 				}
 				if isFirstWeekdayOfMonth(now) {
-					a.SendNotification(fyne.NewNotification(
-						"Dunnit", "Start of a new month!"))
+					sendAutoPopupNotification(a, "A new month is ready for review and planning.")
 					fyne.Do(func() {
 						if startOfDayPending(cfg, now) {
 							showSODWindow(a)
@@ -162,8 +166,7 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 				if !startOfDayPending(cfg, now) {
 					return
 				}
-				a.SendNotification(fyne.NewNotification(
-					"Dunnit", "Good morning! Here’s where things stand."))
+				sendAutoPopupNotification(a, "Good morning! Here’s where things stand.")
 				fyne.Do(func() {
 					showSODWindow(a)
 				})
@@ -179,11 +182,10 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 			gocron.DailyJob(1, gocron.NewAtTimes(gocron.NewAtTime(uint(eh), uint(em), 0))),
 			gocron.NewTask(func() {
 				now := time.Now()
-				if isOffDay(LoadConfig(), now) {
+				if isOffDay(LoadConfig(), now) || endOfDayAlreadyRun(now) {
 					return
 				}
-				a.SendNotification(fyne.NewNotification(
-					"Dunnit", "End of day! Let’s wrap up."))
+				sendAutoPopupNotification(a, "End of day! Let’s wrap up.")
 				fyne.Do(func() {
 					showEODWindow(a)
 				})
@@ -217,8 +219,7 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 					key := fmt.Sprintf("%d:%s", i, occ.Format(time.RFC3339))
 					if fired, ok := firedFor[key]; !ok || !fired.Equal(occ) {
 						firedFor[key] = occ
-						a.SendNotification(fyne.NewNotification(
-							"Dunnit", "Upcoming meeting "+m.Tag+" at "+m.Time))
+						sendAutoPopupNotification(a, "Upcoming meeting "+m.Tag+" at "+m.Time)
 						m := m
 						fyne.Do(func() {
 							if strings.EqualFold(m.Tag, "#dsu") {
@@ -234,8 +235,7 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 					key := fmt.Sprintf("%d:%s", i, occ.Format(time.RFC3339))
 					if fired, ok := firedPostFor[key]; !ok || !fired.Equal(occ) {
 						firedPostFor[key] = occ
-						a.SendNotification(fyne.NewNotification(
-							"Dunnit", "Meeting summary for "+m.Tag))
+						sendAutoPopupNotification(a, "Meeting summary for "+m.Tag)
 						m := m
 						fyne.Do(func() { showPostMeetingCapture(a, m.Tag) })
 					}
@@ -270,8 +270,7 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 					continue
 				}
 				firedRecurringItems[key] = occ
-				a.SendNotification(fyne.NewNotification(
-					"Dunnit", "Recurring item: "+item.Category+" "+item.Text))
+				sendAutoPopupNotification(a, "Recurring item: "+item.Category+" "+item.Text)
 				item := item
 				fyne.Do(func() { ShowRecurringItemReminder(w, item) })
 			}
@@ -293,6 +292,7 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 			_, err = s.NewJob(
 				gocron.WeeklyJob(1, gocron.NewWeekdays(wd), gocron.NewAtTimes(gocron.NewAtTime(uint(dh), uint(dm), 0))),
 				gocron.NewTask(func() {
+					sendAutoPopupNotification(a, "Your weekly digest is ready.")
 					fyne.Do(func() {
 						w.Show()
 						runSummarize(a, periodWeek)

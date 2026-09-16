@@ -2,24 +2,35 @@ package dun
 
 import (
 	"testing"
+	"time"
 )
 
 func TestSplitTrailingMeta(t *testing.T) {
 	cases := map[string][2]string{
-		"Fix the login bug":                {"Fix the login bug", ""},
-		"walk the dog @15m":                {"walk the dog", " @15m"},
-		"long task @2h":                    {"long task", " @2h"},
-		"multi-day task @4d":               {"multi-day task", " @4d"},
-		"finish the report s/2026-08-28":   {"finish the report", " s/2026-08-28"},
-		"old todo \u26a0\ufe0f4d":          {"old todo", " \u26a0\ufe0f4d"},
-		"todo s/2026-08-28 \u26a0\ufe0f4d": {"todo", " s/2026-08-28 \u26a0\ufe0f4d"},
-		"todo @10m (via DOING)":            {"todo", " @10m (via DOING)"},
+		"Fix the login bug":                    {"Fix the login bug", ""},
+		"walk the dog @15m":                    {"walk the dog", " @15m"},
+		"long task @2h":                        {"long task", " @2h"},
+		"multi-day task @4d":                   {"multi-day task", " @4d"},
+		"finish the report s/2026-08-28":       {"finish the report", " s/2026-08-28"},
+		"finish the report (since 2026-08-28)": {"finish the report", " (since 2026-08-28)"},
+		"old todo \u26a0\ufe0f4d":              {"old todo", " \u26a0\ufe0f4d"},
+		"todo s/2026-08-28 \u26a0\ufe0f4d":     {"todo", " s/2026-08-28 \u26a0\ufe0f4d"},
+		"todo @10m (via DOING)":                {"todo", " @10m (via DOING)"},
 	}
 	for in, want := range cases {
 		core, meta := splitTrailingMeta(in)
 		if core != want[0] || meta != want[1] {
 			t.Errorf("splitTrailingMeta(%q) = (%q, %q), want (%q, %q)", in, core, meta, want[0], want[1])
 		}
+	}
+}
+
+func TestOpenItemDisplayTextCollapsesSinceMarkers(t *testing.T) {
+	since := time.Now().Format("2006-01-02")
+	input := "finish the report (since " + since + ") (since " + since + ")"
+	want := "finish the report s/" + since
+	if got := openItemDisplayText(input); got != want {
+		t.Fatalf("openItemDisplayText(%q) = %q, want %q", input, got, want)
 	}
 }
 

@@ -59,14 +59,9 @@ type Config struct {
 	WeeklyDigestDay  string `toml:"weekly_digest_day"`
 	WeeklyDigestTime string `toml:"weekly_digest_time"`
 
-	// AutoDraftDailySummary (FR-18) gates whether EOD's Finalize Day
-	// automatically drafts/opens the daily summary doc via the configured
-	// LLM CLI. Default false -- open design questions remain about
-	// whether EOD is even the right trigger timing, and what should
-	// differentiate the doc's content from Summarize's existing Day
-	// output (see FR-18 questions in
-	// docs/open-design-questions.md). Manual drafting via the "Daily
-	// Summary Doc..." tray item is unaffected by this flag.
+	// AutoDraftDailySummary is retained for backwards-compatible config
+	// decoding. EOD report generation is now explicitly started from the
+	// EOD window's Generate button, so this legacy setting has no effect.
 	AutoDraftDailySummary bool `toml:"auto_draft_daily_summary"`
 
 	// SnoozeMinutes (FR-26) is the default duration used by the
@@ -191,6 +186,12 @@ type Config struct {
 	// decisions are represented by ledger entries, while this marker only
 	// controls the Daybook reminder.
 	LastStartOfDayDate string `toml:"last_start_of_day_date"`
+
+	// LastEndOfDayDate is "YYYY-MM-DD", the last calendar date on which
+	// the End of Day form was finalized, including when its report was
+	// explicitly skipped. It prevents an automatic EOD popup from
+	// repeating after the day has already been handled.
+	LastEndOfDayDate string `toml:"last_end_of_day_date"`
 }
 
 // defaultConfig mirrors the values from dunnit's config-example.zsh.

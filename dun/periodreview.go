@@ -189,7 +189,7 @@ func showPeriodReviewWindow(a fyne.App, period summaryPeriod, anchor time.Time) 
 		carryForwardBox.Add(todoBox)
 	}
 	if len(openDoing) > 0 {
-		carryForwardBox.Add(widget.NewLabelWithStyle("Postpone Open DOING (checked = send to SOMEDAY)", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
+		carryForwardBox.Add(widget.NewLabelWithStyle("Postpone Open DOINGs (checked = send to SOMEDAY)", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
 		carryForwardBox.Add(doingBox)
 	}
 	if len(openQuestions) > 0 {

@@ -43,6 +43,7 @@ var trailingMetaPattern = regexp.MustCompile(
 	`(?:` +
 		` @\d+[mhd]` +
 		`| s/\d{4}-\d{2}-\d{2}` +
+		`| \(since \d{4}-\d{2}-\d{2}\)` +
 		`| \(via [A-Z_]+\)` +
 		`| \x{26a0}\x{fe0f}\d+d` +
 		`)+$`)
@@ -51,6 +52,7 @@ var metadataTokenPattern = regexp.MustCompile(
 	`(?:` +
 		` @\d+[mhd]` +
 		`| s/\d{4}-\d{2}-\d{2}` +
+		`| \(since \d{4}-\d{2}-\d{2}\)` +
 		`| \(via [A-Z_]+\)` +
 		`| \x{26a0}\x{fe0f}\d+d` +
 		`)`)

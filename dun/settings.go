@@ -60,9 +60,6 @@ func showSettings(a fyne.App) {
 	digestTime.SetText(cfg.WeeklyDigestTime)
 	digestTime.SetPlaceHolder("HH:MM")
 
-	autoDraft := widget.NewCheck("", nil)
-	autoDraft.SetChecked(cfg.AutoDraftDailySummary)
-
 	snoozeMinutes := widget.NewEntry()
 	snoozeMinutes.SetText(strconv.Itoa(cfg.SnoozeMinutes))
 
@@ -114,7 +111,6 @@ func showSettings(a fyne.App) {
 		widget.NewFormItem("Lunch Time (HH:MM)", lunchTime),
 		widget.NewFormItem("Weekly Digest Day", digestDay),
 		widget.NewFormItem("Weekly Digest Time (HH:MM)", digestTime),
-		widget.NewFormItem("Auto-draft Daily Summary at EOD", autoDraft),
 		widget.NewFormItem("Default Snooze (minutes)", snoozeMinutes),
 		widget.NewFormItem("Skip US Federal Holidays", skipHolidays),
 		widget.NewFormItem("Extend Work Week to 7 Days", extendWorkWeek),
@@ -178,7 +174,6 @@ func showSettings(a fyne.App) {
 		newCfg.LunchTime = lunchTime.Text
 		newCfg.WeeklyDigestDay = digestDay.Selected
 		newCfg.WeeklyDigestTime = digestTime.Text
-		newCfg.AutoDraftDailySummary = autoDraft.Checked
 		newCfg.SnoozeMinutes = snooze
 		newCfg.SkipUSFederalHolidays = skipHolidays.Checked
 		newCfg.ExtendWorkWeekTo7Days = extendWorkWeek.Checked

@@ -1,6 +1,7 @@
 package dun
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -34,21 +35,63 @@ func TestTomorrowLedgerPath_IsTomorrow(t *testing.T) {
 	}
 }
 
-func TestAutoEODReportRequiresThreeDoneEntries(t *testing.T) {
+func TestEndOfDayAlreadyRunUsesCompletionMarker(t *testing.T) {
 	withTempDunnitDir(t)
-	today := time.Now()
+	now := time.Now()
+	cfg := LoadConfig()
+	cfg.LastEndOfDayDate = now.Format("2006-01-02")
+	if err := writeConfig(cfg); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	if !endOfDayAlreadyRun(now) {
+		t.Fatal("expected EOD completion marker to block another run")
+	}
+}
 
-	if autoEODReportEligible(today) {
-		t.Fatal("empty day should not be eligible for automatic EOD drafting")
+func TestWriteReportFileIfAbsentDoesNotOverwrite(t *testing.T) {
+	withTempDunnitDir(t)
+	now := time.Now()
+	_, path := eodReportPath(now)
+	if err := writeReportFile(path, "# Existing report"); err != nil {
+		t.Fatalf("write report: %v", err)
 	}
-	recordActivity("one", "DONE")
-	recordActivity("two", "DONE")
-	if autoEODReportEligible(today) {
-		t.Fatal("two DONE entries should not be eligible for automatic EOD drafting")
+	if err := writeReportFileIfAbsent(path, "# Replacement report"); !errors.Is(err, os.ErrExist) {
+		t.Fatalf("writeReportFileIfAbsent() error = %v, want os.ErrExist", err)
 	}
-	recordActivity("three", "DONE")
-	if !autoEODReportEligible(today) {
-		t.Fatal("three DONE entries should be eligible for automatic EOD drafting")
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read report: %v", err)
+	}
+	if string(contents) != "# Existing report" {
+		t.Fatalf("existing report changed to %q", contents)
+	}
+}
+
+func TestEndOfDayAlreadyRunUsesExistingReport(t *testing.T) {
+	withTempDunnitDir(t)
+	now := time.Now()
+	_, path := eodReportPath(now)
+	if err := writeReportFile(path, "# Existing report"); err != nil {
+		t.Fatalf("write report: %v", err)
+	}
+	if !endOfDayAlreadyRun(now) {
+		t.Fatal("expected existing EOD report to block another run")
+	}
+}
+
+func TestMarkEndOfDayRunPreservesConfig(t *testing.T) {
+	withTempDunnitDir(t)
+	cfg := LoadConfig()
+	cfg.DayStart = "09:15"
+	if err := writeConfig(cfg); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	now := time.Now()
+	markEndOfDayRun(now)
+	marked := LoadConfig()
+	if marked.LastEndOfDayDate != now.Format("2006-01-02") || marked.DayStart != "09:15" {
+		t.Fatalf("unexpected marked config: %+v", marked)
 	}
 }
 

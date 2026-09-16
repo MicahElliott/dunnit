@@ -14,7 +14,8 @@ import (
 // See docs/todo-carryforward-design.md.
 const carryForwardSincePrefix = " s/"
 
-var carryForwardSincePattern = regexp.MustCompile(` s/(\d{4}-\d{2}-\d{2})$`)
+var carryForwardSincePattern = regexp.MustCompile(` s/(\d{4}-\d{2}-\d{2})`)
+var legacyCarryForwardSincePattern = regexp.MustCompile(` \(since (\d{4}-\d{2}-\d{2})\)`)
 
 func carryForwardSinceSuffix(date time.Time) string {
 	return carryForwardSincePrefix + date.Format("2006-01-02")
@@ -23,24 +24,46 @@ func carryForwardSinceSuffix(date time.Time) string {
 // parseCarryForwardSince extracts the full date embedded by
 // carryForwardSinceSuffix from text, if present.
 func parseCarryForwardSince(text string) (since time.Time, ok bool) {
-	match := carryForwardSincePattern.FindStringSubmatch(text)
-	if match == nil {
-		return time.Time{}, false
+	for _, pattern := range []*regexp.Regexp{
+		carryForwardSincePattern,
+		legacyCarryForwardSincePattern,
+	} {
+		for _, match := range pattern.FindAllStringSubmatch(text, -1) {
+			t, err := time.ParseInLocation("2006-01-02", match[1], time.Local)
+			if err != nil || (!since.IsZero() && !t.Before(since)) {
+				continue
+			}
+			since = t
+		}
 	}
-	t, err := time.ParseInLocation("2006-01-02", match[1], time.Local)
-	if err != nil {
-		return time.Time{}, false
-	}
-	return t, true
+	return since, !since.IsZero()
 }
 
-// stripCarryForwardSince removes the carry-forward suffix from text if
-// present. This prevents re-copying an item from stacking a second marker.
+// stripCarryForwardSince removes current and legacy carry-forward suffixes
+// from text. Repeating the removal also cleans up rows that accumulated
+// more than one marker in older versions of the app.
 func stripCarryForwardSince(text string) string {
-	if match := carryForwardSincePattern.FindStringIndex(text); match != nil {
-		return text[:match[0]]
+	for {
+		removed := false
+		for _, pattern := range []*regexp.Regexp{
+			carryForwardSincePattern,
+			legacyCarryForwardSincePattern,
+		} {
+			matches := pattern.FindAllStringIndex(text, -1)
+			if len(matches) > 0 {
+				match := matches[len(matches)-1]
+				if match[1] != len(text) {
+					continue
+				}
+				text = strings.TrimRight(text[:match[0]], " \t")
+				removed = true
+				break
+			}
+		}
+		if !removed {
+			return text
+		}
 	}
-	return text
 }
 
 // staleDateFor returns the date an open item's staleness/carry-
@@ -375,5 +398,12 @@ func staleBadge(text string) string {
 // open-item views use this helper so TODO, DOING, and the other tracked
 // categories present the same lifecycle cues.
 func openItemDisplayText(text string) string {
+	// Normalize legacy or repeated markers to one current-format marker so
+	// every open-item view presents the same creation and age metadata.
+	since, _ := parseCarryForwardSince(text)
+	text = stripCarryForwardSince(text)
+	if !since.IsZero() {
+		text += carryForwardSinceSuffix(since)
+	}
 	return text + staleBadge(text)
 }

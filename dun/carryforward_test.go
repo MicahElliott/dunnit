@@ -124,16 +124,17 @@ func TestCarryForwardSinceSuffixUsesFullDate(t *testing.T) {
 	}
 }
 
-func TestParseCarryForwardSinceAcceptsFullDate(t *testing.T) {
+func TestParseCarryForwardSinceAcceptsCurrentAndLegacyMarkers(t *testing.T) {
 	since, ok := parseCarryForwardSince("task s/2026-09-11")
 	if !ok || since.Format("2006-01-02") != "2026-09-11" {
 		t.Fatalf("carry date = %v, %v", since, ok)
 	}
+	since, ok = parseCarryForwardSince("task (since 2026-09-11)")
+	if !ok || since.Format("2006-01-02") != "2026-09-11" {
+		t.Fatalf("legacy carry date = %v, %v", since, ok)
+	}
 	if _, ok := parseCarryForwardSince("task s/2026-99-99"); ok {
 		t.Fatal("invalid carry date parsed successfully")
-	}
-	if _, ok := parseCarryForwardSince("task (since 2026-09-11)"); ok {
-		t.Fatal("legacy carry date parsed successfully")
 	}
 }
 
@@ -293,8 +294,12 @@ func TestStripCarryForwardSince(t *testing.T) {
 		t.Errorf("stripCarryForwardSince(%q) = %q, want unchanged %q", want, got, want)
 	}
 	legacy := "finish the report (since 2026-08-28)"
-	if got := stripCarryForwardSince(legacy); got != legacy {
-		t.Errorf("stripCarryForwardSince(%q) = %q, want unchanged %q", legacy, got, legacy)
+	if got := stripCarryForwardSince(legacy); got != "finish the report" {
+		t.Errorf("stripCarryForwardSince(%q) = %q, want core text", legacy, got)
+	}
+	duplicates := "finish the report (since 2026-08-28) (since 2026-08-28)"
+	if got := stripCarryForwardSince(duplicates); got != "finish the report" {
+		t.Errorf("stripCarryForwardSince(%q) = %q, want core text", duplicates, got)
 	}
 }
 

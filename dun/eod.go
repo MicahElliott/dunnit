@@ -19,25 +19,36 @@ func tomorrowLedgerPath() (string, string) {
 	return ledgerPathFor(tomorrow)
 }
 
-const minAutoEODDoneEntries = 3
-
-func doneEntriesForDate(date time.Time) int {
-	path := ledgerFileForDate(date)
-	if path == "" {
-		return 0
+// endOfDayAlreadyRun reports whether today's EOD was finalized or a report
+// was created by another EOD entry point. The marker also covers an explicit
+// Skip, which intentionally leaves no report file behind.
+func endOfDayAlreadyRun(date time.Time) bool {
+	cfg, err := loadConfig()
+	if err == nil && cfg.LastEndOfDayDate == date.Format("2006-01-02") {
+		return true
 	}
-	count := 0
-	for _, line := range readLedgerLinesFrom(path) {
-		category, _, ok := parseLedgerLine(line)
-		if ok && category == "DONE" {
-			count++
-		}
-	}
-	return count
+	_, reportPath := eodReportPath(date)
+	_, statErr := os.Stat(reportPath)
+	return statErr == nil
 }
 
-func autoEODReportEligible(date time.Time) bool {
-	return doneEntriesForDate(date) >= minAutoEODDoneEntries
+// markEndOfDayRun records that the EOD form was completed. As with the SOD
+// marker, a malformed config is left untouched rather than replaced with
+// defaults just to save this UI state.
+func markEndOfDayRun(date time.Time) {
+	cfg, err := loadConfig()
+	if err != nil {
+		log.Println("Skipping End of Day marker:", err)
+		return
+	}
+	dateText := date.Format("2006-01-02")
+	if cfg.LastEndOfDayDate == dateText {
+		return
+	}
+	cfg.LastEndOfDayDate = dateText
+	if err := writeConfig(cfg); err != nil {
+		log.Println("Error saving End of Day marker:", err)
+	}
 }
 
 // appendTomorrowLine appends a single pre-formatted ledger line (sans
@@ -91,20 +102,54 @@ func eodOpenItemsSection(category string) (box *fyne.Container, items []OpenItem
 		c := widget.NewCheck("", nil)
 		c.SetChecked(false)
 		checks[i] = c
-		box.Add(container.NewHBox(c, itemTextLabel(openItemDisplayText(item.Text))))
+		box.Add(container.NewHBox(c,
+			itemTextLabel(categoryIconPrefix(item.Category)+openItemDisplayText(item.Text))))
 	}
 	return box, items, checks
 }
 
+// eodLedgerLineLabel gives EOD's Today’s Items the same category, tag, link,
+// duration, and carry-forward rendering used by Daybook's item rows.
+func eodLedgerLineLabel(line string) fyne.CanvasObject {
+	category, text, ok := parseLedgerLine(line)
+	if !ok {
+		return itemTextLabel(line)
+	}
+	return itemTextLabel(categoryIconPrefix(category) +
+		openItemDisplayText(stripResolutionSuffix(text)))
+}
+
+func showEODAlreadyRunWindow(a fyne.App, date time.Time) {
+	w := a.NewWindow("Dunnit: End of Day")
+	message := "End of Day has already been handled for " +
+		date.Format("Monday, January 2") + "."
+	_, reportPath := eodReportPath(date)
+	if _, err := os.Stat(reportPath); err == nil {
+		message += " The existing EOD report was left unchanged."
+	}
+	w.SetContent(windowPad(container.NewVBox(
+		widget.NewLabelWithStyle(message, fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		widget.NewLabel("There is nothing more to do today."),
+		widget.NewButton("Close", w.Close),
+	)))
+	w.Resize(fyne.NewSize(460, 180))
+	w.Show()
+}
+
 // showEODWindow recreates (in spirit) dun.zsh's dunnit-eod sequence:
-// a short daily wrap-up showing everything logged today, an AI-drafted
-// summary (editable before saving), a productivity score, a meeting-
+// a short daily wrap-up showing everything logged today, an optional
+// AI-drafted summary (editable before saving), a productivity score, a meeting-
 // hours count, a sentiment rating, goals for tomorrow, and (FR-09,
 // extended) a chance to postpone any TODOs/QUESTIONs not resolved
 // today. Rather than a chain of separate popups (as the
 // original zsh alerter-based flow did), this is one window with all
 // the questions -- simpler to implement and to answer.
 func showEODWindow(a fyne.App) {
+	now := time.Now()
+	if endOfDayAlreadyRun(now) {
+		showEODAlreadyRunWindow(a, now)
+		return
+	}
 	w := a.NewWindow("Dunnit: End of Day")
 
 	// Today's items, shown first -- read-only, so the user has the
@@ -112,7 +157,7 @@ func showEODWindow(a fyne.App) {
 	// line separately so inline entry links remain clickable.
 	todayBody := container.NewVBox()
 	for _, line := range readLedgerLines() {
-		todayBody.Add(itemTextLabel(line))
+		todayBody.Add(eodLedgerLineLabel(line))
 	}
 	if len(todayBody.Objects) == 0 {
 		todayBody.Add(widget.NewLabel("Nothing logged yet today."))
@@ -124,12 +169,11 @@ func showEODWindow(a fyne.App) {
 	todayScroll := container.NewVScroll(todayBody)
 	todayScroll.SetMinSize(fyne.NewSize(0, 220)) // room for ~8+ lines
 
-	// AI-drafted summary: fed today's ledger text via the same
-	// summarizeWithLLMCLI pipeline used elsewhere (Summarize/SOM),
-	// rather than asking the user to hand-write one. Runs in the
-	// background since it shells out to configured LLM CLI; the field starts
-	// with a placeholder and is editable once (or before) the draft
-	// arrives, so the user can always tweak/replace it before Finalize
+	// The optional AI-drafted summary uses the same summarizeWithLLMCLI
+	// pipeline used elsewhere (Summarize/SOM), but only starts after the
+	// user taps Generate. It runs in the background since it shells out to
+	// the configured LLM CLI; the field is editable while the draft arrives,
+	// so the user can always tweak/replace it before Finalize
 	// Day. A rendered-markdown preview (summaryPreview) sits below the
 	// raw editable text -- the AI draft often comes back with markdown
 	// (headers/bold/lists) that's hard to read as literal "**bold**"
@@ -137,7 +181,8 @@ func showEODWindow(a fyne.App) {
 	// Fyne's built-in widget.NewRichTextFromMarkdown, updating live as
 	// the summary is edited.
 	summary := widget.NewMultiLineEntry()
-	summary.SetPlaceHolder("Generating an AI summary of today, please wait (feel free to edit once it arrives, or type your own now)\u2026")
+	summary.SetPlaceHolder("Tap Generate to create the EOD report summary…")
+	summary.Disable()
 	summary.SetMinRowsVisible(10)
 	summaryPreview := widget.NewRichTextFromMarkdown("")
 	summaryPreview.Wrapping = fyne.TextWrapWord
@@ -152,48 +197,79 @@ func showEODWindow(a fyne.App) {
 	copyRichTextSummaryBtn := widget.NewButton("Copy as rich text", func() {
 		copyRichText(a, summary.Text)
 	})
-	draftRequest := newLLMCLIRequest()
-	w.SetOnClosed(draftRequest.close)
-	draftStopBtn := draftRequest.stopButton()
+	var draftRequest *llmCLIRequest
+	generationRequested := false
+	generating := false
+	var finalizeDay func(bool)
+	draftStopBtn := widget.NewButton("Stop generating", func() {
+		if draftRequest != nil {
+			draftRequest.cancel()
+		}
+	})
 	draftStopBtn.Hide()
+	skipBtn := widget.NewButton("Skip", func() { finalizeDay(false) })
+	skipBtn.Hide()
+	generateBtn := widget.NewButton("Generate", nil)
+	generateBtn.OnTapped = func() {
+		if generating {
+			return
+		}
+		generationRequested = true
+		generating = true
+		summary.Enable()
+		generateBtn.Disable()
+		skipBtn.Show()
+		draftStopBtn.Show()
+		draftRequest = newLLMCLIRequest()
+		request := draftRequest
+		go func() {
+			ledgerText := gatherLedgerTextForDate(now)
+			hasContent := hasRealLedgerContent(ledgerText)
+			var draft string
+			var err error
+			if hasContent {
+				draft, err = summarizeWithLLMCLIPromptContext(request.ctx,
+					"Summarize this ledger of a day’s activity entries into "+
+						"a brief impact report suitable for a personal end-of-day "+
+						"recap. Be concise and group related work together."+
+						reviewLengthConstraint(periodDay), ledgerText)
+			}
+			request.finish()
+			fyne.Do(func() {
+				generating = false
+				draftStopBtn.Hide()
+				generateBtn.Enable()
+				if !hasContent {
+					summary.SetPlaceHolder("Nothing is logged today to summarize. You can type a report here.")
+					return
+				}
+				if err != nil {
+					if request.canceled() {
+						return
+					}
+					log.Println("Error drafting EOD summary:", err)
+					summary.SetPlaceHolder("No summary was generated. You can type one here and finalize.")
+					return
+				}
+				if strings.TrimSpace(summary.Text) == "" {
+					summary.SetText(draft)
+					summaryPreview.ParseMarkdown(draft)
+				}
+			})
+		}()
+	}
+	w.SetOnClosed(func() {
+		if draftRequest != nil {
+			draftRequest.close()
+		}
+	})
 	summaryBox := container.NewVBox(
 		summary,
-		draftStopBtn,
+		container.NewHBox(generateBtn, draftStopBtn),
 		widget.NewLabelWithStyle("Preview:", fyne.TextAlignLeading, fyne.TextStyle{Italic: true}),
 		summaryPreviewScroll,
 		container.NewHBox(copyMarkdownSummaryBtn, copyRichTextSummaryBtn),
 	)
-	go func() {
-		today := time.Now()
-		if !autoEODReportEligible(today) {
-			return
-		}
-		ledgerText := gatherLedgerTextForDate(today)
-		if !hasRealLedgerContent(ledgerText) {
-			return
-		}
-		fyne.Do(draftStopBtn.Show)
-		draft, err := summarizeWithLLMCLIPromptContext(draftRequest.ctx,
-			"Summarize this ledger of a day’s activity entries into "+
-				"a brief impact report suitable for a personal end-of-day "+
-				"recap. Be concise and group related work together."+
-				reviewLengthConstraint(periodDay), ledgerText)
-		draftRequest.finish()
-		fyne.Do(func() {
-			draftStopBtn.Hide()
-			if err != nil {
-				if draftRequest.canceled() {
-					return
-				}
-				log.Println("Error drafting EOD summary:", err)
-				return
-			}
-			if strings.TrimSpace(summary.Text) == "" {
-				summary.SetText(draft)
-				summaryPreview.ParseMarkdown(draft)
-			}
-		})
-	}()
 
 	productivity := widget.NewSelect([]string{"1", "2", "3", "4", "5"}, nil)
 	productivity.SetSelected("3")
@@ -227,17 +303,24 @@ func showEODWindow(a fyne.App) {
 		items = append(items, widget.NewFormItem("Postpone Open TODOs", todoBox))
 	}
 	if len(openDoing) > 0 {
-		items = append(items, widget.NewFormItem("Postpone Open DOING", doingBox))
+		items = append(items, widget.NewFormItem("Postpone Open DOINGs", doingBox))
 	}
 	if len(openQuestions) > 0 {
 		items = append(items, widget.NewFormItem("Postpone Open QUESTIONs", questionBox))
 	}
 	form := widget.NewForm(items...)
-	form.SubmitText = "Finalize Day"
-	form.OnSubmit = func() {
-		if strings.TrimSpace(summary.Text) != "" {
-			_, path := eodReportPath(time.Now())
-			if err := writeReportFile(path, summary.Text); err != nil {
+	finalized := false
+	finalizeDay = func(writeEODReport bool) {
+		if finalized {
+			return
+		}
+		finalized = true
+		if draftRequest != nil && generating {
+			draftRequest.cancel()
+		}
+		if generationRequested && writeEODReport && strings.TrimSpace(summary.Text) != "" {
+			_, path := eodReportPath(now)
+			if err := writeReportFileIfAbsent(path, summary.Text); err != nil {
 				log.Println("Error saving EOD report:", err)
 			}
 		}
@@ -265,46 +348,14 @@ func showEODWindow(a fyne.App) {
 				recordPostponed(item)
 			}
 		}
-		// FR-18: draft (if not already present) today's hand-editable
-		// EOD report, now that the day's PRODUCTIVITY/
-		// SENTIMENT lines above have just been recorded. Gated behind
-		// AutoDraftDailySummary (default off) -- open design
-		// questions remain about EOD-vs-other trigger timing and how
-		// this doc's content should differ from Summarize's existing
-		// Day output; see docs/open-design-questions.md. Manual
-		// drafting via the "EOD Report..." tray item always
-		// works regardless of this setting. Runs in the background
-		// since it shells out to configured LLM CLI; opens in $EDITOR when
-		// ready rather than blocking Finalize Day.
-		if LoadConfig().AutoDraftDailySummary && autoEODReportEligible(time.Now()) {
-			request := newLLMCLIRequest()
-			progress := a.NewWindow("Dunnit: Drafting EOD Report\u2026")
-			progress.SetOnClosed(request.close)
-			progress.SetContent(windowPad(llmCLIProgressContent("Drafting the EOD report with the configured LLM CLI, please wait\u2026", request)))
-			progress.Resize(fyne.NewSize(420, 140))
-			progress.Show()
-			go func() {
-				path, _, err := ensureEODReportContext(request.ctx, time.Now())
-				request.finish()
-				fyne.Do(func() {
-					progress.Close()
-					if request.canceled() {
-						return
-					}
-					if err != nil {
-						log.Println("Error drafting EOD report:", err)
-						return
-					}
-					if path != "" {
-						openInEditor(path)
-					}
-				})
-			}()
-		}
+		markEndOfDayRun(now)
 		w.Close()
 	}
+	finalizeBtn := widget.NewButton("Finalize Day", func() { finalizeDay(true) })
 
-	w.SetContent(windowPad(container.NewVScroll(form)))
+	w.SetContent(windowPad(container.NewBorder(nil,
+		container.NewHBox(finalizeBtn, skipBtn), nil, nil,
+		container.NewVScroll(form))))
 	w.Resize(fyne.NewSize(560, 980))
 	w.Show()
 }

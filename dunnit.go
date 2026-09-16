@@ -29,6 +29,8 @@ func main() {
 	fmt.Println("Starting Dunnit")
 
 	a := dun.MakeUI()
+	// Set the app icon before building the tray and scheduler. Fyne uses the
+	// app resource for the tray, packaged app, and native OS notifications.
 	(*a).SetIcon(fyne.NewStaticResource("Icon.png", appIcon))
 	w := dun.BuildMainWindow(*a)
 	s := dun.Schedule(*a, w)
