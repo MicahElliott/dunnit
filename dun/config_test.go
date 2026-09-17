@@ -52,3 +52,21 @@ func TestStartOfDayWritesLoadedConfigValues(t *testing.T) {
 		t.Fatalf("loaded config values changed: %+v", cfg)
 	}
 }
+
+func TestNudgeIntervalMinutesUsesConfiguredValueOrFallback(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		cfg  Config
+		want int
+	}{
+		{name: "configured", cfg: Config{NudgeIntervalMinutes: 30}, want: 30},
+		{name: "unset", cfg: Config{}, want: 60},
+		{name: "negative", cfg: Config{NudgeIntervalMinutes: -1}, want: 60},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := nudgeIntervalMinutes(tt.cfg); got != tt.want {
+				t.Fatalf("nudgeIntervalMinutes(%+v) = %d, want %d", tt.cfg, got, tt.want)
+			}
+		})
+	}
+}

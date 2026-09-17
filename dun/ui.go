@@ -561,13 +561,19 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 		if IsTimeTrackable(cat) {
 			minsWrapper.Show()
 		} else {
+			minsInput.SetText("")
 			minsWrapper.Hide()
 		}
 	}
 
+	selectedCat := "DONE"
+
 	// withMins appends " @Nm" to text if minsInput has a valid
 	// non-negative integer in it; otherwise returns text unchanged.
 	withMins := func(text string) string {
+		if !IsTimeTrackable(selectedCat) {
+			return text
+		}
 		raw := strings.TrimSpace(minsInput.Text)
 		if raw == "" {
 			return text
@@ -579,7 +585,6 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 		return text + " @" + raw + "m"
 	}
 
-	selectedCat := "DONE"
 	// widget.NewSelectEntry
 	//
 	// Note: Fyne's widget.Select renders its selected-text label via
@@ -617,8 +622,11 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 		func(cat string) {
 			fmt.Println("saw a category:", cat)
 			res := strings.Split(cat, " ")
-			// selectedCat = cat
-			selectedCat = res[1]
+			newCat := res[1]
+			if newCat != selectedCat {
+				minsInput.SetText("")
+			}
+			selectedCat = newCat
 			setMinsWrapperVisibility(selectedCat)
 		},
 		func() string { return HelpForCode(selectedCat) })
@@ -653,6 +661,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	// selected category is outside the current quick-filter, switch to its
 	// group first so the category can still be selected visibly.
 	selectCategoryCode := func(code string) {
+		minsInput.SetText("")
 		var label string
 		for _, c := range Categories {
 			if c.Code == code {
@@ -1103,12 +1112,11 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 
 	dittoBtn := widget.NewButton("Ditto", func() {
 		if item, ok := lastDoingItem(); ok {
-			raw := strings.TrimSpace(minsInput.Text)
-			delta, err := strconv.Atoi(raw)
-			if err != nil || delta < 0 {
-				delta = 0
-			}
-			if err := dittoLifecycleItem(item, delta); err != nil {
+			// Ditto represents one completed nudge interval. The minutes
+			// field is for the initial entry only; using it here made the
+			// first click work accidentally and later clicks become no-ops
+			// after the field was cleared.
+			if err := dittoLifecycleItem(item, nudgeIntervalMinutes(LoadConfig())); err != nil {
 				log.Println("Error applying Ditto:", err)
 			}
 			minsInput.SetText("")

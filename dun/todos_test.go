@@ -224,6 +224,32 @@ func TestDittoLifecycleItemKeepsOneRowAndAccumulatesMinutes(t *testing.T) {
 	}
 }
 
+func TestDittoUsesConfiguredNudgeIntervalOnRepeatedClicks(t *testing.T) {
+	withTempDunnitDir(t)
+	cfg := defaultConfig()
+	cfg.NudgeIntervalMinutes = 30
+	if err := writeConfig(cfg); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	writeLedgerLinesForDate(t, time.Now(), []string{
+		"[08:00:00] DOING ship the fix @30m",
+	})
+	InvalidateLedgerCaches()
+
+	for _, want := range []int{60, 90} {
+		item, ok := lastDoingItem()
+		if !ok {
+			t.Fatalf("expected active DOING item before Ditto to reach %dm", want)
+		}
+		if err := dittoLifecycleItem(item, nudgeIntervalMinutes(LoadConfig())); err != nil {
+			t.Fatalf("Ditto to %dm: %v", want, err)
+		}
+		if got := parseEntryMins(readLedgerLines()[0]); got != want {
+			t.Fatalf("Ditto duration = %d, want %d", got, want)
+		}
+	}
+}
+
 func TestLastDoingItemDoesNotResurrectDone(t *testing.T) {
 	withTempDunnitDir(t)
 	writeLedgerLinesForDate(t, time.Now(), []string{

@@ -83,10 +83,7 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 	// the user already logged an entry more recently than this
 	// interval, skip the nudge -- they're clearly already engaged, no
 	// need to interrupt.
-	intervalMinutes := cfg.NudgeIntervalMinutes
-	if intervalMinutes <= 0 {
-		intervalMinutes = 60
-	}
+	intervalMinutes := nudgeIntervalMinutes(cfg)
 	intervalDuration := time.Duration(intervalMinutes) * time.Minute
 
 	_, err = s.NewJob(

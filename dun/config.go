@@ -233,6 +233,16 @@ func defaultConfig() Config {
 	}
 }
 
+// nudgeIntervalMinutes returns the effective periodic capture interval.
+// Keep the fallback here so the scheduler and Ditto use the same value when
+// an older or invalid config has no usable interval.
+func nudgeIntervalMinutes(cfg Config) int {
+	if cfg.NudgeIntervalMinutes <= 0 {
+		return 60
+	}
+	return cfg.NudgeIntervalMinutes
+}
+
 // DunnitDir is the single root directory for everything dunnit owns:
 // ledger files (DunnitDir()/<year>/<month>/w<week>/ledger-*.txt) and
 // config.toml. Overridable via the DUNNIT_DIR env var; defaults to

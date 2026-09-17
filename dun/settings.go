@@ -152,8 +152,8 @@ func showSettings(a fyne.App) {
 
 	saveSettings := func() {
 		minutes, err := strconv.Atoi(nudgeInterval.Text)
-		if err != nil {
-			dialog.ShowError(fmt.Errorf("Nudge Interval must be a number: %w", err), w)
+		if err != nil || minutes <= 0 {
+			dialog.ShowError(fmt.Errorf("Nudge Interval must be a positive number"), w)
 			return
 		}
 		snooze, err := strconv.Atoi(snoozeMinutes.Text)
