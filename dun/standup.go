@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strconv"
 	"strings"
 	"time"
 
@@ -247,9 +246,9 @@ func summarizeStandupWithLLMCLIContext(ctx context.Context, lines []string) (str
 // summary via the shared showGeneratedReport window (Copy/Save/
 // Close), saving to standup-w<week>-<generation-date>.md.
 func showGeneratedStandupSummary(a fyne.App, summary string) {
-	_, week := time.Now().ISOWeek()
+	now := time.Now()
 	showGeneratedReport(a, "Dunnit: Generated Standup Summary",
-		periodReportPath("standup", "w"+strconv.Itoa(week), time.Now()), summary)
+		weeklyReportPathForKind("standup", now, now), summary)
 }
 
 // showStandupExport builds the deterministic standup summary (FR-17

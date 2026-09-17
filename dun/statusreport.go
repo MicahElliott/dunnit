@@ -17,8 +17,7 @@ var shareUnsafeCategories = map[string]bool{
 }
 
 func statusReportPath(anchor, generated time.Time) string {
-	_, week := anchor.ISOWeek()
-	return periodReportPath("status", "w"+strconv.Itoa(week), generated)
+	return weeklyReportPathForKind("status", anchor, generated)
 }
 
 const privateStatusPrompt = "Summarize the following ledger entries into a " +

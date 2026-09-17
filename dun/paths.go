@@ -62,6 +62,15 @@ func weeklyReportPath(anchor time.Time, theme string) string {
 	return filepath.Join(dir, filename)
 }
 
+// weeklyReportPathForKind returns the save path for a non-Review report
+// covering the week containing anchor, such as a Standup or Status report.
+func weeklyReportPathForKind(kind string, anchor, generated time.Time) string {
+	yr, moname, wk := weekMonthInfo(anchor)
+	dir := ledgerDirFor(yr, wk, moname)
+	filename := reportFilename(kind, "w"+strconv.Itoa(wk), "", generated)
+	return filepath.Join(dir, filename)
+}
+
 // monthlyReportPath returns the save path for a monthly Review report for
 // the month containing anchor, themed for theme. Moved to:
 // <year>/<month>/review-month-<token>-<theme>.md
@@ -76,22 +85,22 @@ func monthlyReportPath(anchor time.Time, theme string) string {
 }
 
 // quarterlyReportPath returns the save path for a quarterly Review report.
-// These stay flat at the year root: <year>/review-quarter-<token>-<theme>.md
+// These stay flat under the year directory: <year>/review-quarter-<token>-<theme>.md
 func quarterlyReportPath(anchor time.Time, theme string) string {
 	yr := anchor.Year()
 	q := quarterOf(anchor)
 	token := strconv.Itoa(yr) + "Q" + strconv.Itoa(q)
 
 	filename := reportFilename("review-quarter", token, theme, time.Now())
-	return filepath.Join(DunnitDir(), filename)
+	return filepath.Join(DunnitDir(), strconv.Itoa(yr), filename)
 }
 
 // yearlyReportPath returns the save path for a yearly Review report.
-// These stay flat at the year root: <year>/review-year-<token>-<theme>.md
+// These stay flat under the year directory: <year>/review-year-<token>-<theme>.md
 func yearlyReportPath(anchor time.Time, theme string) string {
 	yr := anchor.Year()
 	token := strconv.Itoa(yr)
 
 	filename := reportFilename("review-year", token, theme, time.Now())
-	return filepath.Join(DunnitDir(), filename)
+	return filepath.Join(DunnitDir(), strconv.Itoa(yr), filename)
 }

@@ -31,7 +31,7 @@ type ReportFile struct {
 	// Date is the file's modification time -- used as a stand-in for
 	// "when was this generated/last saved", since each report kind
 	// encodes its own covered period differently in its filename
-	// (reviewReportDateToken vs periodReportPath's covered-period token)
+	// (reviewReportDateToken vs the covered-period token used by ad hoc reports)
 	// and ReportFile only needs a
 	// reasonably-ordered "when" for browsing/sorting, not the exact
 	// covered range.
@@ -43,7 +43,7 @@ type ReportFile struct {
 // specific prefix (e.g. "review-month") is matched before a shorter
 // one that could otherwise falsely match part of it. Sourced from
 // reviewReportKind (review.go, one per summaryPeriod) plus the other
-// ad hoc kinds seen in periodReportPath call sites (standup.go's
+// ad hoc kinds seen in weeklyReportPathForKind call sites (standup.go's
 // "standup", statusreport.go's "status") and dailysummary.go's "eod".
 func reportFileKinds() []string {
 	kinds := []string{
@@ -85,9 +85,8 @@ func parseReportFileName(base string) (kind, theme string, ok bool) {
 	return "", "", false
 }
 
-// AllReportFiles walks DunnitDir() for canonical report filenames in
-// both root and ledger-adjacent directories, returning a ReportFile per
-// match. No
+// AllReportFiles walks the entire DunnitDir() tree for canonical report
+// filenames, returning a ReportFile per match. No
 // caching yet (unlike AllLedgerEntries) -- report file counts are
 // expected to be orders of magnitude smaller than ledger line counts
 // (one file per generated report vs one line per logged activity),

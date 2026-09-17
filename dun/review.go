@@ -30,7 +30,8 @@ func reviewReportPath(period summaryPeriod, anchor time.Time, theme string) stri
 		return yearlyReportPath(anchor, theme)
 	case periodDay:
 		filename := reportFilename("review-day", reviewReportDateToken(periodDay, anchor), theme, time.Now())
-		return filepath.Join(DunnitDir(), filename)
+		dir, _ := ledgerPathFor(anchor)
+		return filepath.Join(dir, filename)
 	default:
 		// Fallback (shouldn't happen in practice)
 		token := reviewReportDateToken(period, anchor)
@@ -53,6 +54,9 @@ func listReviewReportsForPeriod(period summaryPeriod, anchor time.Time) (paths [
 	// Determine the glob pattern based on period type
 	var pattern string
 	switch period {
+	case periodDay:
+		dir, _ := ledgerPathFor(anchor)
+		pattern = filepath.Join(dir, "review-day-*.md")
 	case periodWeek:
 		yr, moname, wk := weekMonthInfo(anchor)
 		dir := ledgerDirFor(yr, wk, moname)
@@ -63,9 +67,9 @@ func listReviewReportsForPeriod(period summaryPeriod, anchor time.Time) (paths [
 		dir := filepath.Join(DunnitDir(), strconv.Itoa(yr), moname)
 		pattern = filepath.Join(dir, "review-month-*.md")
 	case periodQuarter:
-		pattern = filepath.Join(DunnitDir(), "review-quarter-*.md")
+		pattern = filepath.Join(DunnitDir(), strconv.Itoa(anchor.Year()), "review-quarter-*.md")
 	case periodYear:
-		pattern = filepath.Join(DunnitDir(), "review-year-*.md")
+		pattern = filepath.Join(DunnitDir(), strconv.Itoa(anchor.Year()), "review-year-*.md")
 	default:
 		return
 	}
@@ -195,6 +199,8 @@ func listReviewReportsOverlapping(subPeriod summaryPeriod, from, to time.Time) [
 	// Determine the glob pattern based on period type
 	var pattern string
 	switch subPeriod {
+	case periodDay:
+		pattern = filepath.Join(DunnitDir(), "*", "*", "*", "review-day-*.md")
 	case periodWeek:
 		// Weeks can span multiple month directories, search broadly
 		pattern = filepath.Join(DunnitDir(), "*", "*", "*", "review-week-*.md")
@@ -202,9 +208,9 @@ func listReviewReportsOverlapping(subPeriod summaryPeriod, from, to time.Time) [
 		// Search all year/month directories
 		pattern = filepath.Join(DunnitDir(), "*", "*", "review-month-*.md")
 	case periodQuarter:
-		pattern = filepath.Join(DunnitDir(), "review-quarter-*.md")
+		pattern = filepath.Join(DunnitDir(), "*", "review-quarter-*.md")
 	case periodYear:
-		pattern = filepath.Join(DunnitDir(), "review-year-*.md")
+		pattern = filepath.Join(DunnitDir(), "*", "review-year-*.md")
 	default:
 		return nil
 	}

@@ -182,10 +182,9 @@ ledgers) -- **reportindex.go**/**reportsearch.go**/**reportslibrary.go**:
 - `ReportFile` (reportindex.go): lightweight per-report-file metadata
   (Path, Kind, Theme, Date=file mtime) -- deliberately much lighter
   than `LedgerEntry`, since reports are large markdown documents, not
-  per-line structured data. `AllReportFiles()` walks `DunnitDir()`'s
-  root (`review-*`, `standup-*`, `status-*`, and `eod-*`) plus every
-  ledger-adjacent report with one of those prefixes, parsing kind/theme
-  out of each filename via
+  per-line structured data. `AllReportFiles()` walks the entire
+  `DunnitDir()` tree, including year-level and ledger-adjacent reports,
+  parsing kind/theme out of each filename via
   `parseReportFileName` (reusing the same dash-suffix theme-stripping
   approach `review.go`'s `listReviewReportsForPeriod` already uses,
   generalized across all known report-file kinds). No caching (unlike

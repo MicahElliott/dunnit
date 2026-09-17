@@ -24,6 +24,33 @@ func TestReportFilenameUsesCoveredPeriodAndGenerationDate(t *testing.T) {
 	}
 }
 
+func TestReportPathsUsePeriodDirectories(t *testing.T) {
+	withTempDunnitDir(t)
+	anchor := time.Date(2026, time.September, 16, 0, 0, 0, 0, time.Local)
+	generated := time.Date(2026, time.September, 16, 12, 0, 0, 0, time.Local)
+
+	cases := []struct {
+		name string
+		path string
+		want string
+	}{
+		{"standup", weeklyReportPathForKind("standup", anchor, generated), filepath.Join(DunnitDir(), "2026", "Sep", "w38")},
+		{"status", statusReportPath(anchor, generated), filepath.Join(DunnitDir(), "2026", "Sep", "w38")},
+		{"day review", reviewReportPath(periodDay, anchor, ThemePersonalNotes), filepath.Join(DunnitDir(), "2026", "Sep", "w38")},
+		{"week review", reviewReportPath(periodWeek, anchor, ThemePersonalNotes), filepath.Join(DunnitDir(), "2026", "Sep", "w38")},
+		{"month review", reviewReportPath(periodMonth, anchor, ThemePersonalNotes), filepath.Join(DunnitDir(), "2026", "Sep")},
+		{"quarter review", reviewReportPath(periodQuarter, anchor, ThemePersonalNotes), filepath.Join(DunnitDir(), "2026")},
+		{"year review", reviewReportPath(periodYear, anchor, ThemePersonalNotes), filepath.Join(DunnitDir(), "2026")},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := filepath.Dir(tc.path); got != tc.want {
+				t.Fatalf("report path directory = %q, want %q (full path %q)", got, tc.want, tc.path)
+			}
+		})
+	}
+}
+
 func TestParseReportFileNameUsesCanonicalKinds(t *testing.T) {
 	cases := []struct {
 		name, filename, wantKind, wantTheme string

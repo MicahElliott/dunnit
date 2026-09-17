@@ -237,8 +237,8 @@ type reviewSourceMaterial struct {
 //  1. Determine period's sub-tier via periodConfig (Day/Week have
 //     none -- always raw ledger only).
 //  2. List saved report files for that sub-tier kind (globs
-//     DunnitDir()/<subKind>-*.md via periodReportPath's naming
-//     convention), parse each's embedded date, keep ones whose
+//     period-appropriate report directories via the shared path
+//     helpers), parse each's embedded date, keep ones whose
 //     nominal range intersects [from, to] at all (loose).
 //  3. Track, loosely, which whole sub-periods were found covered.
 //  4. For any day within [from, to] not covered by a found
@@ -283,10 +283,10 @@ hand-rolled dialogs (see `dunnit/sod.go`, `dunnit/eod.go`,
 month and Start-of-new-month in one wizard, which this design would
 eventually split into Month's Review and Month's Kickoff as separate
 (but maybe still-adjacent-in-menu) flows. `dunnit/report.go`'s
-`periodReportPath`/`showGeneratedReport` helpers (added 2026-09-01,
+shared report-path/`showGeneratedReport` helpers (added 2026-09-01,
 see `SESSION-SAVE-2026-09-01-icons-standup-startend-design.md`) are
 the first concrete step toward this design and remain compatible with
-it (the sketch above reuses `periodReportPath`'s naming convention for
+it (the sketch above reuses the shared report naming convention for
 rollup lookups).
 
 ## Implementation status

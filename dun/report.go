@@ -33,10 +33,6 @@ func reportFilename(kind, covered, theme string, generated time.Time) string {
 	return name + ".md"
 }
 
-func periodReportPath(kind, covered string, generated time.Time) string {
-	return filepath.Join(DunnitDir(), reportFilename(kind, covered, "", generated))
-}
-
 func writeReportFile(path, text string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err

@@ -95,8 +95,12 @@ sync across machines).
 Ledger files, one per day:
 
 ```
-$DUNNIT_DIR/<year>/w<week>-<month>/ledger-<YYYYMMDD>.txt
+$DUNNIT_DIR/<year>/<month>/w<week>/ledger-<DOW>-<YYYYMMDD>.txt
 ```
+
+The week's month is fixed by its Monday. Daily reports live beside their
+ledger; weekly reports live in the week directory; monthly reports live in
+the month directory; and quarterly/yearly reports live under their year.
 
 Each line looks like:
 
