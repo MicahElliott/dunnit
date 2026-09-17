@@ -207,11 +207,56 @@ func TestStaleDailyPlanItemsLookBeyondCarryWindow(t *testing.T) {
 	writeLedgerLinesForDate(t, now.AddDate(0, 0, -3), []string{
 		"[09:00:00] TODO fresh task",
 	})
+	writeLedgerLinesForDate(t, now.AddDate(0, 0, -staleReviewLookbackDays-1), []string{
+		"[09:00:00] TODO too old for daily review",
+	})
 	InvalidateLedgerCaches()
 
 	items := staleDailyPlanItems(now)
 	if len(items) != 1 || items[0].Text != "stale task" {
 		t.Fatalf("expected only the seven-day-old item in stale review, got %+v", items)
+	}
+}
+
+func TestStaleDailyPlanItemsDeduplicatesRepeatedCopies(t *testing.T) {
+	withTempDunnitDir(t)
+
+	now := time.Now()
+	writeLedgerLinesForDate(t, now.AddDate(0, 0, -10), []string{
+		"[09:00:00] TODO repeated task",
+	})
+	writeLedgerLinesForDate(t, now.AddDate(0, 0, -9), []string{
+		"[06:00:00] TODO repeated task s/" + now.AddDate(0, 0, -10).Format("2006-01-02"),
+		"[06:01:00] TODO repeated task s/" + now.AddDate(0, 0, -10).Format("2006-01-02"),
+	})
+	InvalidateLedgerCaches()
+
+	items := staleDailyPlanItems(now)
+	if len(items) != 1 || items[0].Text != "repeated task" {
+		t.Fatalf("expected one deduplicated stale item, got %+v", items)
+	}
+}
+
+func TestResolvedCarryForwardCopiesDoNotResurface(t *testing.T) {
+	withTempDunnitDir(t)
+
+	now := time.Now()
+	original := now.AddDate(0, 0, -10)
+	resolved := now.AddDate(0, 0, -9)
+	writeLedgerLinesForDate(t, original, []string{
+		"[09:00:00] TODO repeated task",
+	})
+	writeLedgerLinesForDate(t, resolved, []string{
+		"[06:00:00] SOMEDAY repeated task s/" + original.Format("2006-01-02") + " (via TODO)",
+	})
+	writeLedgerLinesForDate(t, now.AddDate(0, 0, -8), []string{
+		"[06:00:00] TODO repeated task s/" + original.Format("2006-01-02"),
+		"[06:01:00] TODO repeated task s/" + original.Format("2006-01-02"),
+	})
+	InvalidateLedgerCaches()
+
+	if items := staleDailyPlanItems(now); len(items) != 0 {
+		t.Fatalf("resolved carried-forward copies resurfaced: %+v", items)
 	}
 }
 

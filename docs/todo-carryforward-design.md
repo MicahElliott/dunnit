@@ -15,13 +15,23 @@ ledger. It does not combine items from multiple days. Each copied item keeps
 its original `s/YYYY-MM-DD` annotation so its age remains visible. The UI
 presents that stored date as a compact `🌱MM/DD` badge.
 
+Those copied lines are today's active plan, so they appear in Daybook's
+Planned section and remain there until they are completed, postponed, or
+discarded. Start of Day may show the same logical item once in stale review
+when it has been open for at least seven calendar days; stale review is a
+decision prompt, not another task copy. It deduplicates with the same logical
+TODO/DOING key used by Daybook and shows the item's original `since` date.
+
 The carry operation is idempotent from the ledger's contents, which means a
 second machine that has already received the copied lines does not append
 duplicates. Resolutions written from Daybook remain append-only and sync with
-the rest of the ledger.
+the rest of the ledger. A resolution also prevents later synced copies of the
+same carried item from resurrecting it; a newly typed TODO without a carry
+marker may intentionally reopen the work.
 
 The other open categories are Start of Day context rather than daily-plan
-items:
+items. SOD shows unresolved context from the last active ledger day, but does
+not write those entries into today's ledger or Daybook's Planned section:
 
 - GOAL is longer-horizon planning.
 - RISK is something to watch, not a task to repeat in Daybook.
@@ -40,10 +50,11 @@ days old, an unresolved TODO or DOING item appears in Start of Day's stale
 review. The user can explicitly move stale items to SOMEDAY; age alone never
 changes an item's meaning or writes a ledger entry.
 
-Stale review looks beyond the seven-day carry window so a missed Start of Day
-does not make old items disappear without an explanation. Items outside the
-carry window are not automatically brought into today's plan until the user
-chooses how to handle them.
+Stale review scans the previous 30 calendar days, so a missed Start of Day has
+some recovery room without turning the daily surface into an archive. Daily
+carry-forward still searches only the previous seven calendar days. Items
+outside the daily horizon are not brought into today's plan; use SOMEDAY or
+history when they become relevant again.
 
 ## Resolution and sync
 

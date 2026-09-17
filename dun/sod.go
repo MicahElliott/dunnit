@@ -1,6 +1,7 @@
 package dun
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -152,9 +153,6 @@ func showSODWindow(a fyne.App) {
 	} else {
 		planNote = newExplanatoryLabel("Add a TODO below or from Daybook.")
 	}
-	planScroll := container.NewVScroll(planBox)
-	planScroll.SetMinSize(fyne.NewSize(0, 150))
-
 	contextBox := container.NewVBox()
 	if hasLastActive {
 		contextItems := openItemsAtDate(entries, lastActive, now)
@@ -171,22 +169,24 @@ func showSODWindow(a fyne.App) {
 	} else {
 		contextBox.Add(widget.NewLabel("No previous active day yet."))
 	}
-	contextScroll := container.NewVScroll(contextBox)
-	contextScroll.SetMinSize(fyne.NewSize(0, 100))
-
 	staleBox := container.NewVBox()
 	var refreshStale func()
 	refreshStale = func() {
 		staleBox.RemoveAll()
 		staleItems := staleDailyPlanItems(time.Now())
+		staleBox.Add(widget.NewLabelWithStyle(
+			fmt.Sprintf("Stale TODOs (open %d+ days)", staleReviewDays),
+			fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
+		staleBox.Add(newExplanatoryLabel(fmt.Sprintf(
+			"Review scans the previous %d calendar days. Daily carry searches the previous %d days. These items remain active in Daybook until you complete, postpone, or discard them.",
+			staleReviewLookbackDays, dailyCarryLookbackDays)))
 		if len(staleItems) == 0 {
+			staleBox.Add(widget.NewLabel("Nothing needs a stale-item decision."))
 			staleBox.Refresh()
 			return
 		}
-		staleBox.Add(widget.NewLabelWithStyle("Stale TODOs", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
-		staleBox.Add(newExplanatoryLabel("These have been open for at least seven days."))
-		for _, item := range staleItems {
-			item := item
+		for _, stale := range staleItems {
+			item := stale.OpenItem
 			actions := container.NewHBox(
 				newHoverIconButton(theme.Icon(theme.IconNameDelete), "Delete", func() {
 					recordDiscarded(item)
@@ -205,7 +205,8 @@ func showSODWindow(a fyne.App) {
 				}),
 			)
 			staleBox.Add(container.NewBorder(nil, nil, nil, actions,
-				itemTextLabel(categoryIconPrefix(item.Category)+openItemDisplayText(item.Text))))
+				itemTextLabel(categoryIconPrefix(item.Category)+openItemDisplayText(item.Text)+
+					" · since "+stale.Since.Format("Jan 2, 2006"))))
 		}
 		staleBox.Refresh()
 	}
@@ -218,14 +219,10 @@ func showSODWindow(a fyne.App) {
 		}
 	}
 	if reportDate, report, reportPath := lastEODReport(now); !reportDate.IsZero() {
-		reportText := widget.NewRichTextFromMarkdown(report)
-		reportText.Wrapping = fyne.TextWrapWord
-		reportScroll := container.NewVScroll(reportText)
-		reportScroll.SetMinSize(fyne.NewSize(0, 240))
 		reportBox.Add(widget.NewLabelWithStyle("Last EOD report — "+reportDate.Format("Mon Jan 2"), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
-		reportBox.Add(reportScroll)
+		reportBox.Add(newExplanatoryLabel("The full report opens in its own window, with its date and stats at the top."))
 		reportBox.Add(widget.NewButton("See full EOD report", func() {
-			showGeneratedReport(a, "Dunnit: EOD Report — "+reportDate.Format("Mon Jan 2"), reportPath, report)
+			showEODReport(a, reportDate, reportPath, report)
 		}))
 	}
 
@@ -284,10 +281,11 @@ func showSODWindow(a fyne.App) {
 		reportBox,
 		widget.NewLabelWithStyle(planHeading, fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		planNote,
-		planScroll,
+		planBox,
 		staleBox,
-		widget.NewLabelWithStyle("From the last active day", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
-		contextScroll,
+		widget.NewLabelWithStyle("Open context from the last active day (not copied into today’s plan)", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		newExplanatoryLabel("WAITING, RISK, QUESTION, FIXME, and GOAL stay here for context; only TODO and DOING become today’s active plan."),
+		contextBox,
 		recurringBox,
 		entryRow,
 		newItemSuggestions,

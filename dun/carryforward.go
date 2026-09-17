@@ -167,6 +167,14 @@ type openHistoryItem struct {
 	date  time.Time
 }
 
+// stalePlanItem keeps the original date alongside the active item so SOD can
+// explain why it needs review. OpenItem is embedded so existing item actions
+// can continue to use the same value.
+type stalePlanItem struct {
+	OpenItem
+	Since time.Time
+}
+
 // dailyCarryCategories are the items that belong in today's plan. Other open
 // categories remain useful Start of Day context, but copying them into
 // Daybook makes the plan noisy and makes RISK look like an action.
@@ -183,6 +191,8 @@ const dailyCarryLookbackDays = 7
 func openItemsThrough(entries []LedgerEntry, through time.Time) (map[string]openHistoryItem, []string) {
 	active := make(map[string]openHistoryItem)
 	var order []string
+	ordered := make(map[string]bool)
+	var resolutions []resolvedOpenItem
 
 	for _, e := range entries {
 		if e.Date.After(through) {
@@ -199,6 +209,7 @@ func openItemsThrough(entries []LedgerEntry, through time.Time) (map[string]open
 			for _, srcCat := range openTrackedCategories {
 				if suffix := convertedSuffix(srcCat); strings.HasSuffix(e.Text, suffix) {
 					orig := strings.TrimSuffix(e.Text, suffix)
+					resolutions = append(resolutions, resolvedOpenItem{category: srcCat, text: orig})
 					for key, state := range active {
 						if isLifecycleCategory(state.item.Category) && isLifecycleCategory(srcCat) {
 							if resolutionMatches(stripCarryForwardSince(state.item.Text), stripCarryForwardSince(orig)) {
@@ -218,9 +229,13 @@ func openItemsThrough(entries []LedgerEntry, through time.Time) (map[string]open
 		if !isOpenTrackedCategory(e.Category) {
 			continue
 		}
+		if isResolvedCarryForward(e.Category, e.Text, resolutions) {
+			continue
+		}
 		key := openItemKey(e.Category, e.Text)
-		if _, exists := active[key]; !exists {
+		if !ordered[key] {
 			order = append(order, key)
+			ordered[key] = true
 		}
 		active[key] = openHistoryItem{
 			item:  OpenItem{Category: e.Category, Text: stripCarryForwardSince(e.Text)},
@@ -326,19 +341,30 @@ func carryForwardDailyPlan(now time.Time) (sourceDate time.Time, items []OpenIte
 	return sourceDate, candidates
 }
 
+// staleReviewLookbackDays bounds SOD's daily-purpose review. This gives a
+// missed kickoff enough recovery room without turning the daily surface into
+// an archive of every unresolved item ever logged.
+const staleReviewLookbackDays = 30
+
 // staleDailyPlanItems returns unresolved TODO/DOING items old enough to need
-// an explicit SOMEDAY decision. It looks beyond the seven-day carry window
-// so old items do not disappear silently when kickoff is missed.
-func staleDailyPlanItems(now time.Time) []OpenItem {
+// an explicit SOMEDAY decision, limited to the recent daily-planning horizon.
+func staleDailyPlanItems(now time.Time) []stalePlanItem {
 	entries := AllLedgerEntries()
 	active, order := openItemsThrough(entries, now)
-	var stale []OpenItem
+	var stale []stalePlanItem
+	seen := make(map[string]bool)
 	for _, key := range order {
 		state, ok := active[key]
-		if !ok || !dailyCarryCategories[state.item.Category] || daysSinceDate(state.since, now) < staleReviewDays {
+		age := daysSinceDate(state.since, now)
+		if !ok || !dailyCarryCategories[state.item.Category] || age < staleReviewDays || age > staleReviewLookbackDays {
 			continue
 		}
-		stale = append(stale, state.item)
+		logicalKey := openItemKey(state.item.Category, state.item.Text)
+		if seen[logicalKey] {
+			continue
+		}
+		seen[logicalKey] = true
+		stale = append(stale, stalePlanItem{OpenItem: state.item, Since: state.since})
 	}
 	return stale
 }

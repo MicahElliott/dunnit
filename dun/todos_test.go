@@ -59,6 +59,26 @@ func TestParseOpenItems_InflectedDoneResolvesSource(t *testing.T) {
 	}
 }
 
+func TestParseOpenItems_IgnoresResolvedCarriedCopies(t *testing.T) {
+	open := parseOpenItems([]string{
+		"[08:00:00] TODO ship the fix s/2026-09-01",
+		"[08:05:00] SOMEDAY ship the fix s/2026-09-01 (via TODO)",
+		"[08:10:00] TODO ship the fix s/2026-09-01",
+	})
+	if len(open) != 0 {
+		t.Fatalf("resolved carried copy resurfaced: %+v", open)
+	}
+
+	open = parseOpenItems([]string{
+		"[08:00:00] TODO ship the fix s/2026-09-01",
+		"[08:05:00] SOMEDAY ship the fix s/2026-09-01 (via TODO)",
+		"[08:10:00] TODO ship the fix",
+	})
+	if len(open) != 1 || open[0].Text != "ship the fix" {
+		t.Fatalf("new unmarked TODO should reopen intentionally: %+v", open)
+	}
+}
+
 func TestParseOpenItems_CollapsesInflectedLifecycleStates(t *testing.T) {
 	open := parseOpenItems([]string{
 		"[08:00:00] TODO send the update",

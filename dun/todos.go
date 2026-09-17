@@ -94,6 +94,41 @@ func resolutionMatches(sourceText, resolvedText string) bool {
 		resolvedText == inflectLifecycleText(sourceText, "DONE")
 }
 
+type resolvedOpenItem struct {
+	category string
+	text     string
+}
+
+// resolvedOpenItemMatches reports whether a later open entry is the same
+// logical item as a recorded resolution. A carried-forward copy keeps the
+// original text and its s/YYYY-MM-DD marker, so it can be ignored after the
+// resolution without suppressing a newly entered, unmarked TODO.
+func resolvedOpenItemMatches(category, text string, resolved resolvedOpenItem) bool {
+	text = stripCarryForwardSince(text)
+	resolved.text = stripCarryForwardSince(resolved.text)
+	if isLifecycleCategory(category) && isLifecycleCategory(resolved.category) {
+		return resolutionMatches(text, resolved.text)
+	}
+	return category == resolved.category && resolutionMatches(text, resolved.text)
+}
+
+func isResolvedCarryForward(category, text string, resolutions []resolvedOpenItem) bool {
+	if !hasCarryForwardSince(text) {
+		return false
+	}
+	for _, resolved := range resolutions {
+		if resolvedOpenItemMatches(category, text, resolved) {
+			return true
+		}
+	}
+	return false
+}
+
+func hasCarryForwardSince(text string) bool {
+	_, ok := parseCarryForwardSince(text)
+	return ok
+}
+
 // parseLedgerLine splits a ledger line "[HH:MM:SS] CATEGORY text"
 // into category and text. Returns ok=false if the line doesn't look
 // like a well-formed ledger entry.
@@ -111,6 +146,8 @@ func parseLedgerLine(line string) (category, text string, ok bool) {
 func parseOpenItems(lines []string) []OpenItem {
 	active := make(map[string]OpenItem)
 	var order []string
+	ordered := make(map[string]bool)
+	var resolutions []resolvedOpenItem
 
 	for i, line := range lines {
 		cat, text, ok := parseLedgerLine(line)
@@ -128,15 +165,20 @@ func parseOpenItems(lines []string) []OpenItem {
 			for _, srcCat := range openTrackedCategories {
 				if suffix := convertedSuffix(srcCat); strings.HasSuffix(text, suffix) {
 					orig := strings.TrimSuffix(text, suffix)
+					resolutions = append(resolutions, resolvedOpenItem{category: srcCat, text: orig})
 					resolveOpenItems(active, srcCat, orig)
 				}
 			}
 			continue
 		}
 		if isOpenTrackedCategory(cat) {
+			if isResolvedCarryForward(cat, text, resolutions) {
+				continue
+			}
 			key := openItemKey(cat, text)
-			if _, exists := active[key]; !exists {
+			if !ordered[key] {
 				order = append(order, key)
+				ordered[key] = true
 			}
 			active[key] = OpenItem{Category: cat, Text: text, LineIndex: i}
 		}

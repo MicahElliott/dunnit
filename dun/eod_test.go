@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -118,6 +119,37 @@ func TestMarkdownToPlainTextRemovesFormatting(t *testing.T) {
 				t.Fatalf("markdownToPlainText() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestEODReportForDisplayUsesCoveredDateAndStats(t *testing.T) {
+	withTempDunnitDir(t)
+	date := time.Date(2026, time.September, 16, 0, 0, 0, 0, time.Local)
+	writeLedgerLinesForDate(t, date, []string{
+		"[09:00:00] DONE shipped the fix",
+		"[17:00:00] PRODUCTIVITY 4",
+	})
+	InvalidateLedgerCaches()
+
+	got := eodReportForDisplay("# End-of-Day Recap — Tue Sep 15\n\nThe work\n\nStats: old", date)
+	if !strings.Contains(got, "# End-of-Day Recap — Wed Sep 16") {
+		t.Fatalf("report heading did not use covered date: %q", got)
+	}
+	if !strings.Contains(got, "*Stats: 2 entries · 1 done · productivity 4/5*") {
+		t.Fatalf("report stats missing or misplaced: %q", got)
+	}
+	if strings.Contains(got, "Tue Sep 15") {
+		t.Fatalf("stale report heading survived: %q", got)
+	}
+	if strings.Count(got, "Stats:") != 1 {
+		t.Fatalf("expected one stats line below the heading: %q", got)
+	}
+}
+
+func TestReportHeadingAndBodySeparatesH1(t *testing.T) {
+	heading, body := reportHeadingAndBody("# Report\n\n*Stats: 2 entries*\n\nBody")
+	if heading != "Report" || body != "*Stats: 2 entries*\n\nBody" {
+		t.Fatalf("reportHeadingAndBody() = %q, %q", heading, body)
 	}
 }
 

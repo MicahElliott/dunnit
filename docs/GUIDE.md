@@ -100,15 +100,27 @@ little later" pattern repeated at increasing scale:
 - **Hourly**: the popup captures a one-line entry, tagged with a
   category (`DONE`, `TODO`, `TIL`, `MEETING`, etc.).
 - **Daily** (the heart of the process): *Start of Day* reads back your
-still-open items (`TODO`/`DOING`/`GOAL`/`WAITING`/`QUESTION`/`FIXME`/`RISK`)
-  so you can decide what's still worth carrying; *End of Day* wraps
-  things up — reviewing the log, scoring productivity, noting meeting
-  hours, and carrying anything unresolved forward to tomorrow.
-  **Carry-forward** is what keeps open items from silently vanishing:
-  an item you don't resolve (into `DONE`/`FAIL`/`WASTED`, or promote
-  elsewhere) just keeps showing up in the next day's readback,
-  picking up a staleness badge the longer it lingers, until you either
-  close it out or explicitly punt it to `SOMEDAY`.
+  still-open items (`TODO`/`DOING`/`GOAL`/`WAITING`/`QUESTION`/`FIXME`/`RISK`)
+  so you can decide what's still worth carrying; *End of Day* wraps things
+  up — reviewing the log, scoring productivity, and noting meeting hours.
+
+### Daily carry-forward
+
+At Start of Day, Dunnit carries unresolved `TODO`s and `DOING`s from the most
+recent prior day with open plan items, looking back up to seven calendar days.
+Each item is copied into today's Daybook once and keeps its original “since”
+date. `WAITING`s, `GOAL`s, `RISK`s, `QUESTION`s, and `FIXME`s are not copied
+into today's plan; unresolved items from the last active day remain visible as
+Start of Day context.
+
+Items open for seven or more days appear in **Stale TODOs** for review. This
+daily review looks back up to 30 calendar days and shows each item only once.
+Stale items remain active in Daybook until you complete, postpone, or discard
+them. A resolution also prevents later synced copies of the same item from
+returning; a newly typed TODO without a carry marker may intentionally reopen
+the work. Older items belong in `SOMEDAY` or history until you choose to bring
+them back.
+
 - **Weekly / Monthly / Quarterly / Annual**: the same Kickoff (forward-
   looking) and Review (backward-looking) shape repeats at each larger
   scale, with more built up at the larger scales (OKRs at

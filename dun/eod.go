@@ -1,6 +1,7 @@
 package dun
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -117,6 +118,69 @@ func eodLedgerLineLabel(line string) fyne.CanvasObject {
 	}
 	return itemTextLabel(categoryIconPrefix(category) +
 		openItemDisplayText(stripResolutionSuffix(text)))
+}
+
+// eodReportStats summarizes the ledger metadata that belongs immediately
+// below an EOD report's title. Keeping it here makes the report date and its
+// stats come from the same ledger day even when an older report is opened.
+func eodReportStats(date time.Time) string {
+	entries := 0
+	done := 0
+	meetingHours := ""
+	for _, entry := range AllLedgerEntries() {
+		if !sameCalendarDate(entry.Date, date) {
+			continue
+		}
+		entries++
+		switch entry.Category {
+		case "DONE":
+			done++
+		case "MEETING_HOURS":
+			meetingHours = strings.TrimSpace(entry.Text)
+		}
+	}
+	parts := []string{fmt.Sprintf("%d entries", entries)}
+	if done > 0 {
+		parts = append(parts, fmt.Sprintf("%d done", done))
+	}
+	if meetingHours != "" {
+		parts = append(parts, meetingHours+" meeting hours")
+	}
+	if reflection := dayReflection(AllLedgerEntries(), date); reflection != "" {
+		parts = append(parts, reflection)
+	}
+	return strings.Join(parts, " · ")
+}
+
+// eodReportForDisplay gives every opened report a date-correct title and
+// moves its compact stats line directly below that title. Existing report
+// bodies may contain an old or generated H1, so it is removed from the body
+// before the canonical title is added.
+func eodReportForDisplay(report string, date time.Time) string {
+	lines := strings.Split(strings.TrimSpace(report), "\n")
+	if len(lines) > 0 && strings.HasPrefix(strings.TrimSpace(lines[0]), "# ") {
+		lines = lines[1:]
+	}
+	var bodyLines []string
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "Stats:") || strings.HasPrefix(trimmed, "*Stats:") {
+			continue
+		}
+		bodyLines = append(bodyLines, line)
+	}
+	body := strings.TrimSpace(strings.Join(bodyLines, "\n"))
+	heading := "# End-of-Day Recap — " + date.Format("Mon Jan 2")
+	stats := "*Stats: " + eodReportStats(date) + "*"
+	if body == "" {
+		return heading + "\n\n" + stats + "\n"
+	}
+	return heading + "\n\n" + stats + "\n\n" + body + "\n"
+}
+
+func showEODReport(a fyne.App, date time.Time, path, report string) {
+	showGeneratedReport(a, "Dunnit: EOD Report — "+date.Format("Mon Jan 2"), path,
+		eodReportForDisplay(report, date))
 }
 
 func showEODAlreadyRunWindow(a fyne.App, date time.Time) {

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
@@ -48,7 +49,8 @@ func writeReportFile(path, text string) error {
 // Copy/Save in som.go). title is the window title; savePath is where
 // Save writes text.
 func showGeneratedReport(a fyne.App, title, savePath, text string) {
-	body := widget.NewRichTextFromMarkdown(text)
+	heading, bodyText := reportHeadingAndBody(text)
+	body := widget.NewRichTextFromMarkdown(bodyText)
 	body.Wrapping = fyne.TextWrapWord
 	scroll := container.NewVScroll(body)
 	scroll.SetMinSize(fyne.NewSize(0, 260))
@@ -64,13 +66,29 @@ func showGeneratedReport(a fyne.App, title, savePath, text string) {
 		dialog.ShowInformation("Saved", "Saved to "+savePath, w)
 	})
 
-	w.SetContent(windowPad(container.NewBorder(nil,
+	var headingWidget fyne.CanvasObject
+	if heading != "" {
+		headingText := canvas.NewText(heading, theme.Color(theme.ColorNameForeground))
+		headingText.TextSize = theme.Size(theme.SizeNameHeadingText) * 1.35
+		headingText.TextStyle = fyne.TextStyle{Bold: true}
+		headingWidget = headingText
+	}
+	w.SetContent(windowPad(container.NewBorder(headingWidget,
 		container.NewHBox(copyButtons.Objects[0], copyButtons.Objects[1], saveBtn, widget.NewButton("Close", func() { w.Close() })),
 		nil, nil,
 		scroll,
 	)))
 	w.Resize(fyne.NewSize(520, 420))
 	w.Show()
+}
+
+func reportHeadingAndBody(text string) (heading, body string) {
+	lines := strings.Split(strings.TrimSpace(text), "\n")
+	if len(lines) > 0 && strings.HasPrefix(strings.TrimSpace(lines[0]), "# ") {
+		heading = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(lines[0]), "# "))
+		lines = lines[1:]
+	}
+	return heading, strings.TrimSpace(strings.Join(lines, "\n"))
 }
 
 // reportCopyButtons returns the two clipboard actions shared by generated
