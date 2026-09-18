@@ -37,7 +37,7 @@ func TestDisplayMetadataToken(t *testing.T) {
 	tests := []struct {
 		token, wantLabel, wantTooltip string
 	}{
-		{" @30m", " ⏱30m", "Spent 30 mins"},
+		{" @30m", " ⏱︎30m", "Spent 30 mins"},
 	}
 	for _, tt := range tests {
 		label, tooltip := displayMetadataToken(tt.token)

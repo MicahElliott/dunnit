@@ -28,8 +28,9 @@ var metaTextColor = color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xff}
 
 // metaTextSizeRatio shrinks the trailing metadata run's font size
 // relative to the theme's normal text size, in addition to graying it
-// out -- purely cosmetic, "de-emphasize further."
-const metaTextSizeRatio = 0.85
+// out. The slightly smaller size keeps emoji indicators aligned with
+// their adjacent Latin text.
+const metaTextSizeRatio = 0.80
 
 // trailingMetaPattern matches one or more of the known trailing
 // display-metadata suffixes back-to-back at the very end of an item's
@@ -132,7 +133,9 @@ func itemTextLabel(text string) fyne.CanvasObject {
 func displayMetadataToken(token string) (label, tooltip string) {
 	trimmed := strings.TrimSpace(token)
 	if match := durationMetadataPattern.FindStringSubmatch(trimmed); match != nil {
-		label = " \u23f1" + match[1] + match[2]
+		// U+FE0E requests text presentation, avoiding the wider/taller
+		// emoji presentation that makes the stopwatch look separated.
+		label = " \u23f1\ufe0e" + match[1] + match[2]
 		n, _ := strconv.Atoi(match[1])
 		unit := map[byte]string{'m': "min", 'h': "hour", 'd': "day"}[match[2][0]]
 		if n != 1 {
