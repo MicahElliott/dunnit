@@ -58,12 +58,17 @@ var prepareDaybookAutoPopup func()
 // own category and text instead of being reset to the normal DOING default.
 var prepareRecurringItemReminder func(RecurringItem)
 
-const daybookAutoHideAfter = 3 * time.Minute
+// daybookInputEmpty reports whether the Daybook entry controls contain any
+// unsaved text. It is set by BuildMainWindow once both controls exist.
+var daybookInputEmpty func() bool
+
+const daybookAutoHideAfter = 2 * time.Minute
 
 var (
-	daybookAutoHideMu      sync.Mutex
-	daybookAutoHideTimer   *time.Timer
-	daybookAutoHideEnabled bool
+	daybookAutoHideMu        sync.Mutex
+	daybookAutoHideTimer     *time.Timer
+	daybookAutoHideEnabled   bool
+	daybookAutoHideFocusLost bool
 )
 
 // trayApp/trayWindow cache BuildMainWindow's fyne.App/main-window
@@ -110,10 +115,55 @@ func stopDaybookAutoHide() {
 	}
 }
 
+func daybookAutoHideState() (enabled, focusLost bool) {
+	daybookAutoHideMu.Lock()
+	defer daybookAutoHideMu.Unlock()
+	return daybookAutoHideEnabled, daybookAutoHideFocusLost
+}
+
+func daybookEntryIsEmpty() bool {
+	if daybookInputEmpty != nil {
+		return daybookInputEmpty()
+	}
+	return mainInputEntry != nil && strings.TrimSpace(mainInputEntry.Text) == ""
+}
+
+func setDaybookAutoHideMode(enabled bool) {
+	daybookAutoHideMu.Lock()
+	defer daybookAutoHideMu.Unlock()
+	daybookAutoHideEnabled = enabled
+	daybookAutoHideFocusLost = false
+	if daybookAutoHideTimer != nil {
+		daybookAutoHideTimer.Stop()
+		daybookAutoHideTimer = nil
+	}
+}
+
+func daybookFocusGained() {
+	daybookAutoHideMu.Lock()
+	defer daybookAutoHideMu.Unlock()
+	daybookAutoHideFocusLost = false
+	if daybookAutoHideTimer != nil {
+		daybookAutoHideTimer.Stop()
+		daybookAutoHideTimer = nil
+	}
+}
+
+func daybookFocusLost(w fyne.Window) {
+	daybookAutoHideMu.Lock()
+	daybookAutoHideFocusLost = true
+	enabled := daybookAutoHideEnabled
+	daybookAutoHideMu.Unlock()
+	if enabled && daybookEntryIsEmpty() {
+		armDaybookAutoHide(w)
+	}
+}
+
 // hideDaybook hides the tray window and cancels any pending auto-hide timer.
 func hideDaybook(w fyne.Window) {
 	daybookAutoHideMu.Lock()
 	daybookAutoHideEnabled = false
+	daybookAutoHideFocusLost = false
 	if daybookAutoHideTimer != nil {
 		daybookAutoHideTimer.Stop()
 		daybookAutoHideTimer = nil
@@ -132,8 +182,10 @@ func armDaybookAutoHide(w fyne.Window) {
 			daybookAutoHideMu.Lock()
 			daybookAutoHideTimer = nil
 			active := daybookAutoHideEnabled
+			focusLost := daybookAutoHideFocusLost
 			daybookAutoHideMu.Unlock()
-			if active && mainInputEntry != nil && strings.TrimSpace(mainInputEntry.Text) == "" {
+			mainInputStillFocused := mainInputEntry != nil && w.Canvas().Focused() == mainInputEntry
+			if active && focusLost && mainInputStillFocused && daybookEntryIsEmpty() {
 				hideDaybook(w)
 			}
 		})
@@ -150,16 +202,10 @@ func ShowDaybook(w fyne.Window, autoHide bool) {
 	if autoHide && prepareDaybookAutoPopup != nil {
 		prepareDaybookAutoPopup()
 	}
-	daybookAutoHideEnabled = autoHide
-	if !autoHide {
-		stopDaybookAutoHide()
-	}
+	setDaybookAutoHideMode(autoHide)
 	w.Show()
 	w.RequestFocus()
 	FocusMainInput()
-	if autoHide && mainInputEntry != nil && strings.TrimSpace(mainInputEntry.Text) == "" {
-		armDaybookAutoHide(w)
-	}
 }
 
 // ShowRecurringItemReminder raises Daybook with a configured recurring item
@@ -455,9 +501,11 @@ func MakeUI() *fyne.App {
 // the embedded Entry's normal shortcut handling (cut/copy/paste etc).
 type closeShortcutEntry struct {
 	tagAutoEntry
-	closeKey fyne.KeyName
-	closeMod fyne.KeyModifier
-	onClose  func()
+	closeKey      fyne.KeyName
+	closeMod      fyne.KeyModifier
+	onClose       func()
+	onFocusGained func()
+	onFocusLost   func()
 }
 
 func newCloseShortcutEntry(closeKey fyne.KeyName, closeMod fyne.KeyModifier, onClose func()) *closeShortcutEntry {
@@ -474,6 +522,20 @@ func (e *closeShortcutEntry) TypedShortcut(shortcut fyne.Shortcut) {
 		return
 	}
 	e.tagAutoEntry.TypedShortcut(shortcut)
+}
+
+func (e *closeShortcutEntry) FocusGained() {
+	e.tagAutoEntry.FocusGained()
+	if e.onFocusGained != nil {
+		e.onFocusGained()
+	}
+}
+
+func (e *closeShortcutEntry) FocusLost() {
+	e.tagAutoEntry.FocusLost()
+	if e.onFocusLost != nil {
+		e.onFocusLost()
+	}
 }
 
 // BuildMainWindow constructs the main Dunnit entry window and tray menu,
@@ -495,14 +557,19 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	input := newCloseShortcutEntry(fyne.KeyW, fyne.KeyModifierShortcutDefault, func() { hideDaybook(w4) })
 	input.SetPlaceHolder("Enter text\u2026")
 	mainInputEntry = input
+	input.onFocusGained = daybookFocusGained
+	input.onFocusLost = func() { daybookFocusLost(w4) }
 	previousInputChanged := input.Entry.OnChanged
 	input.Entry.OnChanged = func(text string) {
 		previousInputChanged(text)
-		if !daybookAutoHideEnabled {
+		enabled, focusLost := daybookAutoHideState()
+		if !enabled {
 			return
 		}
 		if strings.TrimSpace(text) == "" {
-			armDaybookAutoHide(w4)
+			if focusLost {
+				armDaybookAutoHide(w4)
+			}
 		} else {
 			stopDaybookAutoHide()
 		}
@@ -549,6 +616,22 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	minsInput := widget.NewEntry()
 	minsInput.SetPlaceHolder("mins")
 	minsWrapper := container.NewGridWrap(fyne.NewSize(64, minsInput.MinSize().Height), minsInput)
+	daybookInputEmpty = func() bool {
+		return strings.TrimSpace(input.Text) == "" && strings.TrimSpace(minsInput.Text) == ""
+	}
+	minsInput.OnChanged = func(text string) {
+		enabled, focusLost := daybookAutoHideState()
+		if !enabled {
+			return
+		}
+		if strings.TrimSpace(text) == "" {
+			if focusLost && daybookEntryIsEmpty() {
+				armDaybookAutoHide(w4)
+			}
+		} else {
+			stopDaybookAutoHide()
+		}
+	}
 
 	// setMinsWrapperVisibility shows/hides the mins field based on
 	// whether the currently selected category is time-trackable (see
@@ -696,7 +779,6 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	}
 	prepareDaybookAutoPopup = func() {
 		selectCategoryCode("DOING")
-		input.SetText("")
 	}
 	prepareRecurringItemReminder = func(item RecurringItem) {
 		selectCategoryCode(item.Category)
@@ -1080,7 +1162,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 		refreshCompleted()
 		refreshReflections()
 		refreshLastItem()
-		if daybookAutoHideEnabled {
+		if enabled, _ := daybookAutoHideState(); enabled {
 			hideDaybook(w4)
 		}
 	}
