@@ -3,6 +3,7 @@ package dun
 import (
 	"sort"
 	"strings"
+	"time"
 )
 
 // OpenItem is a not-yet-resolved item pulled from today's ledger
@@ -11,6 +12,7 @@ import (
 type OpenItem struct {
 	Category string // one of openTrackedCategories
 	Text     string
+	Time     time.Time // timestamp parsed from the originating ledger line
 	// LineIndex is the 0-based index of this item's originating line
 	// within readLedgerLines(), populated by getCategoryGroupItems and
 	// (as of the Planned/Reflections Edit-button addition)
@@ -148,6 +150,7 @@ func parseOpenItems(lines []string) []OpenItem {
 	var order []string
 	ordered := make(map[string]bool)
 	var resolutions []resolvedOpenItem
+	today := time.Now()
 
 	for i, line := range lines {
 		cat, text, ok := parseLedgerLine(line)
@@ -180,7 +183,8 @@ func parseOpenItems(lines []string) []OpenItem {
 				order = append(order, key)
 				ordered[key] = true
 			}
-			active[key] = OpenItem{Category: cat, Text: text, LineIndex: i}
+			stamp, _ := parseLedgerLineTime(line, today)
+			active[key] = OpenItem{Category: cat, Text: text, Time: stamp, LineIndex: i}
 		}
 	}
 
@@ -318,11 +322,11 @@ func recordDiscarded(item OpenItem) {
 // Daybook's Upcoming section, SOD, and SOM so all three list open
 // items (TODO/DOING/GOAL/WAITING/QUESTION/FIXME/RISK) the same way, rather
 // than each hardcoding its own TODO-vs-GOAL binary split. Within each
-// category bucket, items are ordered by leading tag (see
-// leadingTagSortKey) rather than left in ledger/first-seen order --
+// category bucket, items are ordered by primary tag (see
+// primaryTagSortKey) rather than left in ledger/first-seen order --
 // grouping same-tagged items together makes a category's items
 // easier to scan when several distinct projects/tags are mixed
-// together within it.
+// together within it. Within each tag group, rows remain chronological.
 func groupOpenItemsByCategory(items []OpenItem) (categories []string, grouped map[string][]OpenItem) {
 	grouped = make(map[string][]OpenItem)
 	for _, item := range items {
@@ -331,35 +335,35 @@ func groupOpenItemsByCategory(items []OpenItem) (categories []string, grouped ma
 	for _, cat := range openTrackedCategories {
 		if len(grouped[cat]) > 0 {
 			categories = append(categories, cat)
-			sortItemsByLeadingTag(grouped[cat])
+			sortItemsByPrimaryTag(grouped[cat])
 		}
 	}
 	return categories, grouped
 }
 
-// leadingTagSortKey returns the first #tag found in text (per
-// extractTags), or "" if text has no tag -- used to sort items within
-// a category bucket so same-tagged items cluster together.
-func leadingTagSortKey(text string) string {
+// primaryTagSortKey returns the last #tag found in text, or "" if text
+// has no tag. The last tag is the primary tag because users can place
+// tags anywhere in a sentence while still adopting a natural
+// verb-first, tags-at-the-end entry style.
+func primaryTagSortKey(text string) string {
 	tags := extractTags(text)
 	if len(tags) == 0 {
 		return ""
 	}
-	return tags[0]
+	return tags[len(tags)-1]
 }
 
-// sortItemsByLeadingTag sorts items in place by leadingTagSortKey,
+// sortItemsByPrimaryTag sorts items in place by primaryTagSortKey,
 // tagged items first (alphabetically by tag), untagged items
 // (empty key) last -- the opposite of plain string comparison's
 // default "" first ordering, since untagged items are meant to read
-// as lower-priority/less-organized than anything with a tag. Stable,
-// so items sharing a tag (or both untagged) keep their original
-// relative (ledger/first-seen) order.
-func sortItemsByLeadingTag(items []OpenItem) {
+// as lower-priority/less-organized than anything with a tag. Items
+// sharing a tag are then ordered by their ledger timestamp.
+func sortItemsByPrimaryTag(items []OpenItem) {
 	sort.SliceStable(items, func(i, j int) bool {
-		a, b := leadingTagSortKey(items[i].Text), leadingTagSortKey(items[j].Text)
+		a, b := primaryTagSortKey(items[i].Text), primaryTagSortKey(items[j].Text)
 		if a == "" && b == "" {
-			return false
+			return items[i].Time.Before(items[j].Time)
 		}
 		if a == "" {
 			return false // untagged never sorts before a tagged item
@@ -367,12 +371,18 @@ func sortItemsByLeadingTag(items []OpenItem) {
 		if b == "" {
 			return true // tagged always sorts before an untagged item
 		}
-		return a < b
+		if a != b {
+			return a < b
+		}
+		if items[i].Time.IsZero() || items[j].Time.IsZero() {
+			return false
+		}
+		return items[i].Time.Before(items[j].Time)
 	})
 }
 
-// isExcludedTagItem reports whether item's leading tag
-// (leadingTagSortKey) matches one of excludeTags (case-insensitive,
+// isExcludedTagItem reports whether item's primary tag
+// (primaryTagSortKey) matches one of excludeTags (case-insensitive,
 // same normalization as summarize.go's lineHasExcludedTag) -- used to
 // push items tagged with a user-configured "noise" tag
 // (Config.ReportExcludeTags) below even the untagged items in
@@ -380,7 +390,7 @@ func sortItemsByLeadingTag(items []OpenItem) {
 // toggle (mirroring Planned's existing non-TODO-category toggle).
 // Untagged items are never excluded regardless of excludeTags.
 func isExcludedTagItem(text string, excludeTags []string) bool {
-	tag := leadingTagSortKey(text)
+	tag := primaryTagSortKey(text)
 	if tag == "" || len(excludeTags) == 0 {
 		return false
 	}
@@ -393,8 +403,8 @@ func isExcludedTagItem(text string, excludeTags []string) bool {
 }
 
 // splitExcludedTagItems partitions items (already sorted via
-// sortItemsByLeadingTag) into visible (shown by default) and excluded
-// (leading tag matches excludeTags, hidden behind a "Show all"
+// sortItemsByPrimaryTag) into visible (shown by default) and excluded
+// (primary tag matches excludeTags, hidden behind a "Show all"
 // toggle), preserving each side's relative order.
 func splitExcludedTagItems(items []OpenItem, excludeTags []string) (visible, excluded []OpenItem) {
 	for _, item := range items {
@@ -535,13 +545,15 @@ func getCategoryGroupItems(group string) []OpenItem {
 		codes[c.Code] = true
 	}
 	var out []OpenItem
+	today := time.Now()
 	for i, line := range readLedgerLines() {
 		cat, text, ok := parseLedgerLine(line)
 		if !ok || !codes[cat] {
 			continue
 		}
 		text = stripResolutionSuffix(text)
-		out = append(out, OpenItem{Category: cat, Text: text, LineIndex: i})
+		stamp, _ := parseLedgerLineTime(line, today)
+		out = append(out, OpenItem{Category: cat, Text: text, Time: stamp, LineIndex: i})
 	}
 	return out
 }
@@ -551,8 +563,8 @@ func getCategoryGroupItems(group string) []OpenItem {
 // categoryGroupOrder and skipping empty buckets -- the general-
 // purpose sibling of groupOpenItemsByCategory, letting Endings and
 // Hilites show per-category sub-headings the same way Planned
-// already does. Also sorts each bucket by leading tag, same as
-// groupOpenItemsByCategory (see sortItemsByLeadingTag).
+// already does. Also sorts each bucket by primary tag, same as
+// groupOpenItemsByCategory (see sortItemsByPrimaryTag).
 func groupCategoryItemsByGroup(group string, items []OpenItem) (categories []string, grouped map[string][]OpenItem) {
 	grouped = make(map[string][]OpenItem)
 	for _, item := range items {
@@ -561,7 +573,7 @@ func groupCategoryItemsByGroup(group string, items []OpenItem) (categories []str
 	for _, cat := range categoryGroupOrder(group) {
 		if len(grouped[cat]) > 0 {
 			categories = append(categories, cat)
-			sortItemsByLeadingTag(grouped[cat])
+			sortItemsByPrimaryTag(grouped[cat])
 		}
 	}
 	return categories, grouped

@@ -94,15 +94,22 @@ func TestStripDisplayMetadata(t *testing.T) {
 	}
 }
 
-func TestSortItemsByLeadingTagUntaggedLast(t *testing.T) {
-	items := []OpenItem{
-		{Text: "no tag here"},
-		{Text: "#beta second"},
-		{Text: "#alpha first"},
-		{Text: "another untagged"},
+func TestSplitPrimaryTagUsesLastTag(t *testing.T) {
+	tag, body := splitPrimaryTag("Fumbled through #snap tab to work #12345")
+	if tag != "#12345" || body != "Fumbled through #snap tab to work" {
+		t.Fatalf("splitPrimaryTag = (%q, %q), want (#12345, body without primary)", tag, body)
 	}
-	sortItemsByLeadingTag(items)
-	want := []string{"#alpha first", "#beta second", "no tag here", "another untagged"}
+}
+
+func TestSortItemsByPrimaryTagThenTime(t *testing.T) {
+	items := []OpenItem{
+		{Text: "no tag here", Time: time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)},
+		{Text: "worked #snap later", Time: time.Date(2026, 1, 1, 12, 2, 0, 0, time.UTC)},
+		{Text: "worked #snap earlier", Time: time.Date(2026, 1, 1, 12, 1, 0, 0, time.UTC)},
+		{Text: "#alpha first", Time: time.Date(2026, 1, 1, 12, 3, 0, 0, time.UTC)},
+	}
+	sortItemsByPrimaryTag(items)
+	want := []string{"#alpha first", "worked #snap earlier", "worked #snap later", "no tag here"}
 	for i, w := range want {
 		if items[i].Text != w {
 			t.Errorf("position %d: got %q, want %q", i, items[i].Text, w)

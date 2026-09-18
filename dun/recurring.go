@@ -211,8 +211,8 @@ func recurringItemsSuggestionBox(items []RecurringItem, onAdded func()) fyne.Can
 	return box
 }
 
-// recurringEntryLabel renders the user-entered part with Daybook's green tag
-// treatment and de-emphasizes the recurrence details after the em dash.
+// recurringEntryLabel renders the user-entered part with Daybook's colored
+// tag treatment and de-emphasizes the recurrence details after the em dash.
 func recurringEntryLabel(text, detail string) fyne.CanvasObject {
 	detailText := canvas.NewText(" — "+detail, theme.Color(theme.ColorNameForeground))
 	detailText.TextStyle = fyne.TextStyle{Italic: true}

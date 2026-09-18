@@ -891,6 +891,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 			return
 		}
 		excludeTags := LoadConfig().ReportExcludeTags
+		tagStats := gatherTagStats()
 		addRow := func(item OpenItem) {
 			// Planned's icon-only controls stay as plain Fyne buttons.
 			// A hover tooltip is a full-canvas overlay in Fyne, so it can
@@ -947,7 +948,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 				})
 			}))
 			row := container.NewBorder(nil, nil, nil, container.NewHBox(actions...),
-				itemTextLabel(categoryIconPrefix(item.Category)+openItemDisplayText(item.Text)))
+				daybookItemTextLabel(categoryIconPrefix(item.Category), openItemDisplayText(item.Text), tagStats))
 			openItemsBox.Add(row)
 		}
 		cats, grouped := groupOpenItemsByCategory(items)
@@ -1041,6 +1042,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 			return
 		}
 		excludeTags := LoadConfig().ReportExcludeTags
+		tagStats := gatherTagStats()
 		cats, grouped := groupCategoryItemsByGroup("end", items)
 		excludedCount := 0
 		for _, cat := range cats {
@@ -1064,7 +1066,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 							})
 						})
 					}),
-					itemTextLabel(categoryIconPrefix(item.Category)+item.Text))
+					daybookItemTextLabel(categoryIconPrefix(item.Category), item.Text, tagStats))
 				completedBox.Add(row)
 			}
 		}
@@ -1100,6 +1102,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 			return
 		}
 		excludeTags := LoadConfig().ReportExcludeTags
+		tagStats := gatherTagStats()
 		cats, grouped := groupCategoryItemsByGroup("hilite", items)
 		excludedCount := 0
 		for _, cat := range cats {
@@ -1121,7 +1124,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 							})
 						})
 					}),
-					itemTextLabel(categoryIconPrefix(item.Category)+item.Text))
+					daybookItemTextLabel(categoryIconPrefix(item.Category), item.Text, tagStats))
 				reflectionsBox.Add(row)
 			}
 		}

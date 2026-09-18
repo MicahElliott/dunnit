@@ -1,6 +1,7 @@
 package dun
 
 import (
+	"hash/fnv"
 	"image/color"
 	"regexp"
 	"strconv"
@@ -12,12 +13,31 @@ import (
 	"fyne.io/fyne/v2/theme"
 )
 
-// tagTextColor is the dark green used to highlight #tag substrings
-// inline within an item row's text (Planned/Endings/Hilites
-// sections) -- same dark green showHelp already uses for positive-
-// sentiment category rows, reused here for visual consistency rather
-// than inventing a second "this text is notable" color.
-var tagTextColor = color.NRGBA{R: 0, G: 100, B: 0, A: 255}
+// tagTextColors are semi-dark colors that remain readable on a white
+// background. Blue is deliberately absent because blue is reserved for
+// clickable links elsewhere in the UI.
+var tagTextColors = []color.NRGBA{
+	{R: 0x8b, G: 0x3a, B: 0x3a, A: 0xff}, // red
+	{R: 0xa0, G: 0x52, B: 0x2d, A: 0xff}, // orange
+	{R: 0x8b, G: 0x65, B: 0x08, A: 0xff}, // gold
+	{R: 0x55, G: 0x6b, B: 0x2f, A: 0xff}, // olive
+	{R: 0x2e, G: 0x7d, B: 0x32, A: 0xff}, // green
+	{R: 0x00, G: 0x7f, B: 0x7f, A: 0xff}, // teal
+	{R: 0x6b, G: 0x3f, B: 0xa0, A: 0xff}, // purple
+	{R: 0x8b, G: 0x3a, B: 0x62, A: 0xff}, // magenta
+	{R: 0x5d, G: 0x40, B: 0x37, A: 0xff}, // brown
+	{R: 0x4f, G: 0x5f, B: 0x3f, A: 0xff}, // moss
+}
+
+// tagTextColor gives one deterministic color to each tag, so the same
+// tag remains visually grouped even when it appears in several rows.
+func tagTextColor(tag string) color.NRGBA {
+	h := fnv.New32a()
+	if _, err := h.Write([]byte(strings.ToLower(tag))); err != nil {
+		return tagTextColors[0]
+	}
+	return tagTextColors[h.Sum32()%uint32(len(tagTextColors))]
+}
 
 // metaTextColor is a medium-light gray (not so light it's hard to
 // read) used for trailing display-only metadata appended to an item
@@ -91,8 +111,8 @@ func stripDisplayMetadata(text string) string {
 
 // itemTextLabel renders text as a row of canvas.Text and clickable link
 // runs: any trailing display-metadata suffix (see splitTrailingMeta) is
-// peeled off and rendered smaller/grayed out; #tags are colored green and
-// Markdown/bare URLs are rendered as small blue links. Used
+// peeled off and rendered smaller/grayed out; #tags use a deterministic
+// per-tag color; Markdown/bare URLs are rendered as small blue links. Used
 // for item rows in Daybook's Planned/Endings/Hilites sections. Uses
 // tightRowLayout (not container.NewHBox) so adjacent runs render
 // flush against each other -- HBox's normal inter-child theme.Padding
@@ -128,6 +148,56 @@ func itemTextLabel(text string) fyne.CanvasObject {
 	}
 
 	return container.New(newTightRowLayout(), runs...)
+}
+
+// daybookItemTextLabel displays a Daybook row with its last tag moved to
+// an italic prefix. The supplied prefix is kept before the tag, usually
+// the category icon. The original text remains the value used for edits
+// and ledger writes; only this canvas representation is rearranged.
+func daybookItemTextLabel(prefix, text string, stats map[string]*tagStat) fyne.CanvasObject {
+	core, meta := splitTrailingMeta(text)
+	tag, body := splitPrimaryTag(core)
+
+	runs := make([]fyne.CanvasObject, 0, 4)
+	if prefix != "" {
+		runs = append(runs, canvas.NewText(prefix, theme.Color(theme.ColorNameForeground)))
+	}
+	if tag != "" {
+		runs = append(runs, newTagLinkWithStyle(
+			"["+tag+"] ", tagUsageTooltip(tag, stats[tag]), tagTextColor(tag), true, nil))
+	}
+	appendEntryRuns(&runs, body)
+	appendMetadataRuns(&runs, meta)
+	return container.New(newTightRowLayout(), runs...)
+}
+
+func appendEntryRuns(runs *[]fyne.CanvasObject, text string) {
+	links := parseEntryLinks(text)
+	position := 0
+	for _, link := range links {
+		appendTextAndTags(runs, text[position:link.Start])
+		*runs = append(*runs, newURLLink(link.Text, link.URL))
+		position = link.End
+	}
+	appendTextAndTags(runs, text[position:])
+}
+
+func appendMetadataRuns(runs *[]fyne.CanvasObject, meta string) {
+	if meta == "" {
+		return
+	}
+	for _, match := range metadataTokenPattern.FindAllStringIndex(meta, -1) {
+		token := meta[match[0]:match[1]]
+		label, tooltip := displayMetadataToken(token)
+		if tooltip == "" {
+			metaTxt := canvas.NewText(label, metaTextColor)
+			metaTxt.TextSize = theme.TextSize() * metaTextSizeRatio
+			*runs = append(*runs, metaTxt)
+			continue
+		}
+		*runs = append(*runs, newHoverText(label, metaTextColor,
+			theme.TextSize()*metaTextSizeRatio, tooltip))
+	}
 }
 
 func displayMetadataToken(token string) (label, tooltip string) {
@@ -171,7 +241,8 @@ func appendTextAndTags(runs *[]fyne.CanvasObject, text string) {
 		if match[0] > position {
 			*runs = append(*runs, canvas.NewText(text[position:match[0]], theme.Color(theme.ColorNameForeground)))
 		}
-		*runs = append(*runs, canvas.NewText(text[match[0]:match[1]], tagTextColor))
+		tag := text[match[0]:match[1]]
+		*runs = append(*runs, canvas.NewText(tag, tagTextColor(tag)))
 		position = match[1]
 	}
 	if position < len(text) {

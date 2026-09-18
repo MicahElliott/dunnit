@@ -3,6 +3,7 @@ package dun
 import (
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestExtractTags(t *testing.T) {
@@ -26,6 +27,26 @@ func TestFormatTagWithCountIsCompact(t *testing.T) {
 	tag, count := splitTagCount("#snap(42)")
 	if tag != "#snap" || count != "(42)" {
 		t.Fatalf("splitTagCount = (%q, %q), want (%q, %q)", tag, count, "#snap", "(42)")
+	}
+}
+
+func TestTagUsageTooltipUsesRecentCount(t *testing.T) {
+	stat := &tagStat{count: 234, recentCount: 14}
+	if got := tagUsageTooltip("#foo", stat); got != "Used 14 times in the last 30 days" {
+		t.Fatalf("tagUsageTooltip = %q, want recent-count tooltip", got)
+	}
+}
+
+func TestFinalizeTagStatsFavorsRecentUse(t *testing.T) {
+	now := time.Date(2026, 9, 18, 12, 0, 0, 0, time.UTC)
+	stats := map[string]*tagStat{
+		"#old":    {score: 100, lastSeen: now.AddDate(0, 0, -30)},
+		"#recent": {score: 1, lastSeen: now},
+	}
+	finalizeTagStats(stats, now)
+	if stats["#recent"].score <= stats["#old"].score {
+		t.Fatalf("recent tag score %v did not outrank old heavy tag score %v",
+			stats["#recent"].score, stats["#old"].score)
 	}
 }
 

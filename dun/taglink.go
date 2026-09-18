@@ -25,23 +25,30 @@ var tagLinkColor = color.NRGBA{R: 0x1a, G: 0x73, B: 0xe8, A: 0xff}
 // receive Tapped.
 type tagLink struct {
 	widget.BaseWidget
-	text    string
-	tooltip string
-	onTap   func()
+	text      string
+	tooltip   string
+	textColor color.Color
+	italic    bool
+	onTap     func()
 
 	popup      *tooltipPopup
 	hoverTimer *time.Timer
 }
 
 func newTagLink(text, tooltip string, onTap func()) *tagLink {
-	t := &tagLink{text: text, tooltip: tooltip, onTap: onTap}
+	return newTagLinkWithStyle(text, tooltip, tagLinkColor, false, onTap)
+}
+
+func newTagLinkWithStyle(text, tooltip string, textColor color.Color, italic bool, onTap func()) *tagLink {
+	t := &tagLink{text: text, tooltip: tooltip, textColor: textColor, italic: italic, onTap: onTap}
 	t.ExtendBaseWidget(t)
 	return t
 }
 
 func (t *tagLink) CreateRenderer() fyne.WidgetRenderer {
 	tag, count := splitTagCount(t.text)
-	tagText := canvas.NewText(tag, tagLinkColor)
+	tagText := canvas.NewText(tag, t.textColor)
+	tagText.TextStyle = fyne.TextStyle{Italic: t.italic}
 	if count == "" {
 		return &tagLinkRenderer{tag: tagText}
 	}

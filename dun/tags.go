@@ -46,6 +46,18 @@ func extractTags(text string) []string {
 	return tags
 }
 
+// splitPrimaryTag returns the last tag in text and the display text with
+// that one occurrence removed. The ledger keeps the original text; this
+// helper only changes the Daybook presentation.
+func splitPrimaryTag(text string) (tag, body string) {
+	matches := tagPattern.FindAllStringIndex(text, -1)
+	if len(matches) == 0 {
+		return "", text
+	}
+	last := matches[len(matches)-1]
+	return text[last[0]:last[1]], strings.TrimSpace(text[:last[0]] + text[last[1]:])
+}
+
 // tagCache holds a scanned + deduplicated list of every #tag seen
 // across all ledger files under DunnitDir(), refreshed at most every
 // tagCacheTTL rather than rescanning on every keystroke (FR-10).
@@ -100,17 +112,25 @@ func scanAllTags() []string {
 
 // tagRecencyHalfLife controls how fast a tag's contribution to a
 // frecency score decays with age. Each occurrence's weight halves
-// every tagRecencyHalfLife days, so tags stop showing up in "common/
-// recent" once they've been unused for a while, no matter how many
-// times they were used long ago.
-const tagRecencyHalfLife = 14.0
+// every tagRecencyHalfLife days. The short half-life, together with
+// the last-use component in finalizeTagStats, keeps a heavily-used
+// historical tag from crowding out a recently-used tag.
+const tagRecencyHalfLife = 7.0
+
+const (
+	tagRecentWindowDays = 30
+	tagRecencyWeight    = 0.70
+	tagFrequencyWeight  = 0.30
+	tagFrequencyCap     = 10.0
+)
 
 // tagStat holds a tag's usage count and frecency score (see
 // gatherTagStats), for display ("(count)") and ranking.
 type tagStat struct {
-	count    int
-	score    float64
-	lastSeen time.Time
+	count       int
+	recentCount int
+	score       float64
+	lastSeen    time.Time
 }
 
 // gatherTagStats scans all ledger history once (via
@@ -141,12 +161,32 @@ func gatherTagStats() map[string]*tagStat {
 			}
 			st.count++
 			st.score += weight
+			if daysSince < tagRecentWindowDays {
+				st.recentCount++
+			}
 			if e.Date.After(st.lastSeen) {
 				st.lastSeen = e.Date
 			}
 		}
 	}
+	finalizeTagStats(stats, now)
 	return stats
+}
+
+// finalizeTagStats combines a log-scaled frequency signal with the
+// recency of the tag's latest use. Log scaling prevents a large pile of
+// old occurrences from overpowering a recent tag, while the recent
+// window count remains available for hover text.
+func finalizeTagStats(stats map[string]*tagStat, now time.Time) {
+	for _, st := range stats {
+		daysSinceLast := now.Sub(st.lastSeen).Hours() / 24
+		if daysSinceLast < 0 {
+			daysSinceLast = 0
+		}
+		recency := math.Pow(0.5, daysSinceLast/tagRecencyHalfLife)
+		frequency := math.Log1p(math.Min(st.score, tagFrequencyCap))
+		st.score = tagRecencyWeight*recency + tagFrequencyWeight*frequency
+	}
 }
 
 // filterNumericTags drops all-but-the-most-recently-used numeric tag
@@ -250,8 +290,8 @@ func tagUsageTooltip(tag string, stat *tagStat) string {
 	if stat == nil {
 		return ""
 	}
-	return fmt.Sprintf("%s used %d times; last used %s", tag, stat.count,
-		stat.lastSeen.Format("2006-01-02"))
+	return fmt.Sprintf("Used %d times in the last %d days", stat.recentCount,
+		tagRecentWindowDays)
 }
 
 // matchingTags returns tags from candidates that contain fragment as
