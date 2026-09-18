@@ -105,8 +105,22 @@ the month directory; and quarterly/yearly reports live under their year.
 Each line looks like:
 
 ```
-[14:36] DONE Added string splitting for categories #dunnit
+[14:36] DONE Followed up with @Brandon about #12345 token
 ```
+
+Entries can carry two lightweight kinds of trackable references:
+
+- `#tags` identify projects, tickets, topics, or other work themes.
+- `@Name` identifies a person mentioned or worked with, such as `@Brandon`
+  or `@Surbhi`.
+- `~20m`, `~2h`, and `~4d` record self-reported time spent on a
+  time-trackable entry.
+
+People markers stay in the text ledger and are indexed separately from tags,
+so Daybook can surface frequently mentioned people and future reports can
+compare activity, outcomes, and reflections across person-focused periods.
+Existing ledgers can be converted with
+`./scripts/migrate-people-and-duration-markers.zsh`.
 
 `$DUNNIT_DIR` is expected to be (or contain) a git repo (e.g. a private
 `mydunnits` repo) so your history syncs across machines, mirroring the

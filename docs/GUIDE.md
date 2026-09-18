@@ -199,8 +199,14 @@ because those can open a browser or otherwise make network requests.
 
 ## Best Practices / How-To
 
-- Tag entries with `#hashtags` (project names, ticket numbers, people)
+- Tag entries with `#hashtags` for project names, ticket numbers, and topics
   so Navigator/Search/reports can filter by them later.
+- Mark people with `@Name`, for example `@Brandon` or `@Surbhi`. Daybook
+  adds a `👤` cue to entries containing people and keeps a short
+  **Frequent people** row for quick insertion. People are indexed separately
+  from `#tags`, which leaves room for feedback, KUDOS, and collaboration
+  rollups by person in future reports.
+- Time spent is written with a compact `~` marker, such as `~20m` or `~2h`.
 - Don't over-categorize in the moment — `DONE` and `TODO` cover most
   entries; reach for the more specific categories (`TIL`, `KUDOS`,
   `WIN`, etc.) only when they clearly apply. Use the in-app **Help**

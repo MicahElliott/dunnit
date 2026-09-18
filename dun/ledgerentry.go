@@ -29,11 +29,15 @@ type LedgerEntry struct {
 	// Tags is Text's #tag tokens, pre-extracted via extractTags so
 	// callers don't need to re-run the regex themselves.
 	Tags []string
-	// Mins is parsed from a " @N[mhd]" suffix in Text (see ui.go's
+	// People is Text's @person tokens, pre-extracted via extractPeople.
+	// The marker remains embedded in Text so raw ledger editing stays
+	// lossless.
+	People []string
+	// Mins is parsed from a " ~N[mhd]" suffix in Text (see ui.go's
 	// withMins), converting hours and days to minutes, including when
 	// lifecycle metadata follows it. 0 if absent/invalid.
 	// Note this does NOT
-	// strip the "@N[mhd]" substring back out of Text -- Text stays the
+	// strip the "~N[mhd]" substring back out of Text -- Text stays the
 	// full original string as written to the ledger.
 	Mins int
 	// Source is the ledger file path this entry came from, and Line
@@ -45,10 +49,10 @@ type LedgerEntry struct {
 	Line   int
 }
 
-// entryMinsPattern matches a duration token (e.g. "@20m", "@2h", or
-// "@4d"). Boundary validation happens in entryMinsMatch because Go's
+// entryMinsPattern matches a duration token (e.g. "~20m", "~2h", or
+// "~4d"). Boundary validation happens in entryMinsMatch because Go's
 // regexp package deliberately does not support look-around assertions.
-var entryMinsPattern = regexp.MustCompile(`@(\d+)([mhd])`)
+var entryMinsPattern = regexp.MustCompile(`~(\d+)([mhd])`)
 
 func durationMarkerMultiplier(unit byte) int {
 	switch unit {
@@ -62,7 +66,7 @@ func durationMarkerMultiplier(unit byte) int {
 	return 0
 }
 
-// parseEntryMins returns the minutes value from a valid " @N[mhd]" token
+// parseEntryMins returns the minutes value from a valid " ~N[mhd]" token
 // in text, or 0 if absent/invalid. Hours and days are converted to minutes.
 // Lifecycle metadata such as " (via DOING)" may follow the token.
 func parseEntryMins(text string) int {
@@ -75,7 +79,7 @@ func parseEntryMins(text string) int {
 
 // entryMinsMatch returns the last valid minutes token and its byte span.
 // A token is valid only when separated from surrounding text by whitespace
-// or a string boundary, so prose such as "@20minutes" is left untouched.
+// or a string boundary, so prose such as "~20minutes" is left untouched.
 func entryMinsMatch(text string) (start, end, mins int, ok bool) {
 	matches := entryMinsPattern.FindAllStringSubmatchIndex(text, -1)
 	for i := len(matches) - 1; i >= 0; i-- {
@@ -108,7 +112,7 @@ func replaceEntryMins(text string, mins int) string {
 		return text
 	}
 	if start, end, _, ok := entryMinsMatch(text); ok {
-		return text[:start] + "@" + strconv.Itoa(mins) + "m" + text[end:]
+		return text[:start] + "~" + strconv.Itoa(mins) + "m" + text[end:]
 	}
 	leading := len(text) - len(strings.TrimLeft(text, " \t"))
 	trailing := len(text) - len(strings.TrimRight(text, " \t"))
@@ -125,7 +129,7 @@ func replaceEntryMins(text string, mins int) string {
 			insertAt = match[0]
 		}
 	}
-	return text[:leading] + core[:insertAt] + " @" + strconv.Itoa(mins) + "m" + core[insertAt:] + text[coreEnd:]
+	return text[:leading] + core[:insertAt] + " ~" + strconv.Itoa(mins) + "m" + core[insertAt:] + text[coreEnd:]
 }
 
 // incrementEntryMins adds delta to a valid existing minutes value. If the
@@ -162,6 +166,7 @@ func parseLedgerEntry(line string, date time.Time, source string, lineNum int) (
 		Category: category,
 		Text:     text,
 		Tags:     extractTags(text),
+		People:   extractPeople(text),
 		Mins:     parseEntryMins(text),
 		Source:   source,
 		Line:     lineNum,

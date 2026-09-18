@@ -307,10 +307,7 @@ func recordActivity(text, category string) error {
 		return err
 	}
 	lastActivityAt = time.Now()
-	if len(extractTags(text)) > 0 {
-		InvalidateTagCache()
-	}
-	InvalidateLedgerIndex()
+	InvalidateLedgerCaches()
 	return nil
 }
 
@@ -607,7 +604,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 
 	// minsInput is an optional free-text "minutes spent" field (very
 	// informal time tracking). When non-empty and numeric, its value
-	// is appended to the recorded text as " @Nm" (e.g. "@20m").
+	// is appended to the recorded text as " ~Nm" (e.g. "~20m").
 	// Wrapped in a fixed-size container (minsWrapper) so it renders
 	// at a comfortable width regardless of its own placeholder-driven
 	// MinSize -- stretchRowLayout below treats it as a fixed-width
@@ -651,7 +648,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 
 	selectedCat := "DONE"
 
-	// withMins appends " @Nm" to text if minsInput has a valid
+	// withMins appends " ~Nm" to text if minsInput has a valid
 	// non-negative integer in it; otherwise returns text unchanged.
 	withMins := func(text string) string {
 		if !IsTimeTrackable(selectedCat) {
@@ -665,7 +662,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 		if err != nil || n < 0 {
 			return text
 		}
-		return text + " @" + raw + "m"
+		return text + " ~" + raw + "m"
 	}
 
 	// widget.NewSelectEntry
@@ -1216,21 +1213,21 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	// showAllTagsBtn opens a standalone window listing every known
 	// tag (KnownTags(), full ledger-history scan) -- "Frecent tags:"
 	// only shows the top few by commonAndRecentTags's blended
-	// frequency+recency score, this is the escape hatch to see
-	// everything. (Editing/deleting tags across history is a possible
-	// future extension, not implemented here -- see tags.go.)
+	// frequency+recency score. People use the same compact insertion
+	// treatment below, while remaining a separate trackable in the ledger
+	// index.
 	//
 	// Each tag is rendered as a clickable blue tagLink (not plain
 	// text) -- clicking one inserts it at the cursor position in the
 	// main entry box and refocuses it, so tags can be added without
 	// typing "#" and waiting for autocomplete.
-	insertTagAtCursor := func(tag string) {
+	insertTrackableAtCursor := func(trackable string) {
 		runes := []rune(input.Text)
 		col := input.CursorColumn
 		if col < 0 || col > len(runes) {
 			col = len(runes)
 		}
-		insert := tag
+		insert := trackable
 		if col > 0 && !isTagBreak(runes[col-1]) {
 			insert = " " + insert
 		}
@@ -1247,12 +1244,25 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 		tag := tag // capture
 		stat := frecentStats[tag]
 		frecentTagsRow.Add(newTagLink(formatTagWithCount(tag, stat), tagUsageTooltip(tag, stat), func() {
-			insertTagAtCursor(tag)
+			insertTrackableAtCursor(tag)
 		}))
 	}
 	commonTagsRow := container.NewBorder(nil, nil, nil,
 		widget.NewButton("Show all", func() { showAllTagsWindow(a) }),
 		frecentTagsRow)
+	frequentPeople, peopleStats := commonPeopleWithStats(8)
+	var frequentPeopleRow fyne.CanvasObject
+	if len(frequentPeople) > 0 {
+		row := container.NewHBox(widget.NewLabel("Frequent people:"))
+		for _, personKey := range frequentPeople {
+			personKey := personKey
+			stat := peopleStats[personKey]
+			row.Add(newTagLinkWithStyle(
+				formatPersonWithCount(personKey, stat), personUsageTooltip(stat), personTextColor, false,
+				func() { insertTrackableAtCursor(stat.label) }))
+		}
+		frequentPeopleRow = row
+	}
 
 	// tangentialRow holds Snooze and Help -- both tangential to the
 	// normal capture flow (Micah: "not sure where [they go], maybe
@@ -1270,18 +1280,24 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 		widget.NewButton("Help…", func() { showHelp(a) }),
 	))
 
-	content := container.NewVBox(
+	contentObjects := []fyne.CanvasObject{
 		startOfDayNotice,
 		widget.NewLabelWithStyle("Time to record what’s just been DONE/DOING.", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		doneWrapper,
 		inputSuggestions,
 		// category, input,
 		commonTagsRow,
+	}
+	if frequentPeopleRow != nil {
+		contentObjects = append(contentObjects, frequentPeopleRow)
+	}
+	contentObjects = append(contentObjects,
 		lastDoneRow,
 		widget.NewSeparator(),
 		itemsAccordion,
 		tangentialRow,
 	)
+	content := container.NewVBox(contentObjects...)
 	log.Println(content)
 
 	// grid := container.New(layout.NewFormLayout(),

@@ -15,7 +15,7 @@ var appIcon []byte
 func main() {
 	// Any invocation with command-line args is treated as the tiny
 	// CLI path (not the GUI) -- e.g. `dunnit DONE "Finished the frob
-	// @30m"` appends a ledger entry the same way Daybook's Save
+	// ~30m"` appends a ledger entry the same way Daybook's Save
 	// button would, without launching the Fyne UI at all. This lets
 	// other tools (scripts, LLM-driven workflows, etc) integrate
 	// Dunnit entries into a workflow. Deliberately narrow: no flags,

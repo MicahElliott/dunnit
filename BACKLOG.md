@@ -167,6 +167,25 @@ Open decision: establish precedence between the Settings value and
 
 ## Later
 
+### [ ] Add person-aware feedback and collaboration rollups
+
+**Kind:** feature · **Effort:** M · **Area:** reports, navigator, people trackable
+
+Use the `@Name` references already captured in ledger entries to show who was
+worked with most during a selected period, gather person-scoped DONE/KUDOS/WIN
+evidence for feedback and end-of-year reviews, and compare sentiment or
+productivity signals across person-heavy days without changing the raw ledger
+format.
+
+Acceptance checks:
+
+- [ ] Navigator can filter a period by one or more people.
+- [ ] A report can show counts, categories, and linked evidence for a person.
+- [ ] Person-heavy days are visible as an aggregate without treating mention
+  count alone as positive or negative sentiment.
+- [ ] Manual review confirms that the wording makes clear these are mentions,
+  not an objective measure of relationship quality or performance.
+
 ### [ ] Investigate Turso sync and a SQLite-backed data model
 
 **Kind:** discovery · **Effort:** L · **Area:** storage, sync architecture
@@ -193,4 +212,3 @@ sync systems at once.
 The remaining FRD items are still useful product history and source material,
 but are deliberately not active queue entries. Promote one here when it becomes
 something we intend to build, with acceptance checks and an effort estimate.
-

@@ -8,13 +8,13 @@ import (
 func TestSplitTrailingMeta(t *testing.T) {
 	cases := map[string][2]string{
 		"Fix the login bug":                    {"Fix the login bug", ""},
-		"walk the dog @15m":                    {"walk the dog", " @15m"},
-		"long task @2h":                        {"long task", " @2h"},
-		"multi-day task @4d":                   {"multi-day task", " @4d"},
+		"walk the dog ~15m":                    {"walk the dog", " ~15m"},
+		"long task ~2h":                        {"long task", " ~2h"},
+		"multi-day task ~4d":                   {"multi-day task", " ~4d"},
 		"finish the report s/2026-08-28":       {"finish the report", " s/2026-08-28"},
 		"finish the report (since 2026-08-28)": {"finish the report", " (since 2026-08-28)"},
 		"todo s/2026-08-28":                    {"todo", " s/2026-08-28"},
-		"todo @10m (via DOING)":                {"todo", " @10m (via DOING)"},
+		"todo ~10m (via DOING)":                {"todo", " ~10m (via DOING)"},
 	}
 	for in, want := range cases {
 		core, meta := splitTrailingMeta(in)
@@ -37,7 +37,7 @@ func TestDisplayMetadataToken(t *testing.T) {
 	tests := []struct {
 		token, wantLabel, wantTooltip string
 	}{
-		{" @30m", " ⏱︎30m", "Spent 30 mins"},
+		{" ~30m", " ⏱︎30m", "Spent 30 mins"},
 	}
 	for _, tt := range tests {
 		label, tooltip := displayMetadataToken(tt.token)
@@ -83,7 +83,7 @@ func TestAgeIndicator(t *testing.T) {
 func TestStripDisplayMetadata(t *testing.T) {
 	cases := map[string]string{
 		"finish the report (via DOING)":      "finish the report",
-		"finish the report @20m (via DOING)": "finish the report",
+		"finish the report ~20m (via DOING)": "finish the report",
 		"carry the task s/2026-09-01":        "carry the task",
 		"ordinary text with (parentheses)":   "ordinary text with (parentheses)",
 	}

@@ -25,6 +25,8 @@ Additional approaches surfaced during discussion:
 - **Category-first browse** ("show me every FIXME/CAREER/etc I've
   ever logged") -- judged the highest-value cheap win given the
   category-taxonomy work already done, so built first (see below).
+- Person-focused browse and rollups (`@Name`) for collaboration history,
+  feedback/KUDOS preparation, and person-weighted period summaries.
 - Saved-reports library/browser (the literal "bigger period picker")
 - Cross-report search (spanning generated .md reports, not just raw
   ledgers -- not yet done, reports aren't in the shared index)
@@ -68,8 +70,8 @@ Additional approaches surfaced during discussion:
 
 ### `LedgerEntry` (ledgerentry.go)
 
-One parsed ledger line: `Date`, `Time`, `Category`, `Text`, `Tags`
-(pre-extracted), `Mins` (parsed from trailing `" @Nm"`), `Source`
+One parsed ledger line: `Date`, `Time`, `Category`, `Text`, `Tags`, `People`
+(pre-extracted), `Mins` (parsed from trailing `" ~Nm"`), `Source`
 (file path), `Line` (line number). Unifies what `parseLedgerLine`/
 `parseLedgerLineTime`/`extractTags` each did separately per-caller
 before.
@@ -90,7 +92,7 @@ both the tag cache and this index in one call). Wired into:
 
 ### Query/filter layer (ledgerquery.go)
 
-`LedgerQuery{Categories, Tags, From, To, Text}` + `Matches`/
+`LedgerQuery{Categories, Tags, People, From, To, Text}` + `Matches`/
 `FilterLedgerEntries`. All filters AND together; each filter empty/
 zero means "unconstrained" on that axis.
 

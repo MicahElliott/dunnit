@@ -265,7 +265,7 @@ func TestCarryForwardStartDoneCollapsesLifecycleAcrossDays(t *testing.T) {
 
 	yesterday := time.Now().AddDate(0, 0, -1)
 	writeLedgerLinesForDate(t, yesterday, []string{
-		"[09:00:00] TODO finish the report @20m",
+		"[09:00:00] TODO finish the report ~20m",
 	})
 	InvalidateLedgerCaches()
 

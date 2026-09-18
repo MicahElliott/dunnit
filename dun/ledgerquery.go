@@ -18,6 +18,9 @@ type LedgerQuery struct {
 	// (case-insensitive, "#" prefix required, matching extractTags'
 	// format). Empty means "any tags (or none)".
 	Tags []string
+	// People restricts matches to entries mentioning ALL of these person
+	// markers (case-insensitive, with the leading "&"). Empty means any.
+	People []string
 	// From/To bound Date, inclusive on both ends. Zero value for
 	// either means unbounded in that direction.
 	From, To time.Time
@@ -42,6 +45,11 @@ func (q LedgerQuery) Matches(e LedgerEntry) bool {
 	}
 	for _, want := range q.Tags {
 		if !containsTagFold(e.Tags, want) {
+			return false
+		}
+	}
+	for _, want := range q.People {
+		if !containsPersonFold(e.People, want) {
 			return false
 		}
 	}

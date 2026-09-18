@@ -36,7 +36,7 @@ func TestPastTense(t *testing.T) {
 func TestPastTenseLeadingWord(t *testing.T) {
 	cases := map[string]string{
 		"Fix the login bug":     "Fixed the login bug",
-		"walk the dog @15m":     "walked the dog @15m",
+		"walk the dog ~15m":     "walked the dog ~15m",
 		"Ship it":               "Shipped it",
 		"go to the store #home": "went to the store #home",
 		"":                      "",
@@ -65,7 +65,7 @@ func TestPresentParticiple(t *testing.T) {
 func TestBaseTenseLeadingWord(t *testing.T) {
 	cases := map[string]string{
 		"Sent the report":        "Send the report",
-		"Sending the report @5m": "Send the report @5m",
+		"Sending the report ~5m": "Send the report ~5m",
 		"Shipped the fix":        "Ship the fix",
 		"Creating a task":        "Create a task",
 		"Walk the dog":           "Walk the dog",

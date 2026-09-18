@@ -4,6 +4,7 @@ import (
 	"hash/fnv"
 	"image/color"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -41,10 +42,14 @@ func tagTextColor(tag string) color.NRGBA {
 
 // metaTextColor is a medium-light gray (not so light it's hard to
 // read) used for trailing display-only metadata appended to an item
-// row's text -- " @N[mhd]" (duration, ui.go's withMins) and
+// row's text -- " ~N[mhd]" (duration, ui.go's withMins) and
 // " s/YYYY-MM-DD" (carry-forward annotation, carryforward.go) -- so this
 // bookkeeping visually recedes behind the item's actual content.
 var metaTextColor = color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xff}
+
+// personTextColor distinguishes people markers from project/topic tags while
+// keeping them readable in both ordinary rows and the Daybook prefix.
+var personTextColor = color.NRGBA{R: 0x9a, G: 0x4f, B: 0x00, A: 0xff}
 
 // metaTextSizeRatio shrinks the trailing metadata run's font size
 // relative to the theme's normal text size, in addition to graying it
@@ -54,14 +59,14 @@ const metaTextSizeRatio = 0.80
 
 // trailingMetaPattern matches one or more of the known trailing
 // display-metadata suffixes back-to-back at the very end of an item's
-// text: " @N[mhd]" (duration), " s/YYYY-MM-DD" (carry-forward), and
+// text: " ~N[mhd]" (duration), " s/YYYY-MM-DD" (carry-forward), and
 // lifecycle metadata. Matched as a repeating group so any
 // combination/order of these (in practice at most one or two ever
 // co-occur -- see splitTrailingMeta's doc comment) is captured as one
 // contiguous trailing run.
 var trailingMetaPattern = regexp.MustCompile(
 	`(?:` +
-		` @\d+[mhd]` +
+		` ~\d+[mhd]` +
 		`| s/\d{4}-\d{2}-\d{2}` +
 		`| \(since \d{4}-\d{2}-\d{2}\)` +
 		`| \(via [A-Z_]+\)` +
@@ -69,14 +74,14 @@ var trailingMetaPattern = regexp.MustCompile(
 
 var metadataTokenPattern = regexp.MustCompile(
 	`(?:` +
-		` @\d+[mhd]` +
+		` ~\d+[mhd]` +
 		`| s/\d{4}-\d{2}-\d{2}` +
 		`| \(since \d{4}-\d{2}-\d{2}\)` +
 		`| \(via [A-Z_]+\)` +
 		`)`)
 
 var (
-	durationMetadataPattern  = regexp.MustCompile(`^@(\d+)([mhd])$`)
+	durationMetadataPattern  = regexp.MustCompile(`^~(\d+)([mhd])$`)
 	lifecycleMetadataPattern = regexp.MustCompile(`^\(via ([A-Z_]+)\)$`)
 )
 
@@ -111,8 +116,9 @@ func stripDisplayMetadata(text string) string {
 
 // itemTextLabel renders text as a row of canvas.Text and clickable link
 // runs: any trailing display-metadata suffix (see splitTrailingMeta) is
-// peeled off and rendered smaller/grayed out; #tags use a deterministic
-// per-tag color; Markdown/bare URLs are rendered as small blue links. Used
+// peeled off and rendered smaller/grayed out; #tags and @people use
+// distinct trackable colors; Markdown/bare URLs are rendered as small blue
+// links. Used
 // for item rows in Daybook's Planned/Endings/Hilites sections. Uses
 // tightRowLayout (not container.NewHBox) so adjacent runs render
 // flush against each other -- HBox's normal inter-child theme.Padding
@@ -126,11 +132,11 @@ func itemTextLabel(text string) fyne.CanvasObject {
 	links := parseEntryLinks(core)
 	position := 0
 	for _, link := range links {
-		appendTextAndTags(&runs, core[position:link.Start])
+		appendTextAndTrackables(&runs, core[position:link.Start])
 		runs = append(runs, newURLLink(link.Text, link.URL))
 		position = link.End
 	}
-	appendTextAndTags(&runs, core[position:])
+	appendTextAndTrackables(&runs, core[position:])
 
 	if meta != "" {
 		for _, match := range metadataTokenPattern.FindAllStringIndex(meta, -1) {
@@ -162,6 +168,9 @@ func daybookItemTextLabel(prefix, text string, stats map[string]*tagStat) fyne.C
 	if prefix != "" {
 		runs = append(runs, canvas.NewText(prefix, theme.Color(theme.ColorNameForeground)))
 	}
+	if hasPeople(core) {
+		runs = append(runs, canvas.NewText("👤 ", personTextColor))
+	}
 	if tag != "" {
 		runs = append(runs, newTagLinkWithStyle(
 			"["+tag+"] ", tagUsageTooltip(tag, stats[tag]), tagTextColor(tag), true, nil))
@@ -175,11 +184,11 @@ func appendEntryRuns(runs *[]fyne.CanvasObject, text string) {
 	links := parseEntryLinks(text)
 	position := 0
 	for _, link := range links {
-		appendTextAndTags(runs, text[position:link.Start])
+		appendTextAndTrackables(runs, text[position:link.Start])
 		*runs = append(*runs, newURLLink(link.Text, link.URL))
 		position = link.End
 	}
-	appendTextAndTags(runs, text[position:])
+	appendTextAndTrackables(runs, text[position:])
 }
 
 func appendMetadataRuns(runs *[]fyne.CanvasObject, meta string) {
@@ -235,15 +244,32 @@ func ageIndicator(days int) string {
 	}
 }
 
-func appendTextAndTags(runs *[]fyne.CanvasObject, text string) {
-	position := 0
+func appendTextAndTrackables(runs *[]fyne.CanvasObject, text string) {
+	type trackableMatch struct {
+		start, end int
+		color      color.Color
+	}
+	var matches []trackableMatch
 	for _, match := range tagPattern.FindAllStringIndex(text, -1) {
-		if match[0] > position {
-			*runs = append(*runs, canvas.NewText(text[position:match[0]], theme.Color(theme.ColorNameForeground)))
+		matches = append(matches, trackableMatch{match[0], match[1], tagTextColor(text[match[0]:match[1]])})
+	}
+	for _, match := range personPattern.FindAllStringIndex(text, -1) {
+		if !isPersonMatchBoundary(text, match[0]) {
+			continue
 		}
-		tag := text[match[0]:match[1]]
-		*runs = append(*runs, canvas.NewText(tag, tagTextColor(tag)))
-		position = match[1]
+		matches = append(matches, trackableMatch{match[0], match[1], personTextColor})
+	}
+	sort.Slice(matches, func(i, j int) bool { return matches[i].start < matches[j].start })
+	position := 0
+	for _, match := range matches {
+		if match.start < position {
+			continue
+		}
+		if match.start > position {
+			*runs = append(*runs, canvas.NewText(text[position:match.start], theme.Color(theme.ColorNameForeground)))
+		}
+		*runs = append(*runs, canvas.NewText(text[match.start:match.end], match.color))
+		position = match.end
 	}
 	if position < len(text) {
 		*runs = append(*runs, canvas.NewText(text[position:], theme.Color(theme.ColorNameForeground)))

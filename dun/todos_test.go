@@ -151,7 +151,7 @@ func TestParseOpenItems_IndependentDoneDoesNotResolveOpenItem(t *testing.T) {
 func TestPlannedLifecycleTransitionsPreserveRowAndResolve(t *testing.T) {
 	withTempDunnitDir(t)
 	writeLedgerLinesForDate(t, time.Now(), []string{
-		"[08:00:00] TODO ship the fix @12m",
+		"[08:00:00] TODO ship the fix ~12m",
 	})
 	InvalidateLedgerCaches()
 
@@ -163,7 +163,7 @@ func TestPlannedLifecycleTransitionsPreserveRowAndResolve(t *testing.T) {
 		t.Fatalf("repeated startPlannedItem: %v", err)
 	}
 	lines := readLedgerLines()
-	wantDoing := "[08:00:00] DOING shipping the fix @12m"
+	wantDoing := "[08:00:00] DOING shipping the fix ~12m"
 	if len(lines) != 1 || lines[0] != wantDoing {
 		t.Fatalf("start changed row to %q, want %q", lines, wantDoing)
 	}
@@ -172,7 +172,7 @@ func TestPlannedLifecycleTransitionsPreserveRowAndResolve(t *testing.T) {
 	if err := completePlannedItem(item); err != nil {
 		t.Fatalf("completePlannedItem: %v", err)
 	}
-	wantDone := "[08:00:00] DONE shipped the fix @12m (via DOING)"
+	wantDone := "[08:00:00] DONE shipped the fix ~12m (via DOING)"
 	lines = readLedgerLines()
 	if len(lines) != 1 || lines[0] != wantDone {
 		t.Fatalf("complete changed row to %q, want %q", lines, wantDone)
@@ -188,7 +188,7 @@ func TestPlannedLifecycleTransitionsPreserveRowAndResolve(t *testing.T) {
 func TestDittoLifecycleItemKeepsOneRowAndAccumulatesMinutes(t *testing.T) {
 	withTempDunnitDir(t)
 	writeLedgerLinesForDate(t, time.Now(), []string{
-		"[08:00:00] DONE ship the fix @10m",
+		"[08:00:00] DONE ship the fix ~10m",
 	})
 	InvalidateLedgerCaches()
 
@@ -200,7 +200,7 @@ func TestDittoLifecycleItemKeepsOneRowAndAccumulatesMinutes(t *testing.T) {
 		t.Fatalf("DONE Ditto: %v", err)
 	}
 	lines := readLedgerLines()
-	if len(lines) != 1 || lines[0] != "[08:00:00] DOING shipping the fix @10m" {
+	if len(lines) != 1 || lines[0] != "[08:00:00] DOING shipping the fix ~10m" {
 		t.Fatalf("DONE Ditto produced %q", lines)
 	}
 
@@ -212,11 +212,11 @@ func TestDittoLifecycleItemKeepsOneRowAndAccumulatesMinutes(t *testing.T) {
 		t.Fatalf("DOING Ditto: %v", err)
 	}
 	lines = readLedgerLines()
-	if len(lines) != 1 || lines[0] != "[08:00:00] DOING shipping the fix @17m" {
+	if len(lines) != 1 || lines[0] != "[08:00:00] DOING shipping the fix ~17m" {
 		t.Fatalf("repeated Ditto produced %q", lines)
 	}
 
-	if err := completePlannedItem(OpenItem{Category: "DOING", Text: "shipping the fix @17m", LineIndex: 0}); err != nil {
+	if err := completePlannedItem(OpenItem{Category: "DOING", Text: "shipping the fix ~17m", LineIndex: 0}); err != nil {
 		t.Fatalf("complete Ditto item: %v", err)
 	}
 	if got := parseEntryMins(readLedgerLines()[0]); got != 17 {
@@ -232,7 +232,7 @@ func TestDittoUsesConfiguredNudgeIntervalOnRepeatedClicks(t *testing.T) {
 		t.Fatalf("write config: %v", err)
 	}
 	writeLedgerLinesForDate(t, time.Now(), []string{
-		"[08:00:00] DOING ship the fix @30m",
+		"[08:00:00] DOING ship the fix ~30m",
 	})
 	InvalidateLedgerCaches()
 
@@ -253,13 +253,13 @@ func TestDittoUsesConfiguredNudgeIntervalOnRepeatedClicks(t *testing.T) {
 func TestLastDoingItemDoesNotResurrectDone(t *testing.T) {
 	withTempDunnitDir(t)
 	writeLedgerLinesForDate(t, time.Now(), []string{
-		"[08:00:00] DOING active work @10m",
-		"[09:00:00] DONE completed work @20m",
+		"[08:00:00] DOING active work ~10m",
+		"[09:00:00] DONE completed work ~20m",
 	})
 	InvalidateLedgerCaches()
 
 	item, ok := lastDoingItem()
-	if !ok || item.Category != "DOING" || item.Text != "active work @10m" {
+	if !ok || item.Category != "DOING" || item.Text != "active work ~10m" {
 		t.Fatalf("lastDoingItem() = %+v, %v; want active DOING", item, ok)
 	}
 }
@@ -267,18 +267,18 @@ func TestLastDoingItemDoesNotResurrectDone(t *testing.T) {
 func TestCompletePlannedEndpointResolvesLifecycle(t *testing.T) {
 	withTempDunnitDir(t)
 	writeLedgerLinesForDate(t, time.Now(), []string{
-		"[08:00:00] DOING abandon the experiment @7m",
+		"[08:00:00] DOING abandon the experiment ~7m",
 	})
 	InvalidateLedgerCaches()
 
 	if err := completePlannedEndpoint(OpenItem{
 		Category:  "DOING",
-		Text:      "abandon the experiment @7m",
+		Text:      "abandon the experiment ~7m",
 		LineIndex: 0,
-	}, "WASTED", "abandon the experiment @7m"); err != nil {
+	}, "WASTED", "abandon the experiment ~7m"); err != nil {
 		t.Fatalf("completePlannedEndpoint: %v", err)
 	}
-	if got := readLedgerLines(); len(got) != 1 || got[0] != "[08:00:00] WASTED abandoned the experiment @7m (via DOING)" {
+	if got := readLedgerLines(); len(got) != 1 || got[0] != "[08:00:00] WASTED abandoned the experiment ~7m (via DOING)" {
 		t.Fatalf("endpoint transition = %v", got)
 	}
 	if open := getOpenItems(); len(open) != 0 {
@@ -293,13 +293,14 @@ func TestLifecycleDurationMetadata(t *testing.T) {
 		wantMins    int
 		wantReplace string
 	}{
-		{"plain", "task @10m", 10, "task @15m"},
-		{"hours", "task @2h", 120, "task @125m"},
-		{"days", "task @4d", 4 * 24 * 60, "task @5765m"},
-		{"completion marker", "task @10m (via DOING)", 10, "task @15m (via DOING)"},
-		{"carry and marker", "task @10m s/2026-09-01 (via DOING)", 10, "task @15m s/2026-09-01 (via DOING)"},
-		{"carry", "task s/2026-09-01", 0, "task @5m s/2026-09-01"},
-		{"malformed", "task @xm (via DOING)", 0, "task @xm @5m (via DOING)"},
+		{"plain", "task ~10m", 10, "task ~15m"},
+		{"hours", "task ~2h", 120, "task ~125m"},
+		{"days", "task ~4d", 4 * 24 * 60, "task ~5765m"},
+		{"completion marker", "task ~10m (via DOING)", 10, "task ~15m (via DOING)"},
+		{"carry and marker", "task ~10m s/2026-09-01 (via DOING)", 10, "task ~15m s/2026-09-01 (via DOING)"},
+		{"carry", "task s/2026-09-01", 0, "task ~5m s/2026-09-01"},
+		{"malformed", "task ~xm (via DOING)", 0, "task ~xm ~5m (via DOING)"},
+		{"old marker is no longer duration", "task @10m", 0, "task @10m ~5m"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
