@@ -2,15 +2,13 @@ package dun
 
 import (
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 )
 
 // carryForwardSincePrefix marks a copied-forward open item with its
 // original log date, e.g. " s/2026-09-11". The full date keeps the stored
-// marker unambiguous; the row renderer turns it into a compact seedling/date
-// badge.
+// marker unambiguous; the row renderer turns it into a compact age/date badge.
 // See docs/todo-carryforward-design.md.
 const carryForwardSincePrefix = " s/"
 
@@ -391,38 +389,15 @@ func daysSince(since time.Time) int {
 	return int(t2.Sub(t1).Hours() / 24)
 }
 
-// staleDaysThreshold is how many days old a carried-forward item's
-// "since" date must be before Planned flags it as stale (purely
-// display -- see docs/todo-carryforward-design.md).
-const staleDaysThreshold = 4
-
 // staleReviewDays is the age at which Start of Day asks whether an open
 // TODO/DOING item should move to SOMEDAY. The move remains explicit; age
 // alone never changes the ledger.
 const staleReviewDays = 7
 
-// staleBadge returns a short display suffix (e.g. " ⚠️4d") for
-// an item whose carryForwardSinceSuffix-embedded date is more than
-// staleDaysThreshold days old, or "" if item.Text has no such suffix
-// or isn't old enough yet to flag. Purely a display computation --
-// nothing is written back to the ledger.
-func staleBadge(text string) string {
-	since, ok := parseCarryForwardSince(text)
-	if !ok {
-		return ""
-	}
-	days := daysSince(since)
-	if days < staleDaysThreshold {
-		return ""
-	}
-	return " ⚠️" + strconv.Itoa(days) + "d"
-}
-
 // openItemDisplayText keeps the stored creation marker available to
-// itemTextLabel, which renders it as a compact seedling/date badge, and adds
-// an age badge once the item is stale enough to deserve attention. All
-// open-item views use this helper so TODO, DOING, and the other tracked
-// categories present the same lifecycle cues.
+// itemTextLabel, which renders it as a compact age/date badge. All open-item
+// views use this helper so TODO, DOING, and the other tracked categories
+// present the same lifecycle cue.
 func openItemDisplayText(text string) string {
 	// Normalize legacy or repeated markers to one current-format marker so
 	// every open-item view presents the same creation and age metadata.
@@ -431,5 +406,5 @@ func openItemDisplayText(text string) string {
 	if !since.IsZero() {
 		text += carryForwardSinceSuffix(since)
 	}
-	return text + staleBadge(text)
+	return text
 }

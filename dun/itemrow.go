@@ -21,10 +21,9 @@ var tagTextColor = color.NRGBA{R: 0, G: 100, B: 0, A: 255}
 
 // metaTextColor is a medium-light gray (not so light it's hard to
 // read) used for trailing display-only metadata appended to an item
-// row's text -- " @N[mhd]" (duration, ui.go's withMins), " s/YYYY-MM-DD"
-// (carry-forward annotation, carryforward.go), and " ⚠️Nd" (the
-// stale badge, also carryforward.go) -- so this bookkeeping visually
-// recedes behind the item's actual content.
+// row's text -- " @N[mhd]" (duration, ui.go's withMins) and
+// " s/YYYY-MM-DD" (carry-forward annotation, carryforward.go) -- so this
+// bookkeeping visually recedes behind the item's actual content.
 var metaTextColor = color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xff}
 
 // metaTextSizeRatio shrinks the trailing metadata run's font size
@@ -35,7 +34,7 @@ const metaTextSizeRatio = 0.85
 // trailingMetaPattern matches one or more of the known trailing
 // display-metadata suffixes back-to-back at the very end of an item's
 // text: " @N[mhd]" (duration), " s/YYYY-MM-DD" (carry-forward), and
-// " ⚠️Nd" (stale badge). Matched as a repeating group so any
+// lifecycle metadata. Matched as a repeating group so any
 // combination/order of these (in practice at most one or two ever
 // co-occur -- see splitTrailingMeta's doc comment) is captured as one
 // contiguous trailing run.
@@ -45,7 +44,6 @@ var trailingMetaPattern = regexp.MustCompile(
 		`| s/\d{4}-\d{2}-\d{2}` +
 		`| \(since \d{4}-\d{2}-\d{2}\)` +
 		`| \(via [A-Z_]+\)` +
-		`| \x{26a0}\x{fe0f}\d+d` +
 		`)+$`)
 
 var metadataTokenPattern = regexp.MustCompile(
@@ -54,13 +52,16 @@ var metadataTokenPattern = regexp.MustCompile(
 		`| s/\d{4}-\d{2}-\d{2}` +
 		`| \(since \d{4}-\d{2}-\d{2}\)` +
 		`| \(via [A-Z_]+\)` +
-		`| \x{26a0}\x{fe0f}\d+d` +
 		`)`)
 
 var (
 	durationMetadataPattern  = regexp.MustCompile(`^@(\d+)([mhd])$`)
 	lifecycleMetadataPattern = regexp.MustCompile(`^\(via ([A-Z_]+)\)$`)
-	ageMetadataPattern       = regexp.MustCompile(`^\x{26a0}\x{fe0f}(\d+)d$`)
+)
+
+const (
+	yellowAgeMaxDays = 3
+	orangeAgeMaxDays = 7
 )
 
 // splitTrailingMeta splits text into (core, meta), where meta is the
@@ -68,10 +69,10 @@ var (
 // trailingMetaPattern) and core is everything before it. meta is ""
 // if text has no such trailing suffix. In practice a single row only
 // ever carries one flavor of trailing metadata at a time (Planned
-// rows show at most a stale badge; Endings/Hilites rows show at most
+// rows show at most a since-date badge; Endings/Hilites rows show at most
 // a mins suffix. Carry-forward's own "s/YYYY-MM-DD" is kept here so it
-// can render as the seedling/date badge; the pattern handles
-// any combination generically rather than assuming that stays true.
+// can render as the age/date badge; the pattern handles any combination
+// generically rather than assuming that stays true.
 func splitTrailingMeta(text string) (core, meta string) {
 	loc := trailingMetaPattern.FindStringIndex(text)
 	if loc == nil {
@@ -140,15 +141,25 @@ func displayMetadataToken(token string) (label, tooltip string) {
 		return label, "Spent " + match[1] + " " + unit
 	}
 	if since, ok := parseCarryForwardSince("item" + token); ok {
-		return " 🌱" + since.Format("01/02"), "Created on " + since.Format("2006-01-02")
+		days := daysSince(since)
+		return " " + ageIndicator(days) + strconv.Itoa(days) + "d",
+			"Open for " + strconv.Itoa(days) + " days"
 	}
 	if match := lifecycleMetadataPattern.FindStringSubmatch(trimmed); match != nil {
 		return token, "Lifecycle source: " + match[1]
 	}
-	if match := ageMetadataPattern.FindStringSubmatch(trimmed); match != nil {
-		return " ⚠️" + match[1] + "d", "Open for " + match[1] + " days"
-	}
 	return token, ""
+}
+
+func ageIndicator(days int) string {
+	switch {
+	case days <= yellowAgeMaxDays:
+		return "🟡"
+	case days <= orangeAgeMaxDays:
+		return "🟠"
+	default:
+		return "🔴"
+	}
 }
 
 func appendTextAndTags(runs *[]fyne.CanvasObject, text string) {

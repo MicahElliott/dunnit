@@ -13,8 +13,7 @@ func TestSplitTrailingMeta(t *testing.T) {
 		"multi-day task @4d":                   {"multi-day task", " @4d"},
 		"finish the report s/2026-08-28":       {"finish the report", " s/2026-08-28"},
 		"finish the report (since 2026-08-28)": {"finish the report", " (since 2026-08-28)"},
-		"old todo \u26a0\ufe0f4d":              {"old todo", " \u26a0\ufe0f4d"},
-		"todo s/2026-08-28 \u26a0\ufe0f4d":     {"todo", " s/2026-08-28 \u26a0\ufe0f4d"},
+		"todo s/2026-08-28":                    {"todo", " s/2026-08-28"},
 		"todo @10m (via DOING)":                {"todo", " @10m (via DOING)"},
 	}
 	for in, want := range cases {
@@ -39,8 +38,6 @@ func TestDisplayMetadataToken(t *testing.T) {
 		token, wantLabel, wantTooltip string
 	}{
 		{" @30m", " ⏱30m", "Spent 30 mins"},
-		{" s/2026-09-11", " 🌱09/11", "Created on 2026-09-11"},
-		{" ⚠️5d", " ⚠️5d", "Open for 5 days"},
 	}
 	for _, tt := range tests {
 		label, tooltip := displayMetadataToken(tt.token)
@@ -51,12 +48,43 @@ func TestDisplayMetadataToken(t *testing.T) {
 	}
 }
 
+func TestDisplayMetadataTokenUsesAgeIndicator(t *testing.T) {
+	since := time.Now().AddDate(0, 0, -5)
+	token := " s/" + since.Format("2006-01-02")
+	label, tooltip := displayMetadataToken(token)
+	wantLabel := " 🟠5d"
+	wantTooltip := "Open for 5 days"
+	if label != wantLabel || tooltip != wantTooltip {
+		t.Errorf("displayMetadataToken(%q) = (%q, %q), want (%q, %q)",
+			token, label, tooltip, wantLabel, wantTooltip)
+	}
+}
+
+func TestAgeIndicator(t *testing.T) {
+	tests := []struct {
+		days int
+		want string
+	}{
+		{0, "🟡"},
+		{1, "🟡"},
+		{3, "🟡"},
+		{4, "🟠"},
+		{7, "🟠"},
+		{8, "🔴"},
+		{30, "🔴"},
+	}
+	for _, tt := range tests {
+		if got := ageIndicator(tt.days); got != tt.want {
+			t.Errorf("ageIndicator(%d) = %q, want %q", tt.days, got, tt.want)
+		}
+	}
+}
+
 func TestStripDisplayMetadata(t *testing.T) {
 	cases := map[string]string{
 		"finish the report (via DOING)":      "finish the report",
 		"finish the report @20m (via DOING)": "finish the report",
 		"carry the task s/2026-09-01":        "carry the task",
-		"old task ⚠️4d":                      "old task",
 		"ordinary text with (parentheses)":   "ordinary text with (parentheses)",
 	}
 	for input, want := range cases {

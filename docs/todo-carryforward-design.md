@@ -13,7 +13,8 @@ newest to oldest. It chooses the newest day whose unresolved daily-plan items
 include TODO or DOING entries, then copies only those items into today's
 ledger. It does not combine items from multiple days. Each copied item keeps
 its original `s/YYYY-MM-DD` annotation so its age remains visible. The UI
-presents that stored date as a compact `🌱MM/DD` badge.
+presents the item age as a compact colored-ball/day badge: yellow for days
+1–3, orange for days 4–7, and red for day 8 onward.
 
 Those copied lines are today's active plan, so they appear in Daybook's
 Planned section and remain there until they are completed, postponed, or
@@ -45,10 +46,10 @@ there.
 
 ## Stale items
 
-The four-day display threshold remains a visual warning in Daybook. At seven
-days old, an unresolved TODO or DOING item appears in Start of Day's stale
-review. The user can explicitly move stale items to SOMEDAY; age alone never
-changes an item's meaning or writes a ledger entry.
+The colored age badge is a visual cue in Daybook. At seven days old, an
+unresolved TODO or DOING item appears in Start of Day's stale review. The user
+can explicitly move stale items to SOMEDAY; age alone never changes an item's
+meaning or writes a ledger entry.
 
 Stale review scans the previous 30 calendar days, so a missed Start of Day has
 some recovery room without turning the daily surface into an archive. Daily

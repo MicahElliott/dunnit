@@ -312,23 +312,6 @@ func TestLegacyOngoingIsNotActiveOrCarried(t *testing.T) {
 	}
 }
 
-func TestStaleBadge(t *testing.T) {
-	fresh := "do a thing s/" + time.Now().Format("2006-01-02")
-	if got := staleBadge(fresh); got != "" {
-		t.Errorf("expected no stale badge for a fresh item, got %q", got)
-	}
-
-	old := "do a thing s/" + time.Now().AddDate(0, 0, -10).Format("2006-01-02")
-	if got := staleBadge(old); got == "" {
-		t.Errorf("expected a stale badge for a 10-day-old item, got none")
-	}
-
-	noSuffix := "do a thing"
-	if got := staleBadge(noSuffix); got != "" {
-		t.Errorf("expected no stale badge for text with no since-suffix, got %q", got)
-	}
-}
-
 func TestStripCarryForwardSince(t *testing.T) {
 	in := "finish the report s/2026-08-28"
 	want := "finish the report"
