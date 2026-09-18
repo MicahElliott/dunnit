@@ -1241,6 +1241,11 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 		trayWindow = w4
 		desk.SetSystemTrayMenu(buildTrayMenu(a, w4))
 	}
+	w4.SetMainMenu(fyne.NewMainMenu(
+		fyne.NewMenu("Dunnit",
+			fyne.NewMenuItem("About", func() { showAbout(a, w4) }),
+		),
+	))
 
 	ShowDaybook(w4, false)
 
