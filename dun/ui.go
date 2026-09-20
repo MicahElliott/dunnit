@@ -293,7 +293,7 @@ func recordActivity(text, category string) error {
 		log.Println("Error opening ledger:", err)
 		return err
 	}
-	stamp := time.Now().Format("[15:04:05]")
+	stamp := time.Now().Format("[15:04]")
 	outstr := stamp + " " + category + " " + text + "\n"
 	if _, err := f.WriteString(outstr); err != nil {
 		err = fmt.Errorf("write ledger %q: %w", fname, err)

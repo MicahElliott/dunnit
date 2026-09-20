@@ -10,6 +10,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
@@ -124,7 +125,8 @@ func showSODWindow(a fyne.App) {
 	w := a.NewWindow("Dunnit: Start of Day")
 
 	planBox := container.NewVBox()
-	refreshPlan := func() {
+	var refreshPlan func()
+	refreshPlan = func() {
 		planBox.RemoveAll()
 		var plan []OpenItem
 		for _, item := range getOpenItems() {
@@ -132,12 +134,66 @@ func showSODWindow(a fyne.App) {
 				plan = append(plan, item)
 			}
 		}
-		if len(plan) == 0 {
-			planBox.Add(widget.NewLabel("No TODOs carried in yet. Add one below or from Daybook."))
-		} else {
-			for _, item := range plan {
-				planBox.Add(itemTextLabel(categoryIconPrefix(item.Category) + openItemDisplayText(item.Text)))
+		staleItems := staleDailyPlanItems(time.Now())
+		staleByKey := make(map[string]stalePlanItem, len(staleItems))
+		for _, stale := range staleItems {
+			staleByKey[openItemKey(stale.Category, stale.Text)] = stale
+		}
+		seen := make(map[string]bool, len(plan)+len(staleItems))
+		addPlanRow := func(item OpenItem, stale *stalePlanItem) {
+			text := item.Text
+			if stale != nil && !hasCarryForwardSince(text) {
+				text += carryForwardSinceSuffix(stale.Since)
 			}
+			var actions *fyne.Container
+			if stale != nil {
+				actions = container.NewHBox(
+					newHoverIconButton(theme.Icon(theme.IconNameDelete), "Delete", func() {
+						recordDiscarded(item)
+						refreshPlan()
+					}),
+					newHoverIconButton(theme.Icon(theme.IconNameHistory), "Postpone", func() {
+						recordPostponed(item)
+						refreshPlan()
+					}),
+					newHoverIconButton(theme.Icon(theme.IconNameConfirm), "Done", func() {
+						recordConvertedDone(item)
+						refreshPlan()
+					}),
+				)
+			}
+			row := itemTextLabel(categoryIconPrefix(item.Category) + openItemDisplayText(text))
+			if actions != nil {
+				planBox.Add(container.NewBorder(nil, nil, nil, actions, row))
+				return
+			}
+			planBox.Add(row)
+		}
+
+		for _, item := range plan {
+			key := openItemKey(item.Category, item.Text)
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			stale, ok := staleByKey[key]
+			if ok {
+				addPlanRow(item, &stale)
+			} else {
+				addPlanRow(item, nil)
+			}
+		}
+		for _, stale := range staleItems {
+			key := openItemKey(stale.Category, stale.Text)
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			item := stale.OpenItem
+			addPlanRow(item, &stale)
+		}
+		if len(seen) == 0 {
+			planBox.Add(widget.NewLabel("No TODOs carried in yet. Add one below or from Daybook."))
 		}
 		planBox.Refresh()
 	}
@@ -146,72 +202,59 @@ func showSODWindow(a fyne.App) {
 	planHeading := "Today’s plan"
 	if !carrySource.IsZero() {
 		planHeading = "Carried into today from " + carrySource.Format("Mon Jan 2")
+	} else if len(staleDailyPlanItems(now)) > 0 {
+		planHeading = "Carried into today"
 	}
 	var planNote *widget.Label
 	if !carrySource.IsZero() {
 		planNote = newExplanatoryLabel("These items are carrying into today. Edit or remove them in Daybook.")
+	} else if len(staleDailyPlanItems(now)) > 0 {
+		planNote = newExplanatoryLabel("These items remain open from an earlier day. Review the row actions or edit them below.")
 	} else {
 		planNote = newExplanatoryLabel("Add a TODO below or from Daybook.")
 	}
 	contextBox := container.NewVBox()
-	if hasLastActive {
-		contextItems := openItemsAtDate(entries, lastActive, now)
-		contextCount := 0
-		for _, item := range contextItems {
-			if sodContextCategories[item.Category] {
-				contextBox.Add(itemTextLabel(categoryIconPrefix(item.Category) + item.Category + ": " + openItemDisplayText(item.Text)))
+	var refreshContext func()
+	refreshContext = func() {
+		entries = AllLedgerEntries()
+		contextBox.RemoveAll()
+		if hasLastActive {
+			contextItems := openItemsAtDate(entries, lastActive, time.Now())
+			contextCount := 0
+			for _, item := range contextItems {
+				if !sodContextCategories[item.Category] {
+					continue
+				}
 				contextCount++
+				actions := container.NewHBox(
+					newHoverIconButton(theme.Icon(theme.IconNameDocumentCreate), "Edit", func() {
+						showEditItemDialog(w, item, func() {
+							carryForwardDailyPlan(time.Now())
+							refreshContext()
+							refreshPlan()
+						})
+					}),
+					newHoverIconButton(theme.Icon(theme.IconNameDelete), "Delete", func() {
+						if err := deleteLedgerItemLine(item); err != nil {
+							log.Println("Error deleting SOD context item:", err)
+							return
+						}
+						refreshContext()
+						refreshPlan()
+					}),
+				)
+				contextBox.Add(container.NewBorder(nil, nil, nil, actions,
+					itemTextLabel(categoryIconPrefix(item.Category)+item.Category+": "+openItemDisplayText(item.Text))))
 			}
+			if contextCount == 0 {
+				contextBox.Add(widget.NewLabel("No open reminders from the last active day."))
+			}
+		} else {
+			contextBox.Add(widget.NewLabel("No previous active day yet."))
 		}
-		if contextCount == 0 {
-			contextBox.Add(widget.NewLabel("No open reminders from the last active day."))
-		}
-	} else {
-		contextBox.Add(widget.NewLabel("No previous active day yet."))
+		contextBox.Refresh()
 	}
-	staleBox := container.NewVBox()
-	var refreshStale func()
-	refreshStale = func() {
-		staleBox.RemoveAll()
-		staleItems := staleDailyPlanItems(time.Now())
-		staleBox.Add(widget.NewLabelWithStyle(
-			fmt.Sprintf("Stale TODOs (open %d+ days)", staleReviewDays),
-			fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
-		staleBox.Add(newExplanatoryLabel(fmt.Sprintf(
-			"Review scans the previous %d calendar days. Daily carry searches the previous %d days. These items remain active in Daybook until you complete, postpone, or discard them.",
-			staleReviewLookbackDays, dailyCarryLookbackDays)))
-		if len(staleItems) == 0 {
-			staleBox.Add(widget.NewLabel("Nothing needs a stale-item decision."))
-			staleBox.Refresh()
-			return
-		}
-		for _, stale := range staleItems {
-			item := stale.OpenItem
-			actions := container.NewHBox(
-				newHoverIconButton(theme.Icon(theme.IconNameDelete), "Delete", func() {
-					recordDiscarded(item)
-					refreshStale()
-					refreshPlan()
-				}),
-				newHoverIconButton(theme.Icon(theme.IconNameHistory), "Postpone", func() {
-					recordPostponed(item)
-					refreshStale()
-					refreshPlan()
-				}),
-				newHoverIconButton(theme.Icon(theme.IconNameConfirm), "Done", func() {
-					recordConvertedDone(item)
-					refreshStale()
-					refreshPlan()
-				}),
-			)
-			staleBox.Add(container.NewBorder(nil, nil, nil, actions,
-				itemTextLabel(categoryIconPrefix(item.Category)+openItemDisplayText(item.Text)+
-					" · since "+stale.Since.Format("Jan 2, 2006"))))
-		}
-		staleBox.Refresh()
-	}
-	refreshStale()
-
+	refreshContext()
 	reportBox := container.NewVBox()
 	if hasLastActive {
 		if reflection := dayReflection(entries, lastActive); reflection != "" {
@@ -279,11 +322,12 @@ func showSODWindow(a fyne.App) {
 		widget.NewLabelWithStyle("Let’s get your day planned.", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		streakLabel(),
 		reportBox,
-		widget.NewLabelWithStyle(planHeading, fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		sodHeading(planHeading),
 		planNote,
 		planBox,
-		staleBox,
-		widget.NewLabelWithStyle("Open context from the last active day (not copied into today’s plan)", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		newExplanatoryLabel(fmt.Sprintf(
+			"Items open %d+ days show a red dot. Use the row actions to delete, postpone, or mark them done.", staleReviewDays+1)),
+		sodHeading("Open context from the last active day (not copied into today’s plan)"),
 		newExplanatoryLabel("WAITING, RISK, QUESTION, FIXME, and GOAL stay here for context; only TODO and DOING become today’s active plan."),
 		contextBox,
 		recurringBox,
@@ -295,4 +339,9 @@ func showSODWindow(a fyne.App) {
 	w.SetContent(windowPad(container.NewVScroll(content)))
 	w.Resize(fyne.NewSize(560, 640))
 	w.Show()
+}
+
+func sodHeading(text string) fyne.CanvasObject {
+	return container.New(layout.NewCustomPaddedLayout(3, 1, 0, 0),
+		widget.NewLabelWithStyle(text, fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
 }

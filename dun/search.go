@@ -23,7 +23,7 @@ type searchResult struct {
 // Empty query matches nothing (avoids an accidental full dump).
 //
 // Note: this only matches against parsed Text, not the raw line
-// (e.g. the "[HH:MM:SS] CATEGORY " prefix) -- a query like "DONE"
+// (e.g. the "[HH:MM] CATEGORY " prefix) -- a query like "DONE"
 // will match entries whose *text* contains "DONE" but not match
 // purely by category the way the old raw-substring scan incidentally
 // could. Searching by category is better served by a category filter
@@ -38,7 +38,7 @@ func searchLedgers(query string) []searchResult {
 	for _, e := range FilterLedgerEntries(LedgerQuery{Text: query}) {
 		out = append(out, searchResult{
 			file: filepath.Base(e.Source),
-			line: "[" + e.Time.Format("15:04:05") + "] " + e.Category + " " + e.Text,
+			line: "[" + e.Time.Format("15:04") + "] " + e.Category + " " + e.Text,
 		})
 	}
 	return out

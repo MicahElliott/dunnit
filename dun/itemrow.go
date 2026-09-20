@@ -51,6 +51,14 @@ var metaTextColor = color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xff}
 // keeping them readable in both ordinary rows and the Daybook prefix.
 var personTextColor = color.NRGBA{R: 0x9a, G: 0x4f, B: 0x00, A: 0xff}
 
+const personIcon = "👤\ufe0e"
+
+var ageIndicatorColors = map[string]color.NRGBA{
+	"yellow": {R: 0xd0, G: 0x9b, B: 0x00, A: 0xff},
+	"orange": {R: 0xc4, G: 0x6a, B: 0x00, A: 0xff},
+	"red":    {R: 0xc0, G: 0x32, B: 0x32, A: 0xff},
+}
+
 // metaTextSizeRatio shrinks the trailing metadata run's font size
 // relative to the theme's normal text size, in addition to graying it
 // out. The slightly smaller size keeps emoji indicators aligned with
@@ -141,15 +149,7 @@ func itemTextLabel(text string) fyne.CanvasObject {
 	if meta != "" {
 		for _, match := range metadataTokenPattern.FindAllStringIndex(meta, -1) {
 			token := meta[match[0]:match[1]]
-			label, tooltip := displayMetadataToken(token)
-			if tooltip == "" {
-				metaTxt := canvas.NewText(label, metaTextColor)
-				metaTxt.TextSize = theme.TextSize() * metaTextSizeRatio
-				runs = append(runs, metaTxt)
-				continue
-			}
-			runs = append(runs, newHoverText(label, metaTextColor,
-				theme.TextSize()*metaTextSizeRatio, tooltip))
+			appendMetadataToken(&runs, token)
 		}
 	}
 
@@ -167,9 +167,6 @@ func daybookItemTextLabel(prefix, text string, stats map[string]*tagStat) fyne.C
 	runs := make([]fyne.CanvasObject, 0, 4)
 	if prefix != "" {
 		runs = append(runs, canvas.NewText(prefix, theme.Color(theme.ColorNameForeground)))
-	}
-	if hasPeople(core) {
-		runs = append(runs, canvas.NewText("👤 ", personTextColor))
 	}
 	if tag != "" {
 		runs = append(runs, newTagLinkWithStyle(
@@ -197,16 +194,29 @@ func appendMetadataRuns(runs *[]fyne.CanvasObject, meta string) {
 	}
 	for _, match := range metadataTokenPattern.FindAllStringIndex(meta, -1) {
 		token := meta[match[0]:match[1]]
-		label, tooltip := displayMetadataToken(token)
-		if tooltip == "" {
-			metaTxt := canvas.NewText(label, metaTextColor)
-			metaTxt.TextSize = theme.TextSize() * metaTextSizeRatio
-			*runs = append(*runs, metaTxt)
-			continue
-		}
-		*runs = append(*runs, newHoverText(label, metaTextColor,
-			theme.TextSize()*metaTextSizeRatio, tooltip))
+		appendMetadataToken(runs, token)
 	}
+}
+
+func appendMetadataToken(runs *[]fyne.CanvasObject, token string) {
+	textSize := theme.TextSize() * metaTextSizeRatio
+	if since, ok := parseCarryForwardSince("item" + token); ok {
+		days := daysSince(since)
+		dot := canvas.NewText(" "+ageIndicator(days), ageIndicatorColor(days))
+		dot.TextSize = textSize
+		*runs = append(*runs, dot)
+		*runs = append(*runs, newHoverText(strconv.Itoa(days)+"d", metaTextColor,
+			textSize, "Open for "+strconv.Itoa(days)+" days"))
+		return
+	}
+	label, tooltip := displayMetadataToken(token)
+	if tooltip == "" {
+		metaTxt := canvas.NewText(label, metaTextColor)
+		metaTxt.TextSize = textSize
+		*runs = append(*runs, metaTxt)
+		return
+	}
+	*runs = append(*runs, newHoverText(label, metaTextColor, textSize, tooltip))
 }
 
 func displayMetadataToken(token string) (label, tooltip string) {
@@ -234,13 +244,17 @@ func displayMetadataToken(token string) (label, tooltip string) {
 }
 
 func ageIndicator(days int) string {
+	return "●"
+}
+
+func ageIndicatorColor(days int) color.NRGBA {
 	switch {
 	case days <= yellowAgeMaxDays:
-		return "🟡"
+		return ageIndicatorColors["yellow"]
 	case days <= orangeAgeMaxDays:
-		return "🟠"
+		return ageIndicatorColors["orange"]
 	default:
-		return "🔴"
+		return ageIndicatorColors["red"]
 	}
 }
 
@@ -268,7 +282,12 @@ func appendTextAndTrackables(runs *[]fyne.CanvasObject, text string) {
 		if match.start > position {
 			*runs = append(*runs, canvas.NewText(text[position:match.start], theme.Color(theme.ColorNameForeground)))
 		}
-		*runs = append(*runs, canvas.NewText(text[match.start:match.end], match.color))
+		if text[match.start] == '@' && match.color == personTextColor {
+			*runs = append(*runs, canvas.NewText(personIcon, personTextColor))
+			*runs = append(*runs, canvas.NewText(text[match.start+1:match.end], match.color))
+		} else {
+			*runs = append(*runs, canvas.NewText(text[match.start:match.end], match.color))
+		}
 		position = match.end
 	}
 	if position < len(text) {

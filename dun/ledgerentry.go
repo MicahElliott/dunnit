@@ -15,9 +15,10 @@ import (
 type LedgerEntry struct {
 	// Date is the day component only, taken from the ledger file's
 	// name (ledgerFileDate) -- cheap and reliable, doesn't depend on
-	// the line's own "[HH:MM:SS]" stamp parsing successfully.
+	// the line's own "[HH:MM]" stamp parsing successfully.
 	Date time.Time
-	// Time is Date combined with the line's "[HH:MM:SS]" stamp, via
+	// Time is Date combined with the line's "[HH:MM]" or legacy
+	// "[HH:MM:SS]" stamp, via
 	// the same parsing logic as parseLedgerLineTime. Zero value
 	// (time.Time{}) if the line's stamp didn't parse.
 	Time time.Time

@@ -32,6 +32,24 @@ func TestStandupWindowStartLabel(t *testing.T) {
 	}
 }
 
+func TestParseLedgerLineTimeAcceptsMinuteAndLegacySecondStamps(t *testing.T) {
+	date := time.Date(2026, time.September, 19, 0, 0, 0, 0, time.Local)
+	tests := []struct {
+		line    string
+		wantSec int
+	}{
+		{"[09:15] DONE minute stamp", 0},
+		{"[09:15:42] DONE legacy stamp", 42},
+	}
+	for _, tt := range tests {
+		got, ok := parseLedgerLineTime(tt.line, date)
+		if !ok || got.Hour() != 9 || got.Minute() != 15 || got.Second() != tt.wantSec {
+			t.Errorf("parseLedgerLineTime(%q) = %v, %v; want 09:15:%02d",
+				tt.line, got, ok, tt.wantSec)
+		}
+	}
+}
+
 func TestStandupCategories_IncludesEndAndHiliteExcludingInternalMarkers(t *testing.T) {
 	want := map[string]bool{
 		// end (excluding ONGOING)

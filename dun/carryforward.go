@@ -236,7 +236,13 @@ func openItemsThrough(entries []LedgerEntry, through time.Time) (map[string]open
 			ordered[key] = true
 		}
 		active[key] = openHistoryItem{
-			item:  OpenItem{Category: e.Category, Text: stripCarryForwardSince(e.Text)},
+			item: OpenItem{
+				Category:  e.Category,
+				Text:      stripCarryForwardSince(e.Text),
+				Time:      e.Time,
+				LineIndex: e.Line,
+				Source:    e.Source,
+			},
 			since: staleDateFor(e.Text, e.Date),
 			date:  e.Date,
 		}

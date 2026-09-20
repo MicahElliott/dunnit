@@ -147,7 +147,7 @@ func showNavigatorWindow(a fyne.App) {
 		countLabel.SetText(pluralCount(len(currentEntries), "entry", "entries"))
 		for _, e := range currentEntries {
 			line := e.Date.Format("2006-01-02") + " " +
-				e.Time.Format("15:04:05") + "  " +
+				e.Time.Format("15:04") + "  " +
 				e.Category + "  " + e.Text
 			resultsBox.Add(itemTextLabel(line))
 		}
@@ -238,7 +238,7 @@ func showNavigatorAskAIDialog(a fyne.App, parent fyne.Window, entries []LedgerEn
 }
 
 // ledgerEntriesToText renders entries back into ledger-line-shaped
-// text ("[HH:MM:SS] CATEGORY text", one per line, prefixed with the
+// text ("[HH:MM] CATEGORY text", one per line, prefixed with the
 // entry's date since entries here may span many days unlike a single
 // day's raw ledger file) for feeding to summarizeWithLLMCLIPrompt.
 func ledgerEntriesToText(entries []LedgerEntry) string {
@@ -248,7 +248,7 @@ func ledgerEntriesToText(entries []LedgerEntry) string {
 		if lineHasExcludedTag(e.Text, excludeTags) {
 			continue
 		}
-		sb.WriteString(e.Date.Format("2006-01-02") + " [" + e.Time.Format("15:04:05") + "] " +
+		sb.WriteString(e.Date.Format("2006-01-02") + " [" + e.Time.Format("15:04") + "] " +
 			e.Category + " " + e.Text + "\n")
 	}
 	return sb.String()

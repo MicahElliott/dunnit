@@ -41,16 +41,20 @@ func replaceLastLedgerLine(newLine string) error {
 // line isn't well-formed. Used by lifecycle and Ditto actions to
 // change a lifecycle row's category when Start, Done, or Ditto is used.
 func replaceLedgerLineCategoryAt(idx int, newCategory string) error {
-	lines := readLedgerLines()
-	if idx < 0 || idx >= len(lines) {
+	return replaceLedgerItemCategoryAt(OpenItem{LineIndex: idx}, newCategory)
+}
+
+func replaceLedgerItemCategoryAt(item OpenItem, newCategory string) error {
+	lines := readLedgerLinesForItem(item)
+	if item.LineIndex < 0 || item.LineIndex >= len(lines) {
 		return nil
 	}
-	parts := strings.SplitN(lines[idx], " ", 3)
+	parts := strings.SplitN(lines[item.LineIndex], " ", 3)
 	if len(parts) < 3 {
 		return nil
 	}
-	lines[idx] = parts[0] + " " + newCategory + " " + parts[2]
-	return writeLedgerLines(lines)
+	lines[item.LineIndex] = parts[0] + " " + newCategory + " " + parts[2]
+	return writeLedgerLinesForItem(item, lines)
 }
 
 // replaceLedgerLineTextAt rewrites the line at idx to use newText
@@ -59,16 +63,20 @@ func replaceLedgerLineCategoryAt(idx int, newCategory string) error {
 // if idx is out of range or the line isn't well-formed. Used by
 // showEditItemDialog's Save action.
 func replaceLedgerLineTextAt(idx int, newText string) error {
-	lines := readLedgerLines()
-	if idx < 0 || idx >= len(lines) {
+	return replaceLedgerItemTextAt(OpenItem{LineIndex: idx}, newText)
+}
+
+func replaceLedgerItemTextAt(item OpenItem, newText string) error {
+	lines := readLedgerLinesForItem(item)
+	if item.LineIndex < 0 || item.LineIndex >= len(lines) {
 		return nil
 	}
-	parts := strings.SplitN(lines[idx], " ", 3)
+	parts := strings.SplitN(lines[item.LineIndex], " ", 3)
 	if len(parts) < 3 {
 		return nil
 	}
-	lines[idx] = parts[0] + " " + parts[1] + " " + normalizeLedgerText(newText)
-	return writeLedgerLines(lines)
+	lines[item.LineIndex] = parts[0] + " " + parts[1] + " " + normalizeLedgerText(newText)
+	return writeLedgerLinesForItem(item, lines)
 }
 
 // replaceLedgerLineAt rewrites the line at idx to use newCategory and
@@ -78,16 +86,20 @@ func replaceLedgerLineTextAt(idx int, newText string) error {
 // (which lets the user change both category and text together, not
 // just text as replaceLedgerLineTextAt alone did).
 func replaceLedgerLineAt(idx int, newCategory, newText string) error {
-	lines := readLedgerLines()
-	if idx < 0 || idx >= len(lines) {
+	return replaceLedgerItemAt(OpenItem{LineIndex: idx}, newCategory, newText)
+}
+
+func replaceLedgerItemAt(item OpenItem, newCategory, newText string) error {
+	lines := readLedgerLinesForItem(item)
+	if item.LineIndex < 0 || item.LineIndex >= len(lines) {
 		return nil
 	}
-	parts := strings.SplitN(lines[idx], " ", 3)
+	parts := strings.SplitN(lines[item.LineIndex], " ", 3)
 	if len(parts) < 3 {
 		return nil
 	}
-	lines[idx] = parts[0] + " " + newCategory + " " + normalizeLedgerText(newText)
-	return writeLedgerLines(lines)
+	lines[item.LineIndex] = parts[0] + " " + newCategory + " " + normalizeLedgerText(newText)
+	return writeLedgerLinesForItem(item, lines)
 }
 
 // deleteLedgerLineAt removes the line at idx entirely (unlike
@@ -96,11 +108,16 @@ func replaceLedgerLineAt(idx int, newCategory, newText string) error {
 // replaceLedgerLineTextAt/replaceLedgerLineCategoryAt). No-op if idx
 // is out of range. Used by showEditItemDialog's Delete action.
 func deleteLedgerLineAt(idx int) error {
-	lines := readLedgerLines()
-	if idx < 0 || idx >= len(lines) {
+	return deleteLedgerItemLine(OpenItem{LineIndex: idx})
+}
+
+func deleteLedgerItemLine(item OpenItem) error {
+	lines := readLedgerLinesForItem(item)
+	if item.LineIndex < 0 || item.LineIndex >= len(lines) {
 		return nil
 	}
-	return writeLedgerLines(append(lines[:idx], lines[idx+1:]...))
+	return writeLedgerLinesForItem(item,
+		append(lines[:item.LineIndex], lines[item.LineIndex+1:]...))
 }
 
 // showEditItemDialog opens a small modal (dialog.NewCustomWithout
@@ -165,7 +182,7 @@ func showEditItemDialogForCategory(parent fyne.Window, item OpenItem, initialCat
 		if isLifecycleCategory(item.Category) && isLifecycleEndpoint(newCat) {
 			err = completePlannedEndpoint(item, newCat, text)
 		} else {
-			err = replaceLedgerLineAt(item.LineIndex, newCat, inflectLifecycleText(text, newCat))
+			err = replaceLedgerItemAt(item, newCat, inflectLifecycleText(text, newCat))
 		}
 		if err != nil {
 			dialog.ShowError(err, parent)
@@ -184,7 +201,7 @@ func showEditItemDialogForCategory(parent fyne.Window, item OpenItem, initialCat
 	saveBtn.Importance = widget.HighImportance
 	cancelBtn := widget.NewButton("Cancel", func() { d.Hide() })
 	deleteBtn := widget.NewButton("Delete", func() {
-		if err := deleteLedgerLineAt(item.LineIndex); err != nil {
+		if err := deleteLedgerItemLine(item); err != nil {
 			dialog.ShowError(err, parent)
 			return
 		}
@@ -245,6 +262,24 @@ func categoryLabelForCode(code string) string {
 // of recordActivity's own append path.
 func writeLedgerLines(lines []string) error {
 	_, fname := getLedger()
+	return writeLedgerLinesForPath(fname, lines)
+}
+
+func readLedgerLinesForItem(item OpenItem) []string {
+	if item.Source != "" {
+		return readLedgerLinesFrom(item.Source)
+	}
+	return readLedgerLines()
+}
+
+func writeLedgerLinesForItem(item OpenItem, lines []string) error {
+	if item.Source != "" {
+		return writeLedgerLinesForPath(item.Source, lines)
+	}
+	return writeLedgerLines(lines)
+}
+
+func writeLedgerLinesForPath(fname string, lines []string) error {
 	f, err := os.Create(fname)
 	if err != nil {
 		return err

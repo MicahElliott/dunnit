@@ -42,7 +42,21 @@ func draftDailySummaryContext(ctx context.Context, date time.Time) (string, erro
 	if !hasRealLedgerContent(ledgerText) {
 		return "", nil
 	}
-	return summarizeWithLLMCLIContext(ctx, ledgerText)
+	return summarizeWithLLMCLIPromptContext(ctx, eodSummaryPrompt(), ledgerText)
+}
+
+func eodSummaryPrompt() string {
+	return "Create a detailed but compact Markdown end-of-day recap from this ledger. " +
+		"Treat the ledger as the source of truth and account for every meaningful entry. " +
+		"Do not omit repeated DONE entries: preserve each distinct completed outcome, " +
+		"combining entries only when they clearly describe the same work. " +
+		"Use this vocabulary: DONE means completed work; TODO means an open task; " +
+		"DOING means work in progress; WAITING means blocked on another person or " +
+		"thing; RISK means a tracked concern; TIL means something learned; GOAL " +
+		"means a larger objective; MEETING means agenda or discussion notes. " +
+		"Include several concrete bullets and retain useful people, topics, learnings, " +
+		"and follow-up details. Be informative rather than ultra-concise, do not " +
+		"invent facts, and do not include a title or a separate statistics section."
 }
 
 // hasRealLedgerContent reports whether ledgerText (as produced by
@@ -83,6 +97,7 @@ func ensureEODReportContext(ctx context.Context, date time.Time) (path string, c
 	if content == "" {
 		content = "# " + date.Format("2006-01-02") + "\n\n(no ledger entries to summarize yet)\n"
 	}
+	content = augmentEODReport(content, date)
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 		return path, false, err
 	}

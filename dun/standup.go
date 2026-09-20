@@ -111,12 +111,12 @@ func ledgerFileForDate(date time.Time) string {
 	return ""
 }
 
-// parseLedgerLineTime parses a ledger line's "[HH:MM:SS]" timestamp
-// prefix combined with the given date into a full time.Time, for
-// comparing against standupWindowStart's boundary. Returns ok=false
-// if the line doesn't start with a well-formed "[HH:MM:SS]" stamp.
+// parseLedgerLineTime parses a ledger line's "[HH:MM]" or legacy
+// "[HH:MM:SS]" timestamp prefix combined with the given date into a full
+// time.Time, for comparing against standupWindowStart's boundary. Returns
+// ok=false if the line doesn't start with a well-formed timestamp.
 func parseLedgerLineTime(line string, date time.Time) (t time.Time, ok bool) {
-	if len(line) < 10 || line[0] != '[' {
+	if len(line) < 7 || line[0] != '[' {
 		return time.Time{}, false
 	}
 	end := strings.IndexByte(line, ']')
@@ -124,7 +124,11 @@ func parseLedgerLineTime(line string, date time.Time) (t time.Time, ok bool) {
 		return time.Time{}, false
 	}
 	hms := line[1:end]
-	parsed, err := time.ParseInLocation("15:04:05", hms, date.Location())
+	layout := "15:04"
+	if strings.Count(hms, ":") == 2 {
+		layout = "15:04:05"
+	}
+	parsed, err := time.ParseInLocation(layout, hms, date.Location())
 	if err != nil {
 		return time.Time{}, false
 	}

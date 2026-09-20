@@ -52,7 +52,7 @@ func TestDisplayMetadataTokenUsesAgeIndicator(t *testing.T) {
 	since := time.Now().AddDate(0, 0, -5)
 	token := " s/" + since.Format("2006-01-02")
 	label, tooltip := displayMetadataToken(token)
-	wantLabel := " 🟠5d"
+	wantLabel := " ●5d"
 	wantTooltip := "Open for 5 days"
 	if label != wantLabel || tooltip != wantTooltip {
 		t.Errorf("displayMetadataToken(%q) = (%q, %q), want (%q, %q)",
@@ -65,13 +65,13 @@ func TestAgeIndicator(t *testing.T) {
 		days int
 		want string
 	}{
-		{0, "🟡"},
-		{1, "🟡"},
-		{3, "🟡"},
-		{4, "🟠"},
-		{7, "🟠"},
-		{8, "🔴"},
-		{30, "🔴"},
+		{0, "●"},
+		{1, "●"},
+		{3, "●"},
+		{4, "●"},
+		{7, "●"},
+		{8, "●"},
+		{30, "●"},
 	}
 	for _, tt := range tests {
 		if got := ageIndicator(tt.days); got != tt.want {

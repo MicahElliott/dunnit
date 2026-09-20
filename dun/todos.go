@@ -20,6 +20,9 @@ type OpenItem struct {
 	// target the exact line even if other lines share the same
 	// category+text.
 	LineIndex int
+	// Source is the ledger file containing LineIndex. It is populated for
+	// historical SOD context rows; an empty value means today's ledger.
+	Source string
 }
 
 // openTrackedCategories are the categories tracked as "open items"
@@ -131,7 +134,8 @@ func hasCarryForwardSince(text string) bool {
 	return ok
 }
 
-// parseLedgerLine splits a ledger line "[HH:MM:SS] CATEGORY text"
+// parseLedgerLine splits a ledger line "[HH:MM] CATEGORY text" (or a
+// legacy seconds-bearing line) into category and text.
 // into category and text. Returns ok=false if the line doesn't look
 // like a well-formed ledger entry.
 func parseLedgerLine(line string) (category, text string, ok bool) {
@@ -272,7 +276,7 @@ func completePlannedEndpoint(item OpenItem, endpoint, text string) error {
 	if !isLifecycleEndpoint(endpoint) {
 		return nil
 	}
-	return replaceLedgerLineAt(item.LineIndex, endpoint,
+	return replaceLedgerItemAt(item, endpoint,
 		strings.TrimSpace(inflectLifecycleText(text, endpoint))+convertedSuffix(item.Category))
 }
 
@@ -282,7 +286,7 @@ func startPlannedItem(item OpenItem) error {
 	if item.Category != "TODO" || item.LineIndex < 0 {
 		return nil
 	}
-	return replaceLedgerLineAt(item.LineIndex, "DOING", transitionLifecycleText(item.Text, item.Category, "DOING"))
+	return replaceLedgerItemAt(item, "DOING", transitionLifecycleText(item.Text, item.Category, "DOING"))
 }
 
 // dittoLifecycleItem turns the latest DONE lifecycle row back into DOING or
@@ -292,10 +296,10 @@ func dittoLifecycleItem(item OpenItem, delta int) error {
 		return nil
 	}
 	if item.Category == "DONE" {
-		return replaceLedgerLineAt(item.LineIndex, "DOING", transitionLifecycleText(item.Text, item.Category, "DOING"))
+		return replaceLedgerItemAt(item, "DOING", transitionLifecycleText(item.Text, item.Category, "DOING"))
 	}
 	if item.Category == "DOING" && delta > 0 {
-		return replaceLedgerLineTextAt(item.LineIndex, incrementEntryMins(item.Text, delta))
+		return replaceLedgerItemTextAt(item, incrementEntryMins(item.Text, delta))
 	}
 	return nil
 }

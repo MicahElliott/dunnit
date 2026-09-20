@@ -146,6 +146,54 @@ func TestEODReportForDisplayUsesCoveredDateAndStats(t *testing.T) {
 	}
 }
 
+func TestEODReportFactsDeduplicatePeopleAndTopics(t *testing.T) {
+	withTempDunnitDir(t)
+	date := time.Date(2026, time.September, 17, 0, 0, 0, 0, time.Local)
+	writeLedgerLinesForDate(t, date, []string{
+		"[09:00] DONE shipped #alpha with @Brandon",
+		"[10:00] TIL learned #alpha with @brandon",
+		"[11:00] DONE reviewed #beta with @Surbhi",
+	})
+	InvalidateLedgerCaches()
+
+	if got, want := eodReportFacts(date), "Worked with 2 people across 2 topics."; got != want {
+		t.Fatalf("eodReportFacts() = %q, want %q", got, want)
+	}
+	got := appendEODReportFacts("Report body", date)
+	if !strings.HasSuffix(got, "\n\n"+"Worked with 2 people across 2 topics.\n") {
+		t.Fatalf("augmented report = %q", got)
+	}
+}
+
+func TestAugmentEODReportKeepsEveryDoneAndTIL(t *testing.T) {
+	withTempDunnitDir(t)
+	date := time.Date(2026, time.September, 17, 0, 0, 0, 0, time.Local)
+	writeLedgerLinesForDate(t, date, []string{
+		"[09:00] DONE first outcome",
+		"[10:00] DONE second outcome",
+		"[11:00] DONE third outcome",
+		"[12:00] TIL learned the useful thing",
+	})
+	InvalidateLedgerCaches()
+
+	got := augmentEODReport("AI summary", date)
+	for _, want := range []string{
+		"## Completed items (from ledger)",
+		"- first outcome",
+		"- second outcome",
+		"- third outcome",
+		"## Learnings (from ledger)",
+		"- learned the useful thing",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("augmented report missing %q: %q", want, got)
+		}
+	}
+	if strings.Count(got, "- first outcome") != 1 || strings.Count(got, "- second outcome") != 1 || strings.Count(got, "- third outcome") != 1 {
+		t.Fatalf("completed entries were not preserved exactly once: %q", got)
+	}
+}
+
 func TestReportHeadingAndBodySeparatesH1(t *testing.T) {
 	heading, body := reportHeadingAndBody("# Report\n\n*Stats: 2 entries*\n\nBody")
 	if heading != "Report" || body != "*Stats: 2 entries*\n\nBody" {

@@ -120,6 +120,120 @@ func eodLedgerLineLabel(line string) fyne.CanvasObject {
 		openItemDisplayText(stripResolutionSuffix(text)))
 }
 
+func eodEntryIncluded(entry LedgerEntry, cfg Config) bool {
+	for _, tag := range entry.Tags {
+		for _, excluded := range cfg.ReportExcludeTags {
+			if strings.EqualFold(tag, excluded) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func eodReportFacts(date time.Time) string {
+	cfg := LoadConfig()
+	people := make(map[string]bool)
+	topics := make(map[string]bool)
+	entries := 0
+	for _, entry := range AllLedgerEntries() {
+		if !sameCalendarDate(entry.Date, date) || !eodEntryIncluded(entry, cfg) {
+			continue
+		}
+		entries++
+		for _, person := range entry.People {
+			people[strings.ToLower(person)] = true
+		}
+		for _, tag := range entry.Tags {
+			topics[strings.ToLower(tag)] = true
+		}
+	}
+	if entries == 0 {
+		return ""
+	}
+	return fmt.Sprintf("Worked with %d %s across %d %s.", len(people),
+		pluralizeCount(len(people), "person", "people"), len(topics),
+		pluralizeCount(len(topics), "topic", "topics"))
+}
+
+func pluralizeCount(count int, singular, plural string) string {
+	if count == 1 {
+		return singular
+	}
+	return plural
+}
+
+func appendEODReportFacts(report string, date time.Time) string {
+	facts := eodReportFacts(date)
+	if facts == "" {
+		return report
+	}
+	trimmed := strings.TrimSpace(report)
+	if strings.Contains("\n"+trimmed+"\n", "\n"+facts+"\n") {
+		return trimmed + "\n"
+	}
+	if trimmed == "" {
+		return facts + "\n"
+	}
+	return trimmed + "\n\n" + facts + "\n"
+}
+
+func appendEODLedgerDetails(report string, date time.Time) string {
+	cfg := LoadConfig()
+	var completed, learned []string
+	for _, entry := range AllLedgerEntries() {
+		if !sameCalendarDate(entry.Date, date) || !eodEntryIncluded(entry, cfg) {
+			continue
+		}
+		text := strings.TrimSpace(stripResolutionSuffix(entry.Text))
+		if text == "" {
+			continue
+		}
+		switch entry.Category {
+		case "DONE":
+			completed = append(completed, text)
+		case "TIL":
+			learned = append(learned, text)
+		}
+	}
+	if len(completed) == 0 && len(learned) == 0 {
+		return report
+	}
+	trimmed := strings.TrimSpace(report)
+	var sections []string
+	if len(completed) > 0 && !strings.Contains(trimmed, "## Completed items (from ledger)") {
+		var b strings.Builder
+		b.WriteString("## Completed items (from ledger)\n")
+		for _, text := range completed {
+			b.WriteString("- ")
+			b.WriteString(text)
+			b.WriteByte('\n')
+		}
+		sections = append(sections, strings.TrimSpace(b.String()))
+	}
+	if len(learned) > 0 && !strings.Contains(trimmed, "## Learnings (from ledger)") {
+		var b strings.Builder
+		b.WriteString("## Learnings (from ledger)\n")
+		for _, text := range learned {
+			b.WriteString("- ")
+			b.WriteString(text)
+			b.WriteByte('\n')
+		}
+		sections = append(sections, strings.TrimSpace(b.String()))
+	}
+	if len(sections) == 0 {
+		return trimmed + "\n"
+	}
+	if trimmed == "" {
+		return strings.Join(sections, "\n\n") + "\n"
+	}
+	return trimmed + "\n\n" + strings.Join(sections, "\n\n") + "\n"
+}
+
+func augmentEODReport(report string, date time.Time) string {
+	return appendEODReportFacts(appendEODLedgerDetails(report, date), date)
+}
+
 // eodReportStats summarizes the ledger metadata that belongs immediately
 // below an EOD report's title. Keeping it here makes the report date and its
 // stats come from the same ledger day even when an older report is opened.
@@ -127,8 +241,10 @@ func eodReportStats(date time.Time) string {
 	entries := 0
 	done := 0
 	meetingHours := ""
-	for _, entry := range AllLedgerEntries() {
-		if !sameCalendarDate(entry.Date, date) {
+	allEntries := AllLedgerEntries()
+	cfg := LoadConfig()
+	for _, entry := range allEntries {
+		if !sameCalendarDate(entry.Date, date) || !eodEntryIncluded(entry, cfg) {
 			continue
 		}
 		entries++
@@ -146,7 +262,7 @@ func eodReportStats(date time.Time) string {
 	if meetingHours != "" {
 		parts = append(parts, meetingHours+" meeting hours")
 	}
-	if reflection := dayReflection(AllLedgerEntries(), date); reflection != "" {
+	if reflection := dayReflection(allEntries, date); reflection != "" {
 		parts = append(parts, reflection)
 	}
 	return strings.Join(parts, " · ")
@@ -170,6 +286,7 @@ func eodReportForDisplay(report string, date time.Time) string {
 		bodyLines = append(bodyLines, line)
 	}
 	body := strings.TrimSpace(strings.Join(bodyLines, "\n"))
+	body = strings.TrimSpace(augmentEODReport(body, date))
 	heading := "# End-of-Day Recap — " + date.Format("Mon Jan 2")
 	stats := "*Stats: " + eodReportStats(date) + "*"
 	if body == "" {
@@ -293,10 +410,7 @@ func showEODWindow(a fyne.App) {
 			var err error
 			if hasContent {
 				draft, err = summarizeWithLLMCLIPromptContext(request.ctx,
-					"Summarize this ledger of a day’s activity entries into "+
-						"a brief impact report suitable for a personal end-of-day "+
-						"recap. Be concise and group related work together."+
-						reviewLengthConstraint(periodDay), ledgerText)
+					eodSummaryPrompt(), ledgerText)
 			}
 			request.finish()
 			fyne.Do(func() {
@@ -384,7 +498,7 @@ func showEODWindow(a fyne.App) {
 		}
 		if generationRequested && writeEODReport && strings.TrimSpace(summary.Text) != "" {
 			_, path := eodReportPath(now)
-			if err := writeReportFileIfAbsent(path, summary.Text); err != nil {
+			if err := writeReportFileIfAbsent(path, augmentEODReport(summary.Text, now)); err != nil {
 				log.Println("Error saving EOD report:", err)
 			}
 		}

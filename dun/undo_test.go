@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 // withTempDunnitDir points DUNNIT_DIR at a fresh temp directory for the
@@ -32,6 +33,35 @@ func TestRemoveLastLedgerLine(t *testing.T) {
 	}
 	if got := lastEntryText(); got != "first" {
 		t.Errorf("expected remaining line to be 'first', got %q", got)
+	}
+}
+
+func TestRecordActivityOmitsSeconds(t *testing.T) {
+	withTempDunnitDir(t)
+	if err := recordActivity("new format", "DONE"); err != nil {
+		t.Fatalf("recordActivity: %v", err)
+	}
+	lines := readLedgerLines()
+	if len(lines) != 1 || len(lines[0]) < 7 || lines[0][3] != ':' || lines[0][6] != ']' {
+		t.Fatalf("recordActivity wrote unexpected timestamp: %q", lines)
+	}
+	if strings.Contains(lines[0][:7], ":00") {
+		t.Fatalf("recordActivity still wrote seconds: %q", lines[0])
+	}
+}
+
+func TestHistoricalItemEditUsesSourceLedger(t *testing.T) {
+	withTempDunnitDir(t)
+	yesterday := time.Now().AddDate(0, 0, -1)
+	writeLedgerLinesForDate(t, yesterday, []string{"[09:00] WAITING waiting on review"})
+	path := ledgerFileForDate(yesterday)
+	item := OpenItem{Category: "WAITING", Text: "waiting on review", LineIndex: 0, Source: path}
+	if err := replaceLedgerItemAt(item, "DOING", "continue the review"); err != nil {
+		t.Fatalf("replace historical item: %v", err)
+	}
+	got := readLedgerLinesFrom(path)
+	if len(got) != 1 || got[0] != "[09:00] DOING continue the review" {
+		t.Fatalf("historical ledger = %v", got)
 	}
 }
 
