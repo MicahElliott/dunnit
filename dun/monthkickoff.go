@@ -32,20 +32,25 @@ func showMonthKickoffWindow(a fyne.App, anchor time.Time) {
 	label := periodLabel(cfg, periodMonth, anchor)
 	w := a.NewWindow("Dunnit: Month Kickoff \u2014 Planning " + label)
 
-	// Current GOALs readback + entry for the new month.
-	var currentGoals []OpenItem
-	for _, item := range getOpenItems() {
-		if item.Category == "GOAL" {
-			currentGoals = append(currentGoals, item)
-		}
-	}
 	currentGoalsBox := container.NewVBox()
-	if len(currentGoals) == 0 {
-		currentGoalsBox.Add(widget.NewLabel("(no current GOALs logged yet)"))
+	var refreshGoals func()
+	refreshGoals = func() {
+		currentGoalsBox.RemoveAll()
+		var currentGoals []OpenItem
+		for _, item := range getOpenItems() {
+			if item.Category == "GOAL" {
+				currentGoals = append(currentGoals, item)
+			}
+		}
+		if len(currentGoals) == 0 {
+			currentGoalsBox.Add(widget.NewLabel("(no current GOALs logged yet)"))
+		}
+		for _, item := range currentGoals {
+			currentGoalsBox.Add(kickoffOpenItemRow(item, refreshGoals))
+		}
+		currentGoalsBox.Refresh()
 	}
-	for _, item := range currentGoals {
-		currentGoalsBox.Add(itemTextLabel(categoryIconPrefix(item.Category) + item.Text))
-	}
+	refreshGoals()
 	newGoalsEntry := widget.NewMultiLineEntry()
 	newGoalsEntry.SetPlaceHolder("New/updated GOALs for this month? One per line\u2026")
 	newGoalsEntry.SetMinRowsVisible(2)
@@ -55,7 +60,7 @@ func showMonthKickoffWindow(a fyne.App, anchor time.Time) {
 	// suggestion the user explicitly taps "Add" for, not auto-seeded.
 	recurringBox := container.NewVBox()
 	dueMonthly := dueRecurringItems(cfg, now, "monthly")
-	if box := recurringItemsSuggestionBox(dueMonthly, nil); box != nil {
+	if box := recurringItemsSuggestionBox(dueMonthly, refreshGoals); box != nil {
 		recurringBox.Add(box)
 	} else {
 		recurringBox.Add(widget.NewLabel("(no monthly recurring items due)"))
@@ -72,7 +77,15 @@ func showMonthKickoffWindow(a fyne.App, anchor time.Time) {
 	})
 
 	content := container.NewVBox(
-		widget.NewLabelWithStyle("Looking Ahead: "+label+" GOALs", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		newWindowHeading("Let\u2019s get your month planned."),
+		newExplanatoryLabel("Looking ahead to "+label+" \u2014 review the goals already in motion and choose what deserves attention."),
+		container.NewHBox(
+			widget.NewButton("Dismiss", func() { w.Close() }),
+			widget.NewButton("Trend View\u2026", func() { showTrendView(a) }),
+			widget.NewButton("Reports Library\u2026", func() { showReportsLibraryWindow(a) }),
+		),
+		priorReviewReferenceBox(a, w, periodMonth, anchor),
+		sodHeading("GOALs in motion"),
 		currentGoalsBox,
 		newGoalsEntry,
 		widget.NewLabelWithStyle("Looking Ahead: Monthly Recurring Items", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),

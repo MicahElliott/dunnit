@@ -8,29 +8,40 @@ import (
 )
 
 func TestCarryForwardDailyPlan_CopiesUnresolvedItem(t *testing.T) {
-	withTempDunnitDir(t)
-
-	// Simulate a TODO logged "yesterday" by writing directly to a
-	// backdated ledger file, since recordActivity always writes to
-	// today's file.
-	yesterday := time.Now().AddDate(0, 0, -1)
-	writeLedgerLinesForDate(t, yesterday, []string{
-		"[09:00:00] TODO finish the report",
-	})
-	InvalidateLedgerCaches()
-
-	carryForwardDailyPlan(time.Now())
-
-	lines := readLedgerLines()
-	if len(lines) != 1 {
-		t.Fatalf("expected 1 carried-forward line in today's ledger, got %d: %v", len(lines), lines)
+	tests := []struct {
+		name     string
+		category string
+		text     string
+	}{
+		{name: "TODO", category: "TODO", text: "finish the report"},
+		{name: "DOING", category: "DOING", text: "finishing the report"},
 	}
-	cat, text, ok := parseLedgerLine(lines[0])
-	if !ok || cat != "TODO" {
-		t.Fatalf("expected a TODO line, got %q", lines[0])
-	}
-	if !strings.HasPrefix(text, "finish the report") || !strings.Contains(text, " s/") {
-		t.Errorf("expected carried-forward text to keep original text and add an s/YYYY-MM-DD suffix, got %q", text)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			withTempDunnitDir(t)
+
+			// Simulate a prior-day item by writing directly to a backdated
+			// ledger file, since recordActivity always writes to today.
+			yesterday := time.Now().AddDate(0, 0, -1)
+			writeLedgerLinesForDate(t, yesterday, []string{
+				"[09:00:00] " + tt.category + " " + tt.text,
+			})
+			InvalidateLedgerCaches()
+
+			carryForwardDailyPlan(time.Now())
+
+			lines := readLedgerLines()
+			if len(lines) != 1 {
+				t.Fatalf("expected 1 carried-forward line in today's ledger, got %d: %v", len(lines), lines)
+			}
+			cat, text, ok := parseLedgerLine(lines[0])
+			if !ok || cat != tt.category {
+				t.Fatalf("expected a %s line, got %q", tt.category, lines[0])
+			}
+			if !strings.HasPrefix(text, tt.text) || !strings.Contains(text, " s/") {
+				t.Errorf("expected carried-forward text to keep original text and add an s/YYYY-MM-DD suffix, got %q", text)
+			}
+		})
 	}
 }
 

@@ -73,7 +73,7 @@ func showMonthReviewWindow(a fyne.App, anchor time.Time) {
 	w := a.NewWindow("Dunnit: Month Review \u2014 Looking Back at " + label)
 
 	// Step 1: digest, behind a Generate button.
-	digestBody := widget.NewRichTextFromMarkdown("*Pick a theme, then tap Generate.*")
+	digestBody := newReportRichText("*Pick a theme, then tap Generate.*")
 	digestBody.Wrapping = fyne.TextWrapWord
 	themeSelect := widget.NewSelect(themeOptions(), nil)
 	themeSelect.SetSelected(themeDisplayNames[themeFor(cfg, periodMonth)])
@@ -123,7 +123,7 @@ func showMonthReviewWindow(a fyne.App, anchor time.Time) {
 		stopBtn.Enable()
 		stopBtn.Show()
 		statusLabel.SetText("Generating, please wait\u2026")
-		digestBody.ParseMarkdown("*Generating, please wait\u2026*")
+		setReportRichTextMarkdown(digestBody, "*Generating, please wait\u2026*")
 		go func() {
 			overrideCfg := cfg
 			setTheme(&overrideCfg, periodMonth, selectedTheme)
@@ -143,7 +143,7 @@ func showMonthReviewWindow(a fyne.App, anchor time.Time) {
 					return
 				}
 				statusLabel.SetText("Generated.")
-				digestBody.ParseMarkdown(summary)
+				setReportRichTextMarkdown(digestBody, summary)
 				showEditableReportWindow(a,
 					"Dunnit: Month Review Report ("+label+")",
 					reviewReportPath(periodMonth, from, selectedTheme), summary)

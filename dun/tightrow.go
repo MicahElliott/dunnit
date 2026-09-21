@@ -14,13 +14,19 @@ func newTightRowLayout() fyne.Layout {
 }
 
 func (tightRowLayout) Layout(objects []fyne.CanvasObject, size fyne.Size) {
+	maxHeight := float32(0)
+	for _, o := range objects {
+		if o.Visible() && o.MinSize().Height > maxHeight {
+			maxHeight = o.MinSize().Height
+		}
+	}
 	x := float32(0)
 	for _, o := range objects {
 		if !o.Visible() {
 			continue
 		}
 		w := o.MinSize().Width
-		o.Move(fyne.NewPos(x, 0))
+		o.Move(fyne.NewPos(x, (maxHeight-o.MinSize().Height)/2))
 		o.Resize(fyne.NewSize(w, size.Height))
 		x += w
 	}

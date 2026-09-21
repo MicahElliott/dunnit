@@ -145,29 +145,22 @@ func showSODWindow(a fyne.App) {
 			if stale != nil && !hasCarryForwardSince(text) {
 				text += carryForwardSinceSuffix(stale.Since)
 			}
-			var actions *fyne.Container
-			if stale != nil {
-				actions = container.NewHBox(
-					newHoverIconButton(theme.Icon(theme.IconNameDelete), "Delete", func() {
-						recordDiscarded(item)
-						refreshPlan()
-					}),
-					newHoverIconButton(theme.Icon(theme.IconNameHistory), "Postpone", func() {
-						recordPostponed(item)
-						refreshPlan()
-					}),
-					newHoverIconButton(theme.Icon(theme.IconNameConfirm), "Done", func() {
-						recordConvertedDone(item)
-						refreshPlan()
-					}),
-				)
-			}
+			actions := container.NewHBox(
+				newHoverIconButton(theme.Icon(theme.IconNameDelete), "Delete", func() {
+					recordDiscarded(item)
+					refreshPlan()
+				}),
+				newHoverIconButton(theme.Icon(theme.IconNameHistory), "Postpone", func() {
+					recordPostponed(item)
+					refreshPlan()
+				}),
+				newHoverIconButton(theme.Icon(theme.IconNameConfirm), "Done", func() {
+					recordConvertedDone(item)
+					refreshPlan()
+				}),
+			)
 			row := itemTextLabel(categoryIconPrefix(item.Category) + openItemDisplayText(text))
-			if actions != nil {
-				planBox.Add(container.NewBorder(nil, nil, nil, actions, row))
-				return
-			}
-			planBox.Add(row)
+			planBox.Add(container.NewBorder(nil, nil, nil, actions, row))
 		}
 
 		for _, item := range plan {
@@ -308,13 +301,17 @@ func showSODWindow(a fyne.App) {
 	addBtn := widget.NewButton("Add", addItem)
 	entryRow := container.New(newStretchRowLayout(newItemText), newItemCat, newItemText, addBtn)
 
-	done := func() {
-		markStartOfDayRun()
+	refreshDaybook := func() {
 		if trayRefreshAll != nil {
 			trayRefreshAll()
 		} else if refreshStartOfDayNotice != nil {
 			refreshStartOfDayNotice()
 		}
+	}
+	w.SetOnClosed(refreshDaybook)
+
+	done := func() {
+		markStartOfDayRun()
 		w.Close()
 	}
 

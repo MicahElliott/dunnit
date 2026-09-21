@@ -50,7 +50,7 @@ func writeReportFile(path, text string) error {
 // Save writes text.
 func showGeneratedReport(a fyne.App, title, savePath, text string) {
 	heading, bodyText := reportHeadingAndBody(text)
-	body := widget.NewRichTextFromMarkdown(bodyText)
+	body := newReportRichText(bodyText)
 	body.Wrapping = fyne.TextWrapWord
 	scroll := container.NewVScroll(body)
 	scroll.SetMinSize(fyne.NewSize(0, 260))
@@ -80,6 +80,42 @@ func showGeneratedReport(a fyne.App, title, savePath, text string) {
 	)))
 	w.Resize(fyne.NewSize(520, 420))
 	w.Show()
+}
+
+func newReportRichText(markdown string) *widget.RichText {
+	richText := widget.NewRichTextFromMarkdown(markdown)
+	richText.Segments = addReportHeadingSpacing(richText.Segments)
+	richText.Refresh()
+	return richText
+}
+
+func setReportRichTextMarkdown(richText *widget.RichText, markdown string) {
+	richText.Segments = widget.NewRichTextFromMarkdown(markdown).Segments
+	richText.Segments = addReportHeadingSpacing(richText.Segments)
+	richText.Refresh()
+}
+
+func addReportHeadingSpacing(segments []widget.RichTextSegment) []widget.RichTextSegment {
+	spaced := make([]widget.RichTextSegment, 0, len(segments)+4)
+	sectionCount := 0
+	for _, segment := range segments {
+		if isReportSectionHeading(segment) && sectionCount > 0 {
+			spaced = append(spaced, &widget.TextSegment{
+				Style: widget.RichTextStyleParagraph,
+				Text:  " ",
+			})
+		}
+		spaced = append(spaced, segment)
+		if isReportSectionHeading(segment) {
+			sectionCount++
+		}
+	}
+	return spaced
+}
+
+func isReportSectionHeading(segment widget.RichTextSegment) bool {
+	text, ok := segment.(*widget.TextSegment)
+	return ok && text.Style.SizeName == theme.SizeNameSubHeadingText
 }
 
 func reportHeadingAndBody(text string) (heading, body string) {
@@ -264,10 +300,10 @@ func showEditableReportWindow(a fyne.App, title, savePath, initialText string) {
 	editor.SetText(initialText)
 	editor.Wrapping = fyne.TextWrapWord
 
-	preview := widget.NewRichTextFromMarkdown(initialText)
+	preview := newReportRichText(initialText)
 	preview.Wrapping = fyne.TextWrapWord
 	editor.OnChanged = func(text string) {
-		preview.ParseMarkdown(text)
+		setReportRichTextMarkdown(preview, text)
 	}
 
 	editorScroll := container.NewVScroll(editor)

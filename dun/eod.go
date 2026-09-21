@@ -365,10 +365,10 @@ func showEODWindow(a fyne.App) {
 	summary.SetPlaceHolder("Tap Generate to create the EOD report summary…")
 	summary.Disable()
 	summary.SetMinRowsVisible(10)
-	summaryPreview := widget.NewRichTextFromMarkdown("")
+	summaryPreview := newReportRichText("")
 	summaryPreview.Wrapping = fyne.TextWrapWord
 	summary.OnChanged = func(text string) {
-		summaryPreview.ParseMarkdown(text)
+		setReportRichTextMarkdown(summaryPreview, text)
 	}
 	summaryPreviewScroll := container.NewVScroll(summaryPreview)
 	summaryPreviewScroll.SetMinSize(fyne.NewSize(0, 160))
@@ -431,7 +431,7 @@ func showEODWindow(a fyne.App) {
 				}
 				if strings.TrimSpace(summary.Text) == "" {
 					summary.SetText(draft)
-					summaryPreview.ParseMarkdown(draft)
+					setReportRichTextMarkdown(summaryPreview, draft)
 				}
 			})
 		}()

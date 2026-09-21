@@ -53,6 +53,8 @@ var personTextColor = color.NRGBA{R: 0x9a, G: 0x4f, B: 0x00, A: 0xff}
 
 const personIcon = "👤\ufe0e"
 
+const displayIconTextSizeRatio = 0.78
+
 var ageIndicatorColors = map[string]color.NRGBA{
 	"yellow": {R: 0xd0, G: 0x9b, B: 0x00, A: 0xff},
 	"orange": {R: 0xc4, G: 0x6a, B: 0x00, A: 0xff},
@@ -166,7 +168,14 @@ func daybookItemTextLabel(prefix, text string, stats map[string]*tagStat) fyne.C
 
 	runs := make([]fyne.CanvasObject, 0, 4)
 	if prefix != "" {
-		runs = append(runs, canvas.NewText(prefix, theme.Color(theme.ColorNameForeground)))
+		if icon, rest, ok := splitCategoryIconPrefix(prefix); ok {
+			runs = append(runs, newDisplayIconText(icon, theme.Color(theme.ColorNameForeground)))
+			if rest != "" {
+				runs = append(runs, canvas.NewText(rest, theme.Color(theme.ColorNameForeground)))
+			}
+		} else {
+			runs = append(runs, canvas.NewText(prefix, theme.Color(theme.ColorNameForeground)))
+		}
 	}
 	if tag != "" {
 		runs = append(runs, newTagLinkWithStyle(
@@ -259,6 +268,11 @@ func ageIndicatorColor(days int) color.NRGBA {
 }
 
 func appendTextAndTrackables(runs *[]fyne.CanvasObject, text string) {
+	if icon, rest, ok := splitCategoryIconPrefix(text); ok {
+		*runs = append(*runs, newDisplayIconText(icon, theme.Color(theme.ColorNameForeground)))
+		text = rest
+	}
+
 	type trackableMatch struct {
 		start, end int
 		color      color.Color
@@ -283,7 +297,7 @@ func appendTextAndTrackables(runs *[]fyne.CanvasObject, text string) {
 			*runs = append(*runs, canvas.NewText(text[position:match.start], theme.Color(theme.ColorNameForeground)))
 		}
 		if text[match.start] == '@' && match.color == personTextColor {
-			*runs = append(*runs, canvas.NewText(personIcon, personTextColor))
+			*runs = append(*runs, newDisplayIconText(personIcon, personTextColor))
 			*runs = append(*runs, canvas.NewText(text[match.start+1:match.end], match.color))
 		} else {
 			*runs = append(*runs, canvas.NewText(text[match.start:match.end], match.color))
@@ -293,4 +307,20 @@ func appendTextAndTrackables(runs *[]fyne.CanvasObject, text string) {
 	if position < len(text) {
 		*runs = append(*runs, canvas.NewText(text[position:], theme.Color(theme.ColorNameForeground)))
 	}
+}
+
+func newDisplayIconText(text string, color color.Color) *canvas.Text {
+	icon := canvas.NewText(text, color)
+	icon.TextSize = theme.TextSize() * displayIconTextSizeRatio
+	return icon
+}
+
+func splitCategoryIconPrefix(text string) (icon, rest string, ok bool) {
+	for _, category := range Categories {
+		prefix := category.Emoji + " "
+		if strings.HasPrefix(text, prefix) {
+			return category.Emoji, text[len(prefix):], true
+		}
+	}
+	return "", text, false
 }

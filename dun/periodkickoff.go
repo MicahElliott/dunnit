@@ -1,13 +1,67 @@
 package dun
 
 import (
+	"os"
 	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
+
+func kickoffOpenItemRow(item OpenItem, refresh func()) fyne.CanvasObject {
+	actions := container.NewHBox(
+		newHoverIconButton(theme.Icon(theme.IconNameDelete), "Delete", func() {
+			recordDiscarded(item)
+			refresh()
+		}),
+		newHoverIconButton(theme.Icon(theme.IconNameHistory), "Postpone", func() {
+			recordPostponed(item)
+			refresh()
+		}),
+		newHoverIconButton(theme.Icon(theme.IconNameConfirm), "Done", func() {
+			recordConvertedDone(item)
+			refresh()
+		}),
+	)
+	return container.NewBorder(nil, nil, nil, actions,
+		itemTextLabel(categoryIconPrefix(item.Category)+openItemDisplayText(item.Text)))
+}
+
+func priorReviewReferenceBox(a fyne.App, parent fyne.Window, period summaryPeriod, anchor time.Time) fyne.CanvasObject {
+	if period == periodDay {
+		return nil
+	}
+	priorAnchor := periodOffsetAnchor(period, anchor, -1)
+	paths, themes := listReviewReportsForPeriod(period, priorAnchor)
+	if len(paths) == 0 {
+		return nil
+	}
+
+	box := container.NewVBox(
+		newWindowHeading("Useful references"),
+		newExplanatoryLabel("Review the previous "+strings.ToLower(string(period))+" before setting this one up."),
+	)
+	for i, path := range paths {
+		path, reportTheme := path, themes[i]
+		displayTheme := themeDisplayNames[reportTheme]
+		if displayTheme == "" {
+			displayTheme = "Saved report"
+		}
+		box.Add(widget.NewButton("View previous "+string(period)+" review — "+displayTheme, func() {
+			body, err := os.ReadFile(path)
+			if err != nil {
+				dialog.ShowError(err, parent)
+				return
+			}
+			showEditableReportWindow(a, "Dunnit: "+periodSummaryTitle(period, priorAnchor), path, string(body))
+		}))
+	}
+	return box
+}
 
 // periodKickoffTitle/periodRecurringCadence/periodKickoffDefaultCat
 // are the small per-unit differences showPeriodKickoffWindow needs --
@@ -140,7 +194,8 @@ func showPeriodKickoffWindow(a fyne.App, period summaryPeriod, anchor time.Time)
 	w := a.NewWindow("Dunnit: " + string(period) + " Kickoff (" + label + ")")
 
 	listBox := container.NewVBox()
-	refreshList := func() {
+	var refreshList func()
+	refreshList = func() {
 		listBox.RemoveAll()
 		cats, grouped := groupOpenItemsByCategory(getOpenItems())
 		if len(cats) == 0 {
@@ -149,7 +204,7 @@ func showPeriodKickoffWindow(a fyne.App, period summaryPeriod, anchor time.Time)
 		for _, cat := range cats {
 			listBox.Add(widget.NewLabelWithStyle(categoryPlural(cat), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
 			for _, item := range grouped[cat] {
-				listBox.Add(itemTextLabel(categoryIconPrefix(item.Category) + openItemDisplayText(item.Text)))
+				listBox.Add(kickoffOpenItemRow(item, refreshList))
 			}
 		}
 		listBox.Refresh()
@@ -193,7 +248,15 @@ func showPeriodKickoffWindow(a fyne.App, period summaryPeriod, anchor time.Time)
 	entryRow := container.New(newStretchRowLayout(newItemText), newItemCat, newItemText, addBtn)
 
 	content := container.NewVBox(
-		newExplanatoryLabel("Kicking off "+label+" \u2014 here\u2019s where things stand:"),
+		newWindowHeading("Let\u2019s get your "+strings.ToLower(string(period))+" planned."),
+		newExplanatoryLabel("Kicking off "+label+" \u2014 review what is open, keep what matters, and add one goal."),
+		container.NewHBox(
+			widget.NewButton("Dismiss", func() { w.Close() }),
+			widget.NewButton("Trend View\u2026", func() { showTrendView(a) }),
+			widget.NewButton("Reports Library\u2026", func() { showReportsLibraryWindow(a) }),
+		),
+		priorReviewReferenceBox(a, w, period, anchor),
+		sodHeading("Open items to review"),
 		listScroll,
 		recurringBox,
 		entryRow,
