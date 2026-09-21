@@ -22,6 +22,15 @@ type Config struct {
 	// DUNNIT_DIR environment variable still takes precedence.
 	DunnitDir string `toml:"dunnit_dir"`
 
+	// FileSearchPath is the ordered set of roots searched for unqualified
+	// local Markdown links such as [notes](docs/notes.md). Paths may begin
+	// with ~ and are expanded when a link is resolved.
+	FileSearchPath []string `toml:"file_search_path"`
+
+	// FileAliases maps short link prefixes to local filesystem roots. For
+	// example, "cc3:docs/foo.txt" can resolve through an alias named cc3.
+	FileAliases map[string]string `toml:"file_aliases"`
+
 	// GitSyncEnabled exposes the optional system-git Push/Pull menu items.
 	GitSyncEnabled bool `toml:"git_sync_enabled"`
 

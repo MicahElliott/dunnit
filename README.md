@@ -143,6 +143,36 @@ lunch_time    = "11:30"
 - `hourly_minute`: minute-of-the-hour the popup should appear.
 - `lunch_time`: when a midday goals-reminder should show.
 
+Markdown links in ledger rows and report previews can refer to local files.
+Set **Project Folders for Links** in the Settings window to a space-separated
+list such as `~/work/cc3 ~/work/kp`. Relative destinations search those roots
+in order, then use the Dunnit directory. The final directory name becomes a
+short alias, so `cc3:docs/foo.txt` resolves under `~/work/cc3`. `dunnit:`
+always starts from the Dunnit directory.
+
+The same setting is stored as `file_search_path` in `config.toml`. Explicit
+aliases remain available for custom names:
+
+```toml
+file_search_path = ["~/work/cc3", "~/work/kp"]
+
+[file_aliases]
+cc3 = "~/work/cc3"
+kp  = "~/work/kp"
+```
+
+Examples:
+
+```md
+[session](docs/session.md)
+[cc3 docs](cc3:docs/foo.txt)
+[daybook](dunnit:notes/day.md)
+[external note](file:///home/me/notes/today.md)
+```
+
+Clicking a local link opens it with `$EDITOR`, falling back to the operating
+system's default file opener when `$EDITOR` is not set.
+
 Time settings accept 24-hour `HH:MM` values and convenient forms such as
 `6a`, `6am`, `6:30p`, `630p`, `6:30 pm`, `noon`, and `midnight`. Saved
 settings are written back in `HH:MM` form.

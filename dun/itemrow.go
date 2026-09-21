@@ -143,7 +143,7 @@ func itemTextLabel(text string) fyne.CanvasObject {
 	position := 0
 	for _, link := range links {
 		appendTextAndTrackables(&runs, core[position:link.Start])
-		runs = append(runs, newURLLink(link.Text, link.URL))
+		runs = append(runs, newURLLink(link.Text, link.URL, link.LocalPath))
 		position = link.End
 	}
 	appendTextAndTrackables(&runs, core[position:])
@@ -191,7 +191,7 @@ func appendEntryRuns(runs *[]fyne.CanvasObject, text string) {
 	position := 0
 	for _, link := range links {
 		appendTextAndTrackables(runs, text[position:link.Start])
-		*runs = append(*runs, newURLLink(link.Text, link.URL))
+		*runs = append(*runs, newURLLink(link.Text, link.URL, link.LocalPath))
 		position = link.End
 	}
 	appendTextAndTrackables(runs, text[position:])

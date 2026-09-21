@@ -2,6 +2,8 @@ package dun
 
 import (
 	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"unicode"
@@ -11,22 +13,28 @@ import (
 // text is deliberately not rewritten; Start and End identify the original
 // bytes so callers can replace only the visual portion.
 type parsedEntryLink struct {
-	Start int
-	End   int
-	Text  string
-	URL   *url.URL
+	Start     int
+	End       int
+	Text      string
+	URL       *url.URL
+	LocalPath string
 }
 
 var issueKeyPattern = regexp.MustCompile(`(?i)^[a-z][a-z0-9]+-\d+$`)
 
 // parseEntryLinks finds Markdown links and bare HTTP(S) URLs in one line of
 // ledger text. Markdown links win over the URL detector, so a destination is
-// never rendered a second time inside its own label.
+// never rendered a second time inside its own label. Markdown destinations
+// may also name local files resolved through Dunnit's configured roots.
 func parseEntryLinks(text string) []parsedEntryLink {
+	return parseEntryLinksWithConfig(text, LoadConfig())
+}
+
+func parseEntryLinksWithConfig(text string, cfg Config) []parsedEntryLink {
 	var links []parsedEntryLink
 	for i := 0; i < len(text); {
 		if text[i] == '[' {
-			if link, end, ok := parseMarkdownLinkAt(text, i); ok {
+			if link, end, ok := parseMarkdownLinkAt(text, i, cfg); ok {
 				links = append(links, link)
 				i = end
 				continue
@@ -57,7 +65,7 @@ func parseEntryLinks(text string) []parsedEntryLink {
 	return links
 }
 
-func parseMarkdownLinkAt(text string, start int) (parsedEntryLink, int, bool) {
+func parseMarkdownLinkAt(text string, start int, cfg Config) (parsedEntryLink, int, bool) {
 	close := strings.IndexByte(text[start+1:], ']')
 	if close < 0 {
 		return parsedEntryLink{}, 0, false
@@ -71,16 +79,178 @@ func parseMarkdownLinkAt(text string, start int) (parsedEntryLink, int, bool) {
 	if !ok {
 		return parsedEntryLink{}, 0, false
 	}
-	target, ok := parseHTTPURL(destination)
+	target, localPath, ok := parseEntryLinkTarget(destination, cfg)
 	if !ok {
 		return parsedEntryLink{}, 0, false
 	}
 	return parsedEntryLink{
-		Start: start,
-		End:   end,
-		Text:  text[start+1 : close],
-		URL:   target,
+		Start:     start,
+		End:       end,
+		Text:      text[start+1 : close],
+		URL:       target,
+		LocalPath: localPath,
 	}, end, true
+}
+
+func parseEntryLinkTarget(destination string, cfg Config) (*url.URL, string, bool) {
+	if target, ok := parseHTTPURL(destination); ok {
+		return target, "", true
+	}
+	path, ok := resolveLocalFileReference(destination, cfg)
+	if !ok {
+		return nil, "", false
+	}
+	return localFileURL(path), path, true
+}
+
+// resolveLocalFileReference turns a Markdown destination into an absolute
+// local path. dunnit: is rooted at DunnitDir(); a configured alias such as
+// cc3:docs/foo.txt is rooted at its alias directory; ordinary relative paths
+// search FileSearchPath in order before falling back to DunnitDir().
+func resolveLocalFileReference(destination string, cfg Config) (string, bool) {
+	destination = strings.TrimSpace(destination)
+	if destination == "" || strings.HasPrefix(destination, "#") {
+		return "", false
+	}
+
+	if strings.HasPrefix(strings.ToLower(destination), "file:") {
+		return resolveFileURI(destination, cfg)
+	}
+
+	if strings.HasPrefix(strings.ToLower(destination), "dunnit:") {
+		relative := strings.TrimLeft(destination[len("dunnit:"):], "/\\")
+		return joinLinkRoot(DunnitDir(), relative)
+	}
+
+	if alias, relative, ok := splitFileAlias(destination); ok {
+		if root, found := fileAliasRoot(alias, cfg); found {
+			return joinLinkRoot(root, relative)
+		}
+		return "", false
+	}
+
+	if filepath.IsAbs(destination) {
+		return filepath.Clean(destination), true
+	}
+
+	// A destination with an unrecognized URI scheme is not a local path. In
+	// particular, keep javascript: links out of the custom file resolver.
+	if parsed, err := url.Parse(destination); err == nil && parsed.Scheme != "" {
+		return "", false
+	}
+
+	relative := filepath.FromSlash(destination)
+	roots := cfg.FileSearchPath
+	if len(roots) == 0 {
+		roots = []string{DunnitDir()}
+	}
+	for _, root := range roots {
+		candidate, ok := joinLinkRoot(root, relative)
+		if !ok {
+			continue
+		}
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, true
+		}
+	}
+	if len(cfg.FileSearchPath) > 0 {
+		if candidate, ok := joinLinkRoot(DunnitDir(), relative); ok {
+			return candidate, true
+		}
+	}
+	return joinLinkRoot(roots[0], relative)
+}
+
+func fileAliasRoot(alias string, cfg Config) (string, bool) {
+	if root, found := cfg.FileAliases[alias]; found {
+		return root, true
+	}
+	for _, root := range cfg.FileSearchPath {
+		if filepath.Base(expandLinkPath(root)) == alias {
+			return root, true
+		}
+	}
+	return "", false
+}
+
+func resolveFileURI(raw string, cfg Config) (string, bool) {
+	parsed, err := url.Parse(raw)
+	if err != nil || !strings.EqualFold(parsed.Scheme, "file") {
+		return "", false
+	}
+	if parsed.Host != "" && !strings.EqualFold(parsed.Host, "localhost") {
+		return "", false
+	}
+	path := parsed.Path
+	if path == "" {
+		path = parsed.Opaque
+	}
+	if path == "" {
+		return "", false
+	}
+	path, err = url.PathUnescape(path)
+	if err != nil {
+		return "", false
+	}
+	if filepath.IsAbs(path) {
+		return filepath.Clean(path), true
+	}
+	return resolveLocalFileReference(path, cfg)
+}
+
+func splitFileAlias(destination string) (alias, relative string, ok bool) {
+	colon := strings.IndexByte(destination, ':')
+	if colon <= 0 || strings.ContainsAny(destination[:colon], "/\\") {
+		return "", "", false
+	}
+	return destination[:colon], destination[colon+1:], true
+}
+
+func joinLinkRoot(root, relative string) (string, bool) {
+	root = expandLinkPath(root)
+	if root == "" {
+		return "", false
+	}
+	relative = filepath.FromSlash(relative)
+	if filepath.IsAbs(relative) {
+		return "", false
+	}
+	root, err := filepath.Abs(root)
+	if err != nil {
+		return "", false
+	}
+	path, err := filepath.Abs(filepath.Join(root, relative))
+	if err != nil {
+		return "", false
+	}
+	rel, err := filepath.Rel(root, path)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", false
+	}
+	return filepath.Clean(path), true
+}
+
+func expandLinkPath(path string) string {
+	path = strings.TrimSpace(path)
+	if path == "~" || strings.HasPrefix(path, "~/") || strings.HasPrefix(path, `~\`) {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return ""
+		}
+		path = filepath.Join(home, path[2:])
+	}
+	return filepath.Clean(path)
+}
+
+func localFileURL(path string) *url.URL {
+	return &url.URL{Scheme: "file", Path: filepath.ToSlash(path)}
+}
+
+func resolveURLToLocalPath(target *url.URL, cfg Config) (string, bool) {
+	if target == nil {
+		return "", false
+	}
+	return resolveLocalFileReference(target.String(), cfg)
 }
 
 // markdownDestination handles the common inline-link form and balanced

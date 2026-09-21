@@ -17,14 +17,17 @@ func SetThings() {
 	fmt.Println("Setting things")
 }
 
-// showSettings pops up a window to view/edit config.toml values
-// (day_start, day_end, hourly_minute, lunch_time).
+// showSettings pops up a window to view/edit config.toml values, including
+// the simple project-root list used by local Markdown links.
 func showSettings(a fyne.App) {
 	cfg := LoadConfig()
 	w := a.NewWindow("Dunnit: Settings")
 	dunnitDir := widget.NewEntry()
 	dunnitDir.SetText(cfg.DunnitDir)
 	dunnitDir.SetPlaceHolder("Leave blank for default")
+	fileSearchPath := widget.NewEntry()
+	fileSearchPath.SetText(strings.Join(cfg.FileSearchPath, " "))
+	fileSearchPath.SetPlaceHolder("~/work/cc3 ~/work/kp")
 	llmCLISelect := widget.NewSelect(llmCLISettingOptions(), nil)
 	llmCLISelect.SetSelected(llmCLISettingLabel(cfg.LLMCLI))
 	browseDir := widget.NewButtonWithIcon("", theme.FolderOpenIcon(), func() {
@@ -106,6 +109,7 @@ func showSettings(a fyne.App) {
 
 	form := widget.NewForm(
 		widget.NewFormItem("Dunnit Data Directory", container.NewBorder(nil, nil, nil, browseDir, dunnitDir)),
+		widget.NewFormItem("Project Folders for Links", fileSearchPath),
 		widget.NewFormItem("LLM CLI for Reports", llmCLISelect),
 		widget.NewFormItem("Enable Git Sync", gitSync),
 		widget.NewFormItem("Day Start (HH:MM or 6am)", dayStart),
@@ -189,6 +193,7 @@ func showSettings(a fyne.App) {
 		// RecurringMeetings, FR-15) aren't silently wiped out on save.
 		newCfg := cfg
 		newCfg.DunnitDir = strings.TrimSpace(dunnitDir.Text)
+		newCfg.FileSearchPath = strings.Fields(fileSearchPath.Text)
 		newCfg.LLMCLI = llmCLISettingFromLabel(llmCLISelect.Selected)
 		newCfg.GitSyncEnabled = gitSync.Checked
 		newCfg.DayStart = dayStartValue

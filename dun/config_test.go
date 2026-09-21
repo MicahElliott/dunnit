@@ -70,3 +70,29 @@ func TestNudgeIntervalMinutesUsesConfiguredValueOrFallback(t *testing.T) {
 		})
 	}
 }
+
+func TestConfigRoundTripsFileLinkRoots(t *testing.T) {
+	t.Setenv("DUNNIT_DIR", t.TempDir())
+	want := Config{
+		FileSearchPath: []string{"~/work/cc3", "~/work/kp"},
+		FileAliases:    map[string]string{"cc3": "~/work/cc3", "kp": "~/work/kp"},
+	}
+	if err := writeConfig(want); err != nil {
+		t.Fatalf("writeConfig: %v", err)
+	}
+	got, err := loadConfig()
+	if err != nil {
+		t.Fatalf("loadConfig: %v", err)
+	}
+	if strings.Join(got.FileSearchPath, "\x00") != strings.Join(want.FileSearchPath, "\x00") {
+		t.Errorf("FileSearchPath = %#v, want %#v", got.FileSearchPath, want.FileSearchPath)
+	}
+	if len(got.FileAliases) != len(want.FileAliases) {
+		t.Fatalf("FileAliases = %#v, want %#v", got.FileAliases, want.FileAliases)
+	}
+	for key, value := range want.FileAliases {
+		if got.FileAliases[key] != value {
+			t.Errorf("FileAliases[%q] = %q, want %q", key, got.FileAliases[key], value)
+		}
+	}
+}

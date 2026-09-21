@@ -1,9 +1,12 @@
 package dun
 
 import (
+	"net/url"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"fyne.io/fyne/v2/widget"
 )
 
 func TestReportFilenameUsesCoveredPeriodAndGenerationDate(t *testing.T) {
@@ -78,5 +81,29 @@ func TestReviewReportFilenameParts(t *testing.T) {
 	token, theme, ok := reviewReportFilenameParts(periodWeek, path)
 	if !ok || token != "20260907" || theme != ThemePersonalNotes {
 		t.Fatalf("reviewReportFilenameParts() = %q, %q, %v", token, theme, ok)
+	}
+}
+
+func TestConfigureReportLocalLinks(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "docs", "foo.txt")
+	if err := writeReportFile(path, "notes"); err != nil {
+		t.Fatalf("writeReportFile: %v", err)
+	}
+
+	link := &widget.HyperlinkSegment{
+		Text: "foo",
+		URL:  &url.URL{Scheme: "cc3", Opaque: "docs/foo.txt"},
+	}
+	richText := widget.NewRichText(link)
+	configureReportLocalLinkSegments(richText.Segments, Config{
+		FileAliases: map[string]string{"cc3": root},
+	})
+
+	if got, want := link.URL.String(), localFileURL(path).String(); got != want {
+		t.Fatalf("report link URL = %q, want %q", got, want)
+	}
+	if link.OnTapped == nil {
+		t.Fatal("report local link has no editor action")
 	}
 }

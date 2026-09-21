@@ -1,6 +1,10 @@
 package dun
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 func TestParseEntryLinks(t *testing.T) {
 	cases := []struct {
@@ -53,6 +57,90 @@ func TestParseEntryLinksDoesNotTreatMalformedLinksAsURLs(t *testing.T) {
 	text := "[label](javascript:alert(1)) and [https://example.com]"
 	if got := parseEntryLinks(text); got != nil {
 		t.Fatalf("parseEntryLinks(%q) = %#v, want no links", text, got)
+	}
+}
+
+func TestParseEntryLinksResolvesLocalReferences(t *testing.T) {
+	dunnitRoot := t.TempDir()
+	aliasRoot := t.TempDir()
+	searchRoot := t.TempDir()
+	t.Setenv("DUNNIT_DIR", dunnitRoot)
+
+	if err := os.MkdirAll(filepath.Join(aliasRoot, "docs"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(aliasRoot, "docs", "foo.txt"), nil, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(searchRoot, "docs"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(searchRoot, "docs", "bar.txt"), nil, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := Config{
+		FileAliases:    map[string]string{"cc3": aliasRoot},
+		FileSearchPath: []string{searchRoot},
+	}
+	links := parseEntryLinksWithConfig(
+		"[foo](cc3:docs/foo.txt) [bar](docs/bar.txt) [day](dunnit:notes/day.md)",
+		cfg,
+	)
+	if len(links) != 3 {
+		t.Fatalf("found %d links, want 3: %#v", len(links), links)
+	}
+
+	wantPaths := []string{
+		filepath.Join(aliasRoot, "docs", "foo.txt"),
+		filepath.Join(searchRoot, "docs", "bar.txt"),
+		filepath.Join(dunnitRoot, "notes", "day.md"),
+	}
+	for i, want := range wantPaths {
+		if links[i].LocalPath != want {
+			t.Errorf("link %d local path = %q, want %q", i, links[i].LocalPath, want)
+		}
+		if links[i].URL.String() != localFileURL(want).String() {
+			t.Errorf("link %d URL = %q, want %q", i, links[i].URL, localFileURL(want))
+		}
+	}
+}
+
+func TestParseEntryLinksRejectsUnsafeOrUnconfiguredLocalReferences(t *testing.T) {
+	text := "[script](javascript:alert(1)) [unknown](other:thing) [escape](dunnit:../secret)"
+	if got := parseEntryLinksWithConfig(text, Config{}); got != nil {
+		t.Fatalf("parseEntryLinksWithConfig(%q) = %#v, want no links", text, got)
+	}
+}
+
+func TestParseEntryLinksAcceptsAbsoluteFileURI(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "my session.md")
+	text := "[session](" + localFileURL(path).String() + ")"
+	links := parseEntryLinksWithConfig(text, Config{})
+	if len(links) != 1 {
+		t.Fatalf("found %d links, want 1: %#v", len(links), links)
+	}
+	if links[0].LocalPath != path {
+		t.Fatalf("local path = %q, want %q", links[0].LocalPath, path)
+	}
+}
+
+func TestParseEntryLinksInfersAliasFromSearchRootName(t *testing.T) {
+	parent := t.TempDir()
+	root := filepath.Join(parent, "cc3")
+	if err := os.MkdirAll(filepath.Join(root, "docs"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, "docs", "foo.txt")
+	if err := os.WriteFile(path, nil, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	links := parseEntryLinksWithConfig("[foo](cc3:docs/foo.txt)", Config{
+		FileSearchPath: []string{root},
+	})
+	if len(links) != 1 || links[0].LocalPath != path {
+		t.Fatalf("inferred alias links = %#v, want path %q", links, path)
 	}
 }
 

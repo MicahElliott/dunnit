@@ -175,15 +175,16 @@ func (t *tagLink) hideTooltip() {
 // cursor and tooltip provide the interaction cue without adding visual noise.
 type urlLink struct {
 	widget.BaseWidget
-	text   string
-	target *url.URL
+	text      string
+	target    *url.URL
+	localPath string
 
 	popup      *tooltipPopup
 	hoverTimer *time.Timer
 }
 
-func newURLLink(text string, target *url.URL) *urlLink {
-	link := &urlLink{text: text, target: target}
+func newURLLink(text string, target *url.URL, localPath string) *urlLink {
+	link := &urlLink{text: text, target: target, localPath: localPath}
 	link.ExtendBaseWidget(link)
 	return link
 }
@@ -195,6 +196,10 @@ func (l *urlLink) CreateRenderer() fyne.WidgetRenderer {
 }
 
 func (l *urlLink) Tapped(*fyne.PointEvent) {
+	if l.localPath != "" {
+		openInEditor(l.localPath)
+		return
+	}
 	if l.target != nil && fyne.CurrentApp() != nil {
 		if err := fyne.CurrentApp().OpenURL(l.target); err != nil {
 			fyne.LogError("Failed to open entry URL", err)
@@ -231,7 +236,11 @@ func (l *urlLink) showTooltip() {
 	if host == nil {
 		return
 	}
-	label := widget.NewLabel(l.target.String())
+	tooltip := l.target.String()
+	if l.localPath != "" {
+		tooltip = l.localPath
+	}
+	label := widget.NewLabel(tooltip)
 	ownerPos := fyne.CurrentApp().Driver().AbsolutePositionForObject(l)
 	popup := &tooltipPopup{
 		host:        host,

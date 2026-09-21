@@ -84,6 +84,7 @@ func showGeneratedReport(a fyne.App, title, savePath, text string) {
 
 func newReportRichText(markdown string) *widget.RichText {
 	richText := widget.NewRichTextFromMarkdown(markdown)
+	configureReportLocalLinks(richText)
 	richText.Segments = addReportHeadingSpacing(richText.Segments)
 	richText.Refresh()
 	return richText
@@ -91,8 +92,45 @@ func newReportRichText(markdown string) *widget.RichText {
 
 func setReportRichTextMarkdown(richText *widget.RichText, markdown string) {
 	richText.Segments = widget.NewRichTextFromMarkdown(markdown).Segments
+	configureReportLocalLinks(richText)
 	richText.Segments = addReportHeadingSpacing(richText.Segments)
 	richText.Refresh()
+}
+
+func configureReportLocalLinks(richText *widget.RichText) {
+	configureReportLocalLinkSegments(richText.Segments, LoadConfig())
+}
+
+func configureReportLocalLinkSegments(segments []widget.RichTextSegment, cfg Config) {
+	for _, segment := range segments {
+		switch segment := segment.(type) {
+		case *widget.HyperlinkSegment:
+			path, ok := resolveURLToLocalPath(segment.URL, cfg)
+			if !ok {
+				continue
+			}
+			segment.URL = localFileURL(path)
+			localPath := path
+			segment.OnTapped = func() { openInEditor(localPath) }
+		case *widget.ParagraphSegment:
+			configureReportLocalLinkSegments(segment.Texts, cfg)
+		case *widget.ListSegment:
+			configureReportLocalLinkSegments(segment.Items, cfg)
+		case *widget.TableSegment:
+			configureReportLocalLinkTable(segment, cfg)
+		}
+	}
+}
+
+func configureReportLocalLinkTable(table *widget.TableSegment, cfg Config) {
+	for _, cell := range table.Headers {
+		configureReportLocalLinkSegments(cell, cfg)
+	}
+	for _, row := range table.Rows {
+		for _, cell := range row {
+			configureReportLocalLinkSegments(cell, cfg)
+		}
+	}
 }
 
 func addReportHeadingSpacing(segments []widget.RichTextSegment) []widget.RichTextSegment {

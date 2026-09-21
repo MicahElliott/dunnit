@@ -223,6 +223,11 @@ because those can open a browser or otherwise make network requests.
   `https://...` URLs are also clickable in presentations; Dunnit keeps the
   full URL in the ledger and may show a compact service label such as
   `Jira #74750`, `GitHub PR #12`, `Teams`, or `Google Doc`.
+- Local files use the same Markdown link form, for example
+  `[session](docs/session.md)`. Set **Project Folders for Links** in Settings
+  to a space-separated list of worktrees; the final directory name becomes
+  an alias, so `cc3:docs/foo.txt` opens the matching file with `$EDITOR`. The
+  special `dunnit:` prefix resolves from Dunnit's own data directory.
 
 For install, configuration, and data-storage details, see the
 top-level [`README`](../README.md) rather than this guide.
