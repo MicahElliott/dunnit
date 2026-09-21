@@ -57,3 +57,28 @@ func TestFilterExcludedTagLinesRemovesTaggedReportLines(t *testing.T) {
 		t.Fatalf("filtered report = %q", got)
 	}
 }
+
+func TestReportMentionContextExcludesConfiguredTags(t *testing.T) {
+	withTempDunnitDir(t)
+	cfg := LoadConfig()
+	cfg.ReportExcludeTags = []string{"#home"}
+	if err := writeConfig(cfg); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	date := time.Date(2026, time.September, 21, 0, 0, 0, 0, time.Local)
+	writeLedgerLinesForDate(t, date, []string{
+		"[09:00] DONE shipped #work with @Brandon",
+		"[10:00] DONE errands #home with @Brandon",
+	})
+	InvalidateLedgerCaches()
+
+	got := reportMentionContextForRange(date, date.AddDate(0, 0, 1), nil)
+	if strings.Contains(got, "#home") {
+		t.Fatalf("excluded tag appeared in report context: %q", got)
+	}
+	for _, want := range []string{"**#work**", "**@Brandon**"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("report context missing %q: %q", want, got)
+		}
+	}
+}

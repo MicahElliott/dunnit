@@ -3,6 +3,7 @@ package dun
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -70,7 +71,7 @@ func periodSummaryPrompt(period summaryPeriod, title string) string {
 		"Create a detailed Markdown %s report titled %q. The first line must be exactly %q; do not add another title or an 'Impact report' heading. Use these sections: "+
 			"## Summary, ## Accomplishments, ## Hilites and Callouts, ## Still To Do, ## Risks and Blockers (omit if there are none), ## Learnings, and ## Conclusion. "+
 			"The Summary should assess sentiment, productivity, pace, meeting load, and overall progress when the input supports it. Preserve concrete details from the ledger, especially every useful hilite and pending item. The Conclusion must be one or two sentences of prose, not bullets, that state the overall result and the most useful next focus. Do not invent facts. Use a little more detail than a standup update, with concise bullets inside sections. "+
-			reportUnitName(period), title, "# "+title)
+			reportUnitName(period), title, "# "+title) + reportMentionPromptGuidance()
 }
 
 func reportUnitName(period summaryPeriod) string {
@@ -107,8 +108,6 @@ func periodReportSignals(from, to time.Time) string {
 	productivityTotal := 0
 	productivityCount := 0
 	sentiments := make(map[string]int)
-	people := make(map[string]bool)
-	topics := make(map[string]bool)
 	var hilites []string
 	for _, entry := range included {
 		switch entry.Category {
@@ -126,12 +125,6 @@ func periodReportSignals(from, to time.Time) string {
 			}
 		}
 		totalMinutes += entry.Mins
-		for _, person := range entry.People {
-			people[strings.ToLower(person)] = true
-		}
-		for _, tag := range entry.Tags {
-			topics[strings.ToLower(tag)] = true
-		}
 		if categoryGroup(entry.Category) == "hilite" && entry.Text != "" {
 			hilites = append(hilites, entry.Category+": "+entry.Text)
 		}
@@ -151,8 +144,14 @@ func periodReportSignals(from, to time.Time) string {
 		writeCounts(&b, sentiments)
 		b.WriteByte('\n')
 	}
+	tags, people := reportMentionMaps(included)
 	fmt.Fprintf(&b, "- People mentioned: %d\n- Topics mentioned: %d\n",
-		len(people), len(topics))
+		len(people), len(tags))
+	if mentions := formatReportMentionSections(tags, people, "Talking points from the ledger"); mentions != "" {
+		b.WriteString("\n")
+		b.WriteString(mentions)
+		b.WriteByte('\n')
+	}
 
 	if len(hilites) > 0 {
 		b.WriteString("\nHilites and callouts from the period:\n")
@@ -171,6 +170,29 @@ func periodReportSignals(from, to time.Time) string {
 		}
 	}
 	return strings.TrimSpace(b.String())
+}
+
+func reportEntriesInRange(from, to time.Time, categories map[string]bool) []LedgerEntry {
+	all := FilterLedgerEntries(LedgerQuery{From: from, To: to})
+	cfg := LoadConfig()
+	var included []LedgerEntry
+	for _, entry := range all {
+		if len(categories) > 0 && !categories[entry.Category] {
+			continue
+		}
+		if eodEntryIncluded(entry, cfg) {
+			included = append(included, entry)
+		}
+	}
+	sort.SliceStable(included, func(i, j int) bool {
+		return included[i].Date.Before(included[j].Date)
+	})
+	return included
+}
+
+func reportMentionContextForRange(from, to time.Time, categories map[string]bool) string {
+	tags, people := reportMentionMaps(reportEntriesInRange(from, to, categories))
+	return formatReportMentionSections(tags, people, "Talking points from the ledger")
 }
 
 func categoryGroup(code string) string {

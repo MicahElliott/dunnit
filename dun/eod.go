@@ -231,7 +231,30 @@ func appendEODLedgerDetails(report string, date time.Time) string {
 }
 
 func augmentEODReport(report string, date time.Time) string {
-	return appendEODReportFacts(appendEODLedgerDetails(report, date), date)
+	return appendEODReportMentions(appendEODReportFacts(appendEODLedgerDetails(report, date), date), date)
+}
+
+func appendEODReportMentions(report string, date time.Time) string {
+	trimmed := strings.TrimSpace(report)
+	if strings.Contains(trimmed, "## Talking points (from ledger)") {
+		return trimmed + "\n"
+	}
+	var entries []LedgerEntry
+	cfg := LoadConfig()
+	for _, entry := range AllLedgerEntries() {
+		if sameCalendarDate(entry.Date, date) && eodEntryIncluded(entry, cfg) {
+			entries = append(entries, entry)
+		}
+	}
+	tags, people := reportMentionMaps(entries)
+	sections := formatReportMentionSections(tags, people, "## Talking points (from ledger)")
+	if sections == "" {
+		return trimmed + "\n"
+	}
+	if trimmed == "" {
+		return sections + "\n"
+	}
+	return trimmed + "\n\n" + sections + "\n"
 }
 
 // eodReportStats summarizes the ledger metadata that belongs immediately

@@ -286,14 +286,20 @@ func openItemsAtDate(entries []LedgerEntry, date, now time.Time) []OpenItem {
 	return items
 }
 
-// dailyCarryForwardItems finds the newest prior calendar day in the seven-day
-// lookback whose still-open plan contains TODO/DOING items. Items resolved by
-// today are excluded, so a completed task cannot be resurrected by kickoff.
+// dailyCarryForwardItems finds the newest prior workday in the seven-day
+// lookback whose still-open plan contains TODO/DOING items. Weekend and other
+// configured off-day ledgers do not become the source for the next workday;
+// items resolved by today are excluded, so a completed task cannot be
+// resurrected by kickoff.
 func dailyCarryForwardItems(now time.Time) (sourceDate time.Time, items []OpenItem, sinceDates []time.Time) {
 	entries := AllLedgerEntries()
 	current, _ := openItemsThrough(entries, now)
+	cfg := LoadConfig()
 	for offset := 1; offset <= dailyCarryLookbackDays; offset++ {
 		date := now.AddDate(0, 0, -offset)
+		if isOffDay(cfg, date) {
+			continue
+		}
 		atDate, order := openItemsThrough(entries, date)
 		var dayItems []OpenItem
 		var daySince []time.Time

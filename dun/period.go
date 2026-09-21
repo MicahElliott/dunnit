@@ -423,7 +423,8 @@ func themePromptFraming(theme string, unitNoun, title string) string {
 	requirements := " The first line must be exactly the Markdown H1 " +
 		fmt.Sprintf("%q", "# "+title) + "; do not add an 'Impact report' title. " +
 		"Include a concise assessment of sentiment, productivity, pace, and meeting load when the input supports it. " +
-		"Include the supplied Hilites and Callouts and Still To Do items. End with a one or two sentence prose conclusion, not bullets."
+		"Include the supplied Hilites and Callouts and Still To Do items. End with a one or two sentence prose conclusion, not bullets." +
+		reportMentionPromptGuidance()
 	switch theme {
 	case ThemeStatusReport:
 		return fmt.Sprintf(

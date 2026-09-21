@@ -43,6 +43,9 @@ func TestPeriodReportSignalsIncludesMetricsHilitesAndPendingItems(t *testing.T) 
 		"- Average productivity: 4.0/5",
 		"WIN: shipped the fix #alpha",
 		"TODO: follow up with @Brandon #alpha",
+		"Talking points from the ledger:",
+		"- **#alpha** — 3 mentions",
+		"- **@Brandon** — 1 mention",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("periodReportSignals() missing %q in %q", want, got)

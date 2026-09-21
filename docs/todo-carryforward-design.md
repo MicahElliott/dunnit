@@ -8,10 +8,11 @@ Start of Day is the one place where daily carry-forward happens. Opening
 Daybook, recording the first entry, or using another machine does not copy
 anything automatically.
 
-When Start of Day runs, it searches the previous seven calendar days from
-newest to oldest. It chooses the newest day whose unresolved daily-plan items
-include TODO or DOING entries, then copies only those items into today's
-ledger. It does not combine items from multiple days. Each copied item keeps
+When Start of Day runs, it searches the previous seven days from newest to
+oldest, skipping weekends and other configured off-days. It chooses the newest
+workday whose unresolved daily-plan items include TODO or DOING entries, then
+copies only those items into today's ledger. It does not combine items from
+multiple days. Each copied item keeps
 its original `s/YYYY-MM-DD` annotation so its age remains visible. The UI
 presents the item age as a compact colored-ball/day badge: yellow for days
 1–3, orange for days 4–7, and red for day 8 onward.

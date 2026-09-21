@@ -23,12 +23,14 @@ func statusReportPath(anchor, generated time.Time) string {
 const privateStatusPrompt = "Summarize the following ledger entries into a " +
 	"status report covering the selected week. Be thorough and candid " +
 	"— this is a private report for the author’s own use, so include " +
-	"struggles/blockers/personal reflections as well as accomplishments."
+	"struggles/blockers/personal reflections as well as accomplishments." +
+	reportMentionPromptGuidanceText
 
 const shareableStatusPrompt = "Summarize the following ledger entries into a " +
 	"status report covering the selected week, suitable to share with a " +
 	"manager or colleagues. Focus on accomplishments, progress, and " +
-	"upcoming plans; keep a professional, concise tone."
+	"upcoming plans; keep a professional, concise tone." +
+	reportMentionPromptGuidanceText
 
 // showStatusReportDialog lets the user pick a week and an
 // audience (Private/Shareable), then generates the report via the
@@ -106,6 +108,9 @@ func runStatusReport(a fyne.App, anchor time.Time, audience string) {
 	}
 
 	ledgerText := gatherLedgerTextForRange(from, to, categories)
+	if mentions := reportMentionContextForRange(from, to, categories); mentions != "" {
+		ledgerText += "\n\n" + mentions
+	}
 	if ledgerText == "" {
 		w := a.NewWindow("Dunnit: Status Report")
 		w.SetContent(windowPad(widget.NewLabel("No matching ledger entries found for that range.")))

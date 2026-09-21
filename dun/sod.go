@@ -200,7 +200,7 @@ func showSODWindow(a fyne.App) {
 	}
 	var planNote *widget.Label
 	if !carrySource.IsZero() {
-		planNote = newExplanatoryLabel("These items are carrying into today. Edit or remove them in Daybook.")
+		planNote = newExplanatoryLabel("These items are carrying into today.")
 	} else if len(staleDailyPlanItems(now)) > 0 {
 		planNote = newExplanatoryLabel("These items remain open from an earlier day. Review the row actions or edit them below.")
 	} else {
@@ -325,7 +325,7 @@ func showSODWindow(a fyne.App) {
 		newExplanatoryLabel(fmt.Sprintf(
 			"Items open %d+ days show a red dot. Use the row actions to delete, postpone, or mark them done.", staleReviewDays+1)),
 		sodHeading("Open context from the last active day (not copied into today’s plan)"),
-		newExplanatoryLabel("WAITING, RISK, QUESTION, FIXME, and GOAL stay here for context; only TODO and DOING become today’s active plan."),
+		newExplanatoryLabel("WAITING, RISK, QUESTION, FIXME, and GOAL stay here for context; editing to TODO/DOING will activate these for today."),
 		contextBox,
 		recurringBox,
 		entryRow,

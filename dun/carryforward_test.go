@@ -7,6 +7,14 @@ import (
 	"time"
 )
 
+func previousCarryWorkday(now time.Time) time.Time {
+	date := now.AddDate(0, 0, -1)
+	for date.Weekday() == time.Saturday || date.Weekday() == time.Sunday {
+		date = date.AddDate(0, 0, -1)
+	}
+	return date
+}
+
 func TestCarryForwardDailyPlan_CopiesUnresolvedItem(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -22,7 +30,7 @@ func TestCarryForwardDailyPlan_CopiesUnresolvedItem(t *testing.T) {
 
 			// Simulate a prior-day item by writing directly to a backdated
 			// ledger file, since recordActivity always writes to today.
-			yesterday := time.Now().AddDate(0, 0, -1)
+			yesterday := previousCarryWorkday(time.Now())
 			writeLedgerLinesForDate(t, yesterday, []string{
 				"[09:00:00] " + tt.category + " " + tt.text,
 			})
@@ -48,7 +56,7 @@ func TestCarryForwardDailyPlan_CopiesUnresolvedItem(t *testing.T) {
 func TestCarryForwardDailyPlan_SkipsResolvedItem(t *testing.T) {
 	withTempDunnitDir(t)
 
-	yesterday := time.Now().AddDate(0, 0, -1)
+	yesterday := previousCarryWorkday(time.Now())
 	writeLedgerLinesForDate(t, yesterday, []string{
 		"[09:00:00] TODO finish the report",
 		"[10:00:00] DONE finish the report (via TODO)",
@@ -66,7 +74,7 @@ func TestCarryForwardDailyPlan_SkipsResolvedItem(t *testing.T) {
 func TestCarryForwardDailyPlan_DeduplicatesHistoricalAndTodayItems(t *testing.T) {
 	withTempDunnitDir(t)
 
-	yesterday := time.Now().AddDate(0, 0, -1)
+	yesterday := previousCarryWorkday(time.Now())
 	writeLedgerLinesForDate(t, yesterday, []string{
 		"[09:00:00] TODO repeated task s/2026-09-07",
 		"[09:01:00] TODO repeated task s/2026-09-07",
@@ -91,7 +99,7 @@ func TestCarryForwardDailyPlan_DeduplicatesHistoricalAndTodayItems(t *testing.T)
 func TestCarryForwardDailyPlan_IdempotentPerDay(t *testing.T) {
 	withTempDunnitDir(t)
 
-	yesterday := time.Now().AddDate(0, 0, -1)
+	yesterday := previousCarryWorkday(time.Now())
 	writeLedgerLinesForDate(t, yesterday, []string{
 		"[09:00:00] TODO finish the report",
 	})
@@ -109,7 +117,7 @@ func TestCarryForwardDailyPlan_IdempotentPerDay(t *testing.T) {
 func TestCarryForwardDailyPlan_PreservesOriginalSinceDate(t *testing.T) {
 	withTempDunnitDir(t)
 
-	twoDaysAgo := time.Now().AddDate(0, 0, -2)
+	twoDaysAgo := previousCarryWorkday(time.Now()).AddDate(0, 0, -2)
 	writeLedgerLinesForDate(t, twoDaysAgo, []string{
 		"[09:00:00] TODO finish the report",
 	})
@@ -154,7 +162,7 @@ func TestDailyCarryForwardUsesNewestPlanDayOnly(t *testing.T) {
 
 	now := time.Now()
 	older := now.AddDate(0, 0, -2)
-	yesterday := now.AddDate(0, 0, -1)
+	yesterday := previousCarryWorkday(now)
 	writeLedgerLinesForDate(t, older, []string{
 		"[09:00:00] TODO older task",
 	})
@@ -177,12 +185,37 @@ func TestDailyCarryForwardUsesNewestPlanDayOnly(t *testing.T) {
 	}
 }
 
+func TestDailyCarryForwardSkipsWeekendDays(t *testing.T) {
+	withTempDunnitDir(t)
+
+	// Monday with an unresolved DOING left on Friday and a weekend plan
+	// entry. SOD should skip the weekend and use Friday as the source day.
+	now := time.Date(2026, time.September, 21, 9, 0, 0, 0, time.Local)
+	friday := now.AddDate(0, 0, -3)
+	saturday := now.AddDate(0, 0, -2)
+	writeLedgerLinesForDate(t, friday, []string{
+		"[09:00:00] DOING finish the report",
+	})
+	writeLedgerLinesForDate(t, saturday, []string{
+		"[10:00:00] TODO weekend-only task",
+	})
+	InvalidateLedgerCaches()
+
+	source, items, _ := dailyCarryForwardItems(now)
+	if !sameCalendarDate(source, friday) {
+		t.Fatalf("source date = %v, want Friday %v", source, friday)
+	}
+	if len(items) != 1 || items[0].Category != "DOING" || items[0].Text != "finish the report" {
+		t.Fatalf("expected Friday DOING to carry across weekend, got %+v", items)
+	}
+}
+
 func TestDailyCarryForwardSkipsResolvedAndOlderThanLookback(t *testing.T) {
 	withTempDunnitDir(t)
 
 	now := time.Now()
-	older := now.AddDate(0, 0, -2)
-	yesterday := now.AddDate(0, 0, -1)
+	older := now.AddDate(0, 0, -4)
+	yesterday := previousCarryWorkday(now)
 	writeLedgerLinesForDate(t, older, []string{
 		"[09:00:00] TODO older unresolved task",
 		"[09:01:00] TODO resolved task",
@@ -274,7 +307,7 @@ func TestResolvedCarryForwardCopiesDoNotResurface(t *testing.T) {
 func TestCarryForwardStartDoneCollapsesLifecycleAcrossDays(t *testing.T) {
 	withTempDunnitDir(t)
 
-	yesterday := time.Now().AddDate(0, 0, -1)
+	yesterday := previousCarryWorkday(time.Now())
 	writeLedgerLinesForDate(t, yesterday, []string{
 		"[09:00:00] TODO finish the report ~20m",
 	})
@@ -308,7 +341,7 @@ func TestCarryForwardStartDoneCollapsesLifecycleAcrossDays(t *testing.T) {
 func TestLegacyOngoingIsNotActiveOrCarried(t *testing.T) {
 	withTempDunnitDir(t)
 
-	yesterday := time.Now().AddDate(0, 0, -1)
+	yesterday := previousCarryWorkday(time.Now())
 	writeLedgerLinesForDate(t, yesterday, []string{
 		"[09:00:00] ONGOING old ditto record",
 	})

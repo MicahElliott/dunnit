@@ -107,9 +107,9 @@ little later" pattern repeated at increasing scale:
 ### Daily carry-forward
 
 At Start of Day, Dunnit carries unresolved `TODO`s and `DOING`s from the most
-recent prior day with open plan items, looking back up to seven calendar days.
-Each item is copied into today's Daybook once and keeps its original “since”
-date. `WAITING`s, `GOAL`s, `RISK`s, `QUESTION`s, and `FIXME`s are not copied
+recent prior workday with open plan items, looking back up to seven days while
+skipping weekends and other configured off-days. Each item is copied into
+today's Daybook once and keeps its original “since” date. `WAITING`s, `GOAL`s, `RISK`s, `QUESTION`s, and `FIXME`s are not copied
 into today's plan; unresolved items from the last active day remain visible as
 Start of Day context.
 

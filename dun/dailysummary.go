@@ -42,6 +42,11 @@ func draftDailySummaryContext(ctx context.Context, date time.Time) (string, erro
 	if !hasRealLedgerContent(ledgerText) {
 		return "", nil
 	}
+	from := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
+	to := from.AddDate(0, 0, 1).Add(-time.Nanosecond)
+	if mentions := reportMentionContextForRange(from, to, nil); mentions != "" {
+		ledgerText += "\n\n" + mentions
+	}
 	return summarizeWithLLMCLIPromptContext(ctx, eodSummaryPrompt(), ledgerText)
 }
 
@@ -56,7 +61,8 @@ func eodSummaryPrompt() string {
 		"means a larger objective; MEETING means agenda or discussion notes. " +
 		"Include several concrete bullets and retain useful people, topics, learnings, " +
 		"and follow-up details. Be informative rather than ultra-concise, do not " +
-		"invent facts, and do not include a title or a separate statistics section."
+		"invent facts, and do not include a title or a separate statistics section." +
+		reportMentionPromptGuidance()
 }
 
 // hasRealLedgerContent reports whether ledgerText (as produced by

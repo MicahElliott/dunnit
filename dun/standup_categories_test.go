@@ -32,6 +32,34 @@ func TestStandupWindowStartLabel(t *testing.T) {
 	}
 }
 
+func TestStandupActivityLabelNamesFridayAfterWeekend(t *testing.T) {
+	location := time.FixedZone("test", -7*60*60)
+	monday := time.Date(2026, time.September, 21, 9, 0, 0, 0, location)
+	tuesday := monday.AddDate(0, 0, 1)
+	if got := standupActivityLabel(monday); got != "Friday" {
+		t.Fatalf("standupActivityLabel(Monday) = %q, want Friday", got)
+	}
+	if got := standupActivityLabel(tuesday); got != "yesterday" {
+		t.Fatalf("standupActivityLabel(Tuesday) = %q, want yesterday", got)
+	}
+}
+
+func TestStandupOpenItemsForReportFiltersExcludedTags(t *testing.T) {
+	withTempDunnitDir(t)
+	cfg := LoadConfig()
+	cfg.ReportExcludeTags = []string{"#home"}
+	if err := writeConfig(cfg); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	recordActivity("private errand #home", "TODO")
+	recordActivity("ship work #work", "DOING")
+
+	items := standupOpenItemsForReport()
+	if len(items) != 1 || items[0].Text != "ship work #work" {
+		t.Fatalf("standup open items = %+v, want only the non-excluded item", items)
+	}
+}
+
 func TestParseLedgerLineTimeAcceptsMinuteAndLegacySecondStamps(t *testing.T) {
 	date := time.Date(2026, time.September, 19, 0, 0, 0, 0, time.Local)
 	tests := []struct {

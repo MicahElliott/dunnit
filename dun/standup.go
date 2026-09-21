@@ -215,11 +215,34 @@ func summarizeStandupWithLLMCLI(lines []string) (string, error) {
 }
 
 func summarizeStandupWithLLMCLIContext(ctx context.Context, lines []string) (string, error) {
-	var openBuf strings.Builder
+	return summarizeStandupWithLLCLIAt(ctx, lines, time.Now())
+}
+
+func standupActivityLabel(now time.Time) string {
+	if now.Weekday() == time.Monday {
+		return "Friday"
+	}
+	return "yesterday"
+}
+
+func standupOpenItemsForReport() []OpenItem {
+	excludeTags := LoadConfig().ReportExcludeTags
+	var items []OpenItem
 	for _, item := range getOpenItems() {
 		if item.Category != "TODO" && item.Category != "DOING" && item.Category != "GOAL" {
 			continue
 		}
+		if lineHasExcludedTag(item.Text, excludeTags) {
+			continue
+		}
+		items = append(items, item)
+	}
+	return items
+}
+
+func summarizeStandupWithLLCLIAt(ctx context.Context, lines []string, now time.Time) (string, error) {
+	var openBuf strings.Builder
+	for _, item := range standupOpenItemsForReport() {
 		openBuf.WriteString("- " + stripCarryForwardSince(item.Text) + "\n")
 	}
 	openSection := "(nothing currently open)"
@@ -227,15 +250,21 @@ func summarizeStandupWithLLMCLIContext(ctx context.Context, lines []string) (str
 		openSection = openBuf.String()
 	}
 
-	input := "Completed/notable items:\n" + strings.Join(lines, "\n") +
+	activityLabel := standupActivityLabel(now)
+	input := "Completed/notable items from " + activityLabel + ":\n" + strings.Join(lines, "\n") +
 		"\n\nCurrently open TODOs/DOING/GOALs (candidates for \"today\"):\n" + openSection
+	tags, people := reportMentionMapsFromText(lines)
+	if mentions := formatReportMentionSections(tags, people, "Talking points from the supplied items"); mentions != "" {
+		input += "\n\n" + mentions
+	}
 
 	return summarizeWithLLMCLIPromptContext(ctx,
 		"Turn this into a classic scrum daily standup update, structured "+
 			"under exactly these three headings: "+
-			"\"What did I do yesterday\", \"What will I do today\", and "+
-			"\"Risks / blockers\". Base \"yesterday\" on the completed/"+
-			"notable items given; base \"today\" on the currently-open "+
+			"\"What did I do "+activityLabel+"\", \"What will I do today\", and "+
+			"\"Risks / blockers\". Base the completed-work section on the "+
+			"notable items given; on Monday, include weekend work under the "+
+			"Friday heading when it is present. Base \"today\" on the currently-open "+
 			"TODOs/DOING/GOALs given (pick the most relevant ones, don’t just "+
 			"dump the whole list verbatim). If there’s nothing worth "+
 			"flagging as a risk or blocker, say so briefly rather than "+
@@ -243,7 +272,7 @@ func summarizeStandupWithLLMCLIContext(ctx context.Context, lines []string) (str
 			"person might need help with, as its own short line under "+
 			"Risks/blockers if applicable. Focus on concrete results "+
 			"and outcomes rather than a busy-sounding activity log. Be "+
-			"concise — bullet points, not prose.", input)
+			"concise — bullet points, not prose."+reportMentionPromptGuidance(), input)
 }
 
 // showGeneratedStandupSummary displays an AI-generated standup
