@@ -43,22 +43,25 @@ func showSettings(a fyne.App) {
 
 	dayStart := widget.NewEntry()
 	dayStart.SetText(cfg.DayStart)
+	dayStart.SetPlaceHolder("HH:MM or 6am")
 
 	dayEnd := widget.NewEntry()
 	dayEnd.SetText(cfg.DayEnd)
+	dayEnd.SetPlaceHolder("HH:MM or 6pm")
 
 	nudgeInterval := widget.NewEntry()
 	nudgeInterval.SetText(strconv.Itoa(cfg.NudgeIntervalMinutes))
 
 	lunchTime := widget.NewEntry()
 	lunchTime.SetText(cfg.LunchTime)
+	lunchTime.SetPlaceHolder("HH:MM or noon")
 
 	digestDay := widget.NewSelect([]string{"", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"}, nil)
 	digestDay.SetSelected(cfg.WeeklyDigestDay)
 
 	digestTime := widget.NewEntry()
 	digestTime.SetText(cfg.WeeklyDigestTime)
-	digestTime.SetPlaceHolder("HH:MM")
+	digestTime.SetPlaceHolder("HH:MM, 6am, or 4p")
 
 	snoozeMinutes := widget.NewEntry()
 	snoozeMinutes.SetText(strconv.Itoa(cfg.SnoozeMinutes))
@@ -105,12 +108,12 @@ func showSettings(a fyne.App) {
 		widget.NewFormItem("Dunnit Data Directory", container.NewBorder(nil, nil, nil, browseDir, dunnitDir)),
 		widget.NewFormItem("LLM CLI for Reports", llmCLISelect),
 		widget.NewFormItem("Enable Git Sync", gitSync),
-		widget.NewFormItem("Day Start (HH:MM)", dayStart),
-		widget.NewFormItem("Day End (HH:MM)", dayEnd),
+		widget.NewFormItem("Day Start (HH:MM or 6am)", dayStart),
+		widget.NewFormItem("Day End (HH:MM or 6pm)", dayEnd),
 		widget.NewFormItem("Nudge Interval (minutes)", nudgeInterval),
-		widget.NewFormItem("Lunch Time (HH:MM)", lunchTime),
+		widget.NewFormItem("Lunch Time (HH:MM or noon)", lunchTime),
 		widget.NewFormItem("Weekly Digest Day", digestDay),
-		widget.NewFormItem("Weekly Digest Time (HH:MM)", digestTime),
+		widget.NewFormItem("Weekly Digest Time (HH:MM or 4p)", digestTime),
 		widget.NewFormItem("Default Snooze (minutes)", snoozeMinutes),
 		widget.NewFormItem("Skip US Federal Holidays", skipHolidays),
 		widget.NewFormItem("Extend Work Week to 7 Days", extendWorkWeek),
@@ -161,6 +164,26 @@ func showSettings(a fyne.App) {
 			dialog.ShowError(fmt.Errorf("Default Snooze must be a positive number"), w)
 			return
 		}
+		dayStartValue, err := normalizeOptionalTime("Day Start", dayStart.Text)
+		if err != nil {
+			dialog.ShowError(err, w)
+			return
+		}
+		dayEndValue, err := normalizeOptionalTime("Day End", dayEnd.Text)
+		if err != nil {
+			dialog.ShowError(err, w)
+			return
+		}
+		lunchTimeValue, err := normalizeOptionalTime("Lunch Time", lunchTime.Text)
+		if err != nil {
+			dialog.ShowError(err, w)
+			return
+		}
+		digestTimeValue, err := normalizeOptionalTime("Weekly Digest Time", digestTime.Text)
+		if err != nil {
+			dialog.ShowError(err, w)
+			return
+		}
 		// Start from the loaded config rather than a blank Config{}
 		// so fields not represented in this form (e.g.
 		// RecurringMeetings, FR-15) aren't silently wiped out on save.
@@ -168,12 +191,12 @@ func showSettings(a fyne.App) {
 		newCfg.DunnitDir = strings.TrimSpace(dunnitDir.Text)
 		newCfg.LLMCLI = llmCLISettingFromLabel(llmCLISelect.Selected)
 		newCfg.GitSyncEnabled = gitSync.Checked
-		newCfg.DayStart = dayStart.Text
-		newCfg.DayEnd = dayEnd.Text
+		newCfg.DayStart = dayStartValue
+		newCfg.DayEnd = dayEndValue
 		newCfg.NudgeIntervalMinutes = minutes
-		newCfg.LunchTime = lunchTime.Text
+		newCfg.LunchTime = lunchTimeValue
 		newCfg.WeeklyDigestDay = digestDay.Selected
-		newCfg.WeeklyDigestTime = digestTime.Text
+		newCfg.WeeklyDigestTime = digestTimeValue
 		newCfg.SnoozeMinutes = snooze
 		newCfg.SkipUSFederalHolidays = skipHolidays.Checked
 		newCfg.ExtendWorkWeekTo7Days = extendWorkWeek.Checked

@@ -25,9 +25,10 @@ type Config struct {
 	// GitSyncEnabled exposes the optional system-git Push/Pull menu items.
 	GitSyncEnabled bool `toml:"git_sync_enabled"`
 
-	// DayStart/DayEnd mark roughly when your working day runs, as
-	// "HH:MM" 24-hour strings. Used to decide whether hourly popups
-	// should fire at all.
+	// DayStart/DayEnd mark roughly when your working day runs, as 24-hour
+	// strings. The settings editor accepts shortcuts such as "6am" and
+	// "noon", then saves canonical HH:MM values. Used to decide whether
+	// hourly popups should fire at all.
 	DayStart string `toml:"day_start"`
 	DayEnd   string `toml:"day_end"`
 
@@ -42,7 +43,7 @@ type Config struct {
 	// nudge fires during work hours, e.g. 30/45/60/90.
 	NudgeIntervalMinutes int `toml:"nudge_interval_minutes"`
 
-	// LunchTime is "HH:MM" for a midday goals-reminder popup.
+	// LunchTime is a 24-hour time for a midday goals-reminder popup.
 	LunchTime string `toml:"lunch_time"`
 
 	// RecurringMeetings is the FR-15 mini-calendar: a small,

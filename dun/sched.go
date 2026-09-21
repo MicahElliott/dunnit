@@ -9,13 +9,6 @@ import (
 	"github.com/go-co-op/gocron/v2"
 )
 
-// parseHM parses "HH:MM" into hour, minute ints. Returns zeros on
-// parse failure (caller should treat that as "not configured").
-func parseHM(s string) (hour, minute int) {
-	fmt.Sscanf(s, "%d:%d", &hour, &minute)
-	return
-}
-
 // isFirstWeekdayOfMonth reports whether the given date is the first
 // weekday (Mon-Fri) of its month -- i.e. day 1, or day 2/3 if day 1
 // falls on a weekend. Used to auto-pop the SOM wizard on the actual
@@ -50,8 +43,11 @@ func withinWorkHours(cfg Config, now time.Time) bool {
 	if isOffDay(cfg, now) {
 		return false
 	}
-	startH, startM := parseHM(cfg.DayStart)
-	endH, endM := parseHM(cfg.DayEnd)
+	startH, startM, startOK := parseTimeInput(cfg.DayStart)
+	endH, endM, endOK := parseTimeInput(cfg.DayEnd)
+	if !startOK || !endOK {
+		return false
+	}
 	start := time.Date(now.Year(), now.Month(), now.Day(), startH, startM, 0, 0, now.Location())
 	end := time.Date(now.Year(), now.Month(), now.Day(), endH, endM, 0, 0, now.Location())
 	return !now.Before(start) && !now.After(end)
@@ -112,7 +108,7 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 		fmt.Println("Error scheduling interval job:", err)
 	}
 
-	if lh, lm := parseHM(cfg.LunchTime); lh != 0 || lm != 0 {
+	if lh, lm, ok := parseTimeInput(cfg.LunchTime); ok {
 		_, err = s.NewJob(
 			gocron.DailyJob(1, gocron.NewAtTimes(gocron.NewAtTime(uint(lh), uint(lm), 0))),
 			gocron.NewTask(func() {
@@ -140,7 +136,7 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 	// SOM still fires on the actual first working day even when the
 	// 1st falls on a weekend (otherwise SOM would silently never fire
 	// that month).
-	if sh, sm := parseHM(cfg.DayStart); sh != 0 || sm != 0 {
+	if sh, sm, ok := parseTimeInput(cfg.DayStart); ok {
 		_, err = s.NewJob(
 			gocron.DailyJob(1, gocron.NewAtTimes(gocron.NewAtTime(uint(sh), uint(sm), 0))),
 			gocron.NewTask(func() {
@@ -174,7 +170,7 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 		}
 	}
 
-	if eh, em := parseHM(cfg.DayEnd); eh != 0 || em != 0 {
+	if eh, em, ok := parseTimeInput(cfg.DayEnd); ok {
 		_, err = s.NewJob(
 			gocron.DailyJob(1, gocron.NewAtTimes(gocron.NewAtTime(uint(eh), uint(em), 0))),
 			gocron.NewTask(func() {
@@ -285,7 +281,7 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 	// version is intentionally not a separate mechanism here; it's
 	// folded into FR-14's SOM wizard once that exists.
 	if wd, ok := parseWeekday(cfg.WeeklyDigestDay); ok {
-		if dh, dm := parseHM(cfg.WeeklyDigestTime); dh != 0 || dm != 0 {
+		if dh, dm, ok := parseTimeInput(cfg.WeeklyDigestTime); ok {
 			_, err = s.NewJob(
 				gocron.WeeklyJob(1, gocron.NewWeekdays(wd), gocron.NewAtTimes(gocron.NewAtTime(uint(dh), uint(dm), 0))),
 				gocron.NewTask(func() {

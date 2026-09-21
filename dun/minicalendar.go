@@ -2,7 +2,6 @@ package dun
 
 import (
 	"errors"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -15,12 +14,6 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-// hmPattern validates a strict "HH:MM" 24-hour time string, since
-// parseHM silently returns zeros on any parse failure (which would
-// otherwise be indistinguishable from a legitimately-entered
-// "00:00").
-var hmPattern = regexp.MustCompile(`^([01]?[0-9]|2[0-3]):[0-5][0-9]$`)
-
 // RecurringMeeting is one user-entered recurring meeting slot
 // (FR-15) -- purely user-entered, no calendar/.ics/EventKit
 // integration. Tag should include the leading "#" (normalized on
@@ -30,7 +23,8 @@ var hmPattern = regexp.MustCompile(`^([01]?[0-9]|2[0-3]):[0-5][0-9]$`)
 // letting one entry replace 5 separate weekday rows). DOW is
 // 0=Sunday..6=Saturday (matches time.Weekday, only meaningful for
 // "weekly") so it sorts/compares naturally against
-// time.Now().Weekday(). Time is "HH:MM" 24-hour. IntervalWeeks is
+// time.Now().Weekday(). Time is stored as "HH:MM" 24-hour, while the
+// editor also accepts shortcuts such as "6am". IntervalWeeks is
 // "every N weeks" (1 = every week, the common case; 2 = biweekly,
 // etc; treated as 1 if <= 0, e.g. for entries saved before this field
 // existed; not meaningful for "daily"). AnchorDate ("YYYY-MM-DD") is
@@ -81,8 +75,10 @@ func sortRecurringMeetings(meetings []RecurringMeeting) {
 		if ra != rb {
 			return ra < rb
 		}
-		if a.Time != b.Time {
-			return a.Time < b.Time
+		aTime := timeSortKey(a.Time)
+		bTime := timeSortKey(b.Time)
+		if aTime != bTime {
+			return aTime < bTime
 		}
 		if a.DOW != b.DOW {
 			return a.DOW < b.DOW
@@ -156,7 +152,7 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 	// default layout can render a plain widget.Entry at an oddly
 	// narrow width alongside other fixed-width siblings in an HBox.
 	timeEntry := widget.NewEntry()
-	timeEntry.SetPlaceHolder("HH:MM")
+	timeEntry.SetPlaceHolder("HH:MM or 6am")
 	timeWrapper := container.NewGridWrap(fyne.NewSize(88, timeEntry.MinSize().Height), timeEntry)
 
 	domEntry := widget.NewEntry()
@@ -235,8 +231,9 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 			dialog.ShowError(errors.New("tag is required"), parent)
 			return
 		}
-		if !hmPattern.MatchString(timeEntry.Text) {
-			dialog.ShowError(errors.New("time must be HH:MM (24-hour)"), parent)
+		meetingTime, err := canonicalTimeInput(timeEntry.Text)
+		if err != nil {
+			dialog.ShowError(err, parent)
 			return
 		}
 		var meeting RecurringMeeting
@@ -248,7 +245,7 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 			meeting = RecurringMeeting{
 				Tag:           tag,
 				Cadence:       "daily",
-				Time:          timeEntry.Text,
+				Time:          meetingTime,
 				WeekendPolicy: weekendPolicy,
 			}
 		} else if cadenceSelect.Selected == "monthly" || cadenceSelect.Selected == "quarterly" {
@@ -257,7 +254,7 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 				dialog.ShowError(errors.New("day of month must be 1-31"), parent)
 				return
 			}
-			meeting = RecurringMeeting{Tag: tag, Cadence: cadenceSelect.Selected, Time: timeEntry.Text, DayOfMonth: day, AnchorDate: time.Now().Format("2006-01-02")}
+			meeting = RecurringMeeting{Tag: tag, Cadence: cadenceSelect.Selected, Time: meetingTime, DayOfMonth: day, AnchorDate: time.Now().Format("2006-01-02")}
 		} else {
 			dow := 0
 			for i, n := range dowNames {
@@ -265,7 +262,7 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 					dow = i
 				}
 			}
-			meeting = RecurringMeeting{Tag: tag, Cadence: cadenceSelect.Selected, DOW: dow, Time: timeEntry.Text, IntervalWeeks: 1, AnchorDate: time.Now().Format("2006-01-02")}
+			meeting = RecurringMeeting{Tag: tag, Cadence: cadenceSelect.Selected, DOW: dow, Time: meetingTime, IntervalWeeks: 1, AnchorDate: time.Now().Format("2006-01-02")}
 		}
 		if editingIndex >= 0 && editingIndex < len(meetings) {
 			meeting.AnchorDate = meetings[editingIndex].AnchorDate
@@ -333,7 +330,10 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 // skipped. Falls back to every-week behavior if AnchorDate is
 // missing/unparseable (e.g. legacy entries).
 func nextOccurrence(m RecurringMeeting, now time.Time) time.Time {
-	hh, mm := parseHM(m.Time)
+	hh, mm, ok := parseTimeInput(m.Time)
+	if !ok {
+		return time.Time{}
+	}
 
 	if m.Cadence == "daily" {
 		candidate := time.Date(now.Year(), now.Month(), now.Day(), hh, mm, 0, 0, now.Location())
@@ -475,7 +475,10 @@ func meetingOccursOnDate(m RecurringMeeting, date time.Time) bool {
 // before now (the mirror of nextOccurrence). Used by the post-meeting
 // nudge, which looks backward instead of forward.
 func lastOccurrence(m RecurringMeeting, now time.Time) time.Time {
-	hour, minute := parseHM(m.Time)
+	hour, minute, ok := parseTimeInput(m.Time)
+	if !ok {
+		return time.Time{}
+	}
 	for daysBack := 0; daysBack <= 3660; daysBack++ {
 		date := now.AddDate(0, 0, -daysBack)
 		if !meetingOccursOnDate(m, date) {

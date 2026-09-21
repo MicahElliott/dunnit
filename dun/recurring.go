@@ -43,7 +43,7 @@ type RecurringItem struct {
 	DOW           int    `toml:"dow"`
 	DayOfMonth    int    `toml:"day_of_month"`
 	WeekendPolicy string `toml:"weekend_policy"` // "include" (default) or "skip" -- daily only
-	Time          string `toml:"time"`           // optional "HH:MM" reminder time
+	Time          string `toml:"time"`           // optional time; saved as "HH:MM"
 }
 
 var cadenceOptions = []string{"daily", "weekly", "monthly"}
@@ -146,8 +146,10 @@ func sortRecurringItems(items []RecurringItem) {
 		if ra != rb {
 			return ra < rb
 		}
-		if a.Time != b.Time {
-			return a.Time < b.Time
+		aTime := timeSortKey(a.Time)
+		bTime := timeSortKey(b.Time)
+		if aTime != bTime {
+			return aTime < bTime
 		}
 		if a.DOW != b.DOW {
 			return a.DOW < b.DOW
@@ -165,10 +167,13 @@ func sortRecurringItems(items []RecurringItem) {
 // recurringItemOccurrence returns today's scheduled reminder, if r is due
 // today and has a valid optional time.
 func recurringItemOccurrence(r RecurringItem, now time.Time) (time.Time, bool) {
-	if strings.TrimSpace(r.Time) == "" || !hmPattern.MatchString(strings.TrimSpace(r.Time)) || !r.isDueToday(now) {
+	if strings.TrimSpace(r.Time) == "" || !r.isDueToday(now) {
 		return time.Time{}, false
 	}
-	hour, minute := parseHM(strings.TrimSpace(r.Time))
+	hour, minute, ok := parseTimeInput(r.Time)
+	if !ok {
+		return time.Time{}, false
+	}
 	return time.Date(now.Year(), now.Month(), now.Day(), hour, minute, 0, 0, now.Location()), true
 }
 
@@ -292,7 +297,7 @@ func showRecurringItemsDialog(a fyne.App, parent fyne.Window) {
 	textEntry.SetPlaceHolder("Item text\u2026")
 
 	timeEntry := widget.NewEntry()
-	timeEntry.SetPlaceHolder("HH:MM (optional)")
+	timeEntry.SetPlaceHolder("HH:MM or 6am (optional)")
 	timeWrapper := container.NewGridWrap(fyne.NewSize(132, timeEntry.MinSize().Height), timeEntry)
 
 	cadenceSelect := widget.NewSelect(cadenceOptions, nil)
@@ -387,9 +392,9 @@ func showRecurringItemsDialog(a fyne.App, parent fyne.Window) {
 			dialog.ShowError(errors.New("text is required"), parent)
 			return
 		}
-		reminderTime := strings.TrimSpace(timeEntry.Text)
-		if reminderTime != "" && !hmPattern.MatchString(reminderTime) {
-			dialog.ShowError(errors.New("time must be HH:MM (24-hour) or blank"), parent)
+		reminderTime, err := normalizeOptionalTime("time", timeEntry.Text)
+		if err != nil {
+			dialog.ShowError(err, parent)
 			return
 		}
 		r := RecurringItem{
@@ -433,7 +438,7 @@ func showRecurringItemsDialog(a fyne.App, parent fyne.Window) {
 	domEntry.OnSubmitted = func(string) { addItem() }
 	timeEntry.OnSubmitted = func(string) { addItem() }
 
-	helpLine := newExplanatoryLabel("📝 Untimed entries are suggested in Start of Day / Start of Month. Add an optional HH:MM time for a native reminder and a prefilled Daybook popup.")
+	helpLine := newExplanatoryLabel("📝 Untimed entries are suggested in Start of Day / Start of Month. Add an optional time such as HH:MM, 6am, or noon for a native reminder and a prefilled Daybook popup.")
 
 	heading := newWindowHeading("🔁 Recurring Items")
 

@@ -143,6 +143,10 @@ lunch_time    = "11:30"
 - `hourly_minute`: minute-of-the-hour the popup should appear.
 - `lunch_time`: when a midday goals-reminder should show.
 
+Time settings accept 24-hour `HH:MM` values and convenient forms such as
+`6a`, `6am`, `6:30p`, `630p`, `6:30 pm`, `noon`, and `midnight`. Saved
+settings are written back in `HH:MM` form.
+
 ## Editing the Ledger
 
 The "Edit Dunnits" button opens today's ledger file in `$EDITOR` if

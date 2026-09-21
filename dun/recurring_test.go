@@ -42,6 +42,13 @@ func TestRecurringItemOccurrence(t *testing.T) {
 			ok:   true,
 		},
 		{
+			name: "shortcut timed item",
+			item: RecurringItem{Cadence: "daily", Time: "6am"},
+			now:  time.Date(2026, time.September, 15, 5, 0, 0, 0, location),
+			want: time.Date(2026, time.September, 15, 6, 0, 0, 0, location),
+			ok:   true,
+		},
+		{
 			name: "monthly day 31 clamps",
 			item: RecurringItem{Cadence: "monthly", DayOfMonth: 31, Time: "09:30"},
 			now:  time.Date(2026, time.September, 30, 8, 0, 0, 0, location),
@@ -136,6 +143,15 @@ func TestNextOccurrenceKeepsQuarterlyAnchor(t *testing.T) {
 	}
 	now := time.Date(2026, time.October, 1, 8, 0, 0, 0, time.UTC)
 	want := time.Date(2026, time.December, 15, 10, 0, 0, 0, time.UTC)
+	if got := nextOccurrence(meeting, now); !got.Equal(want) {
+		t.Fatalf("nextOccurrence() = %v, want %v", got, want)
+	}
+}
+
+func TestNextOccurrenceAcceptsTimeShortcut(t *testing.T) {
+	meeting := RecurringMeeting{Cadence: "daily", Time: "6p"}
+	now := time.Date(2026, time.September, 15, 17, 0, 0, 0, time.UTC)
+	want := time.Date(2026, time.September, 15, 18, 0, 0, 0, time.UTC)
 	if got := nextOccurrence(meeting, now); !got.Equal(want) {
 		t.Fatalf("nextOccurrence() = %v, want %v", got, want)
 	}
