@@ -282,17 +282,23 @@ func showEditableReportWindow(a fyne.App, title, savePath, initialText string) {
 		}
 		dialog.ShowInformation("Saved", "Saved to "+savePath, w)
 	})
+	copyMarkdownBtn := widget.NewButtonWithIcon("Copy as Markdown", theme.Icon(theme.IconNameContentCopy), func() {
+		a.Clipboard().SetContent(editor.Text)
+	})
 	copyRichTextBtn := widget.NewButtonWithIcon("Copy as rich text", theme.Icon(theme.IconNameContentCopy), func() {
 		copyRichText(a, editor.Text)
 	})
 	closeBtn := widget.NewButton("Close", func() { w.Close() })
 
 	content := container.NewBorder(
-		widget.NewLabelWithStyle("Edit (Markdown):", fyne.TextAlignLeading, fyne.TextStyle{Italic: true}),
+		container.NewVBox(
+			widget.NewLabelWithStyle("This is the AI-generated report. Click to edit it before saving.", fyne.TextAlignLeading, fyne.TextStyle{Italic: true}),
+			widget.NewLabelWithStyle("Closing without Save discards your edits.", fyne.TextAlignLeading, fyne.TextStyle{Italic: true}),
+		),
 		container.NewVBox(
 			widget.NewLabelWithStyle("Preview:", fyne.TextAlignLeading, fyne.TextStyle{Italic: true}),
 			previewScroll,
-			container.NewHBox(saveBtn, copyRichTextBtn, closeBtn),
+			container.NewHBox(saveBtn, copyMarkdownBtn, copyRichTextBtn, closeBtn),
 		),
 		nil, nil,
 		editorScroll,

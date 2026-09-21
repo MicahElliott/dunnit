@@ -420,23 +420,29 @@ func reviewLengthConstraint(period summaryPeriod) string {
 // Does not include reviewLengthConstraint -- callers append that
 // separately, since it's period-scaled rather than theme-scaled.
 func themePromptFraming(theme string, unitNoun, title string) string {
+	requirements := " The first line must be exactly the Markdown H1 " +
+		fmt.Sprintf("%q", "# "+title) + "; do not add an 'Impact report' title. " +
+		"Include a concise assessment of sentiment, productivity, pace, and meeting load when the input supports it. " +
+		"Include the supplied Hilites and Callouts and Still To Do items. End with a one or two sentence prose conclusion, not bullets."
 	switch theme {
 	case ThemeStatusReport:
 		return fmt.Sprintf(
 			"Summarize this ledger of a %s’s activity entries into a "+
 				"status report titled %q, using exactly these section "+
-				"headers (Markdown ##): \"What Happened\", \"What’s Next\", "+
+				"headers (Markdown ##): \"Summary\", \"What Happened\", "+
+				"\"Hilites and Callouts\", \"Still To Do\", \"What’s Next\", "+
 				"\"Blockers\" (omit Blockers if there are none worth "+
-				"mentioning). Neutral, third-person tone, suitable to "+
-				"paste into a team update.", unitNoun, title)
+				"mentioning), and \"Conclusion\". Neutral, third-person tone, "+
+				"suitable to paste into a team update.", unitNoun, title) + requirements
 	case ThemeFormalReport:
 		return fmt.Sprintf(
 			"Summarize this ledger of a %s’s activity entries into a "+
 				"formal report titled %q, using exactly these section "+
 				"headers (Markdown ##): \"Summary\", \"Key Accomplishments\", "+
-				"\"Challenges\", \"Goals for Next Period\". Sober, "+
+				"\"Hilites and Callouts\", \"Still To Do\", \"Challenges\", "+
+				"\"Goals for Next Period\", and \"Conclusion\". Sober, "+
 				"professional tone, written as if for a manager/reviewer "+
-				"audience.", unitNoun, title)
+				"audience.", unitNoun, title) + requirements
 	case ThemeBragPreso:
 		return fmt.Sprintf(
 			"Summarize this ledger of a %s’s activity entries into a "+
@@ -446,13 +452,13 @@ func themePromptFraming(theme string, unitNoun, title string) string {
 				"points, with slides separated by a line containing only "+
 				"\"---\". Each slide should highlight one achievement or "+
 				"notable win, framed for impact. Upbeat tone, minimal text "+
-				"per slide.", unitNoun, title)
+				"per slide.", unitNoun, title) + requirements
 	default: // ThemePersonalNotes, or unrecognized -- fall back to informal
 		return fmt.Sprintf(
 			"Summarize this ledger of a %s’s activity entries into "+
 				"brief personal notes titled %q. Informal, first-person, "+
 				"casual tone — freeform paragraphs or loose bullet points, "+
-				"no fixed section headers needed.", unitNoun, title)
+				"no fixed section headers needed.", unitNoun, title) + requirements
 	}
 }
 
@@ -488,6 +494,11 @@ func generateThemedReviewContext(ctx context.Context, cfg Config, period summary
 		combined.WriteString("Additional raw entries not yet summarized:\n\n")
 		combined.WriteString(material.RawLedger)
 	}
+	reportFrom, reportTo := periodNominalRangeForReport(period, anchor)
+	if signals := periodReportSignals(reportFrom, reportTo); signals != "" {
+		combined.WriteString("\n\nStructured report context:\n\n")
+		combined.WriteString(signals)
+	}
 	if okrText := okrSummaryText(cfg, period, anchor); okrText != "" {
 		combined.WriteString("\n\nOKR status for this period:\n\n")
 		combined.WriteString(okrText)
@@ -497,7 +508,19 @@ func generateThemedReviewContext(ctx context.Context, cfg Config, period summary
 	}
 
 	theme := themeFor(cfg, period)
-	title := periodLabel(cfg, period, anchor)
+	title := periodSummaryTitle(period, anchor)
 	instructions := themePromptFraming(theme, unitNoun(period), title) + reviewLengthConstraint(period)
-	return summarizeWithLLMCLIPromptContext(ctx, instructions, combined.String())
+	result, err := summarizeWithLLMCLIPromptContext(ctx, instructions, combined.String())
+	if err != nil {
+		return "", err
+	}
+	return normalizePeriodReport(result, title), nil
+}
+
+func periodNominalRangeForReport(period summaryPeriod, anchor time.Time) (time.Time, time.Time) {
+	from, to := periodNominalRange(period, anchor)
+	if to.After(time.Now()) {
+		to = time.Now()
+	}
+	return from, to
 }

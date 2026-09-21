@@ -118,7 +118,7 @@ func showPeriodReviewWindow(a fyne.App, period summaryPeriod, anchor time.Time) 
 					return
 				}
 				showEditableReportWindow(a,
-					"Dunnit: "+string(period)+" Review Report ("+label+")",
+					"Dunnit: "+periodSummaryTitle(period, anchor),
 					path, string(body))
 			}))
 		}
@@ -167,7 +167,7 @@ func showPeriodReviewWindow(a fyne.App, period summaryPeriod, anchor time.Time) 
 				}
 				statusLabel.SetText("Generated.")
 				showEditableReportWindow(a,
-					"Dunnit: "+string(period)+" Review Report ("+label+")",
+					"Dunnit: "+periodSummaryTitle(period, anchor),
 					reviewReportPath(period, anchor, selectedTheme), summary)
 			})
 		}()

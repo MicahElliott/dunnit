@@ -9,23 +9,14 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-// annualReviewCategories are the categories gathered for the Annual
-// Review (FR-22): IMPACT/MILESTONE per the FR spec, plus WIN
-// ("optionally", per the FR) since it's cheap to include and framed
-// around accomplishments too.
-var annualReviewCategories = map[string]bool{
-	"IMPACT": true, "MILESTONE": true, "WIN": true,
-}
-
-const annualReviewPrompt = "Summarize the following IMPACT/MILESTONE/WIN " +
-	"ledger entries from across a full calendar year into a narrative " +
-	"performance-review-style summary, framed around accomplishments and " +
-	"impact rather than day-to-day activity. Group related items together " +
-	"and highlight the most significant ones."
+// annualReviewCategories keeps the annual report focused on completed work
+// and notable callouts while periodReportInput supplies metrics and pending
+// plan items alongside these source lines.
+var annualReviewCategories = buildStandupCategories()
 
 // showAnnualReviewDialog lets the user pick a year (default: current)
-// and generates a narrative summary via the shared Summarize/gh
-// LLM CLI plumbing, scoped to that year's IMPACT/MILESTONE/WIN lines.
+// and generates an editable narrative summary via the shared LLM CLI
+// plumbing, scoped to that year's accomplishments and Hilites.
 //
 // Own standalone window (not a dialog parented on Daybook) -- Daybook
 // is normally hidden, and this is a tray-invoked, occasional workflow
@@ -47,7 +38,7 @@ func showAnnualReviewDialog(a fyne.App) {
 	}
 
 	content := container.NewVBox(
-		widget.NewLabel("Gather IMPACT/MILESTONE/WIN entries for year:"),
+		widget.NewLabel("Gather accomplishments and Hilites for year:"),
 		yearEntry,
 		container.NewHBox(
 			widget.NewButton("Generate", generate),
@@ -61,12 +52,13 @@ func showAnnualReviewDialog(a fyne.App) {
 }
 
 func runAnnualReview(a fyne.App, year int) {
+	anchor := time.Date(year, time.January, 1, 0, 0, 0, 0, time.Local)
 	from := time.Date(year, time.January, 1, 0, 0, 0, 0, time.Local)
 	to := time.Date(year, time.December, 31, 23, 59, 59, 0, time.Local)
 	ledgerText := gatherLedgerTextForRange(from, to, annualReviewCategories)
 	if ledgerText == "" {
 		w := a.NewWindow("Dunnit: Annual Review")
-		w.SetContent(windowPad(widget.NewLabel("No IMPACT/MILESTONE/WIN entries found for that year.")))
+		w.SetContent(windowPad(widget.NewLabel("No accomplishments or Hilites found for that year.")))
 		w.Show()
 		return
 	}
@@ -76,29 +68,29 @@ func runAnnualReview(a fyne.App, year int) {
 	progress.SetOnClosed(request.close)
 	progress.SetContent(windowPad(llmCLIProgressContent(
 		"Asking configured LLM CLI to summarize, please wait\u2026\n"+
-			"The generated report will be copied to your clipboard automatically.", request)))
+			"The generated report will be editable before you save it.", request)))
 	progress.Show()
 
 	go func() {
-		summary, err := summarizeWithLLMCLIPromptContext(request.ctx, annualReviewPrompt, ledgerText)
+		title := periodSummaryTitle(periodYear, anchor)
+		summary, err := summarizeWithLLMCLIPromptContext(request.ctx,
+			periodSummaryPrompt(periodYear, title),
+			periodReportInput(periodYear, anchor, ledgerText))
 		request.finish()
 		fyne.Do(func() {
 			progress.Close()
 			if request.canceled() {
 				return
 			}
-			w := a.NewWindow("Dunnit: Annual Review " + strconv.Itoa(year))
 			if err != nil {
+				w := a.NewWindow("Dunnit: Annual Review " + strconv.Itoa(year))
 				w.SetContent(windowPad(widget.NewLabel("Error running configured LLM CLI:\n" + err.Error())))
+				w.Resize(fyne.NewSize(600, 500))
+				w.Show()
 			} else {
-				a.Clipboard().SetContent(summary)
-				body := widget.NewMultiLineEntry()
-				body.SetText(summary)
-				body.Wrapping = fyne.TextWrapWord
-				w.SetContent(windowPad(container.NewVScroll(body)))
+				showEditableReportWindow(a, "Dunnit: "+title,
+					summaryReportPath(periodYear, anchor), normalizePeriodReport(summary, title))
 			}
-			w.Resize(fyne.NewSize(600, 500))
-			w.Show()
 		})
 	}()
 }

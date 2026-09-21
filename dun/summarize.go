@@ -2,7 +2,6 @@ package dun
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -263,7 +262,7 @@ func filterExcludedTagLines(text string, excludeTags []string) string {
 func showSummarizeDialog(a fyne.App) {
 	w := a.NewWindow("Dunnit: Summarize")
 
-	options := []string{string(periodDay), string(periodWeek), string(periodMonth), string(periodQuarter)}
+	options := []string{string(periodDay), string(periodWeek), string(periodMonth), string(periodQuarter), string(periodYear)}
 	periodSelect := widget.NewSelect(options, nil)
 	periodSelect.SetSelected(string(periodDay))
 
@@ -288,7 +287,9 @@ func showSummarizeDialog(a fyne.App) {
 }
 
 func runSummarize(a fyne.App, period summaryPeriod) {
-	ledgerText := gatherLedgerText(period)
+	now := time.Now()
+	from, to := currentPeriodRange(period, now, now)
+	ledgerText := gatherLedgerTextForRange(from, to, nil)
 	if strings.TrimSpace(ledgerText) == "" {
 		w := a.NewWindow("Dunnit: Summary")
 		w.SetContent(windowPad(widget.NewLabel("No ledger entries found for that period.")))
@@ -306,31 +307,24 @@ func runSummarize(a fyne.App, period summaryPeriod) {
 
 	go func() {
 		summary, err := summarizeWithLLMCLIPromptContext(request.ctx,
-			"Summarize this ledger of daily activity entries into a brief "+
-				"impact report suitable for a standup or status update. Be concise "+
-				"and group related work together.", ledgerText)
+			periodSummaryPrompt(period, periodSummaryTitle(period, now)),
+			periodReportInput(period, now, ledgerText))
 		request.finish()
 		fyne.Do(func() {
 			progress.Close()
 			if request.canceled() {
 				return
 			}
-			w := a.NewWindow(fmt.Sprintf("Dunnit: %s Summary", period))
 			if err != nil {
+				w := a.NewWindow("Dunnit: " + string(period) + " Summary")
 				w.SetContent(windowPad(widget.NewLabel("Error running configured LLM CLI:\n" + err.Error())))
+				w.Resize(fyne.NewSize(600, 500))
+				w.Show()
 			} else {
-				body := widget.NewMultiLineEntry()
-				body.SetText(summary)
-				body.Wrapping = fyne.TextWrapWord
-				w.SetContent(windowPad(container.NewBorder(
-					nil,
-					reportCopyButtons(a, summary),
-					nil, nil,
-					container.NewVScroll(body),
-				)))
+				title := periodSummaryTitle(period, now)
+				showEditableReportWindow(a, "Dunnit: "+title,
+					summaryReportPath(period, now), normalizePeriodReport(summary, title))
 			}
-			w.Resize(fyne.NewSize(600, 500))
-			w.Show()
 		})
 	}()
 }
