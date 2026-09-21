@@ -33,7 +33,7 @@ type OpenItem struct {
 // FIXME/RISK share the same "logged now, tracked as open, resolved
 // later" pattern (unlike day-to-day capture categories like DONE/
 // TIL), so they're tracked the same way.
-var openTrackedCategories = []string{"TODO", "DOING", "GOAL", "WAITING", "QUESTION", "FIXME", "RISK"}
+var openTrackedCategories = []string{"DOING", "TODO", "GOAL", "WAITING", "QUESTION", "FIXME", "RISK"}
 
 // legacyOngoingCategory is retained only for history-aware code and tests.
 // It is intentionally absent from Categories and openTrackedCategories.

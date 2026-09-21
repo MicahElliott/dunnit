@@ -317,7 +317,7 @@ func showSODWindow(a fyne.App) {
 
 	content := container.NewVBox(
 		widget.NewLabelWithStyle("Let’s get your day planned.", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
-		streakLabel(),
+		streakSummary(a),
 		reportBox,
 		sodHeading(planHeading),
 		planNote,

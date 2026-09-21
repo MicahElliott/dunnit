@@ -129,11 +129,11 @@ var Categories = []Category{
 	// -- it's future-facing/not-yet-actioned just like SOMEDAY, and
 	// som.go's step 2 already treats IDEA/SOMEDAY as a matched pair
 	// for triage, so grouping them together in the picker too keeps
-	// that pairing consistent. TODO leads the group (2026-09-02,
-	// moved ahead of IDEA per explicit request) since it's the most
-	// common/actionable item in this group.
-	{"📌", "TODO", "A small, actionable near-term task.", "plan", "", false},
+	// that pairing consistent. DOING leads the group so active work sits
+	// closest to Endings in Daybook; TODO follows as the next state in
+	// the lifecycle.
 	{"▶️", "DOING", "A TODO currently in progress.", "plan", "", false},
+	{"📌", "TODO", "A small, actionable near-term task.", "plan", "", false},
 	{"💡", "IDEA", "An idea not yet ready to act on.", "plan", "", false},
 	{"🎯", "GOAL", "A larger aim that TODOs work toward.", "plan", "", false},
 	{"❓", "QUESTION", "An open question to follow up on.", "plan", "", false},

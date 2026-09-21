@@ -51,4 +51,7 @@ func TestDoingCategoryIsVisiblePlannedAndTimeTrackable(t *testing.T) {
 	if !found {
 		t.Errorf("Plan picker labels %v do not include %q", labels, doing.Label())
 	}
+	if len(labels) < 2 || labels[0] != doing.Label() || labels[1] != EmojiForCode("TODO")+" TODO" {
+		t.Errorf("Plan picker labels = %v, want DOING before TODO", labels)
+	}
 }

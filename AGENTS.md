@@ -31,17 +31,20 @@ macOS and Linux.
 
 ## Layout
 
-- `dunnit.go` — `main()`, currently a rough sketch wiring UI + scheduler.
-- `dunnit/ui.go` — the Fyne window/widgets, ledger read/write, editor
-  launching.
-- `dunnit/sched.go` — `gocron`-based scheduler; **not yet wired up
-  properly** to the config or UI (still has hardcoded demo times).
-- `dunnit/settings.go` — placeholder Settings window (dummy checkbox
-  only so far).
-- `dunnit/config.go` — TOML config load/save. Everything dunnit owns
-  (ledgers + config.toml) lives under one root dir, `DunnitDir()`
-  (`~/.config/dunnit` by default, override with `$DUNNIT_DIR`).
-- `dunnit/taskmenu.go` — currently just a stub, not wired to anything.
+The application package is `dun/` (package name `dun`), despite the
+repository and binary being named `dunnit`. `dunnit.go` is the thin `main`
+package that wires the `dun` package into the GUI and CLI.
+
+- `dunnit.go` — `main()` and the small command-line entry path.
+- `dun/ui.go` — the Daybook Fyne window/widgets, ledger read/write, and
+  editor launching.
+- `dun/sched.go` — the `gocron`-based scheduler.
+- `dun/settings.go` — Settings window and persistence actions.
+- `dun/config.go` — TOML config load/save. Everything dunnit owns (ledgers
+  plus `config.toml`) lives under one root dir, `DunnitDir()` (`~/.config/dunnit`
+  by default, override with `$DUNNIT_DIR`).
+- `dun/streak.go` — Daybook/SOD positive progress callouts.
+- `dun/taskmenu.go` — task-menu behavior.
 
 ## Data format
 
@@ -50,8 +53,20 @@ one line per entry: `[HH:MM:SS] CATEGORY free text #tag`. See sample
 real data in the sibling `../mydunnits` repo for ground truth on
 format nuances (e.g. `GOAL`, `DONE`, `MEETING`, `TIL`, `WIN` categories
 seen in practice). Do not assume `dunnit.zsh`'s exact category set is
-final — the Fyne UI currently defines its own (with emoji labels) in
-`ui.go`'s `category` widget; keep these in sync if you change one.
+final — `dun/categories.go`'s `Categories` registry is the source of truth
+for the Fyne UI's emoji labels and category groups; keep all consumers in
+sync if you change one. Tags identify projects, tickets, topics, or other
+work themes. Ticket markers may have an alphabetic prefix, such as `#12345`
+or `#SCRUM-12345`; do not assume numeric-only tags.
+
+Daybook's normal lifecycle is `TODO -> DOING -> DONE`. A DOING that reaches
+DONE is ordinary daily flow and is not, by itself, a meaningful streak signal.
+Streak callouts are implemented in `dun/streak.go`, use ledger categories,
+tags, people, and explicit duration markers. Detect the full achievement set,
+show at most two randomly selected signals in the compact SOD summary, and
+keep the complete set available from its achievements button. Keep ticket
+detection compatible with both numeric markers and prefixed markers such as
+`#SCRUM-12345`.
 
 ## Build/verify
 
