@@ -82,6 +82,8 @@ func (h *hoverText) MouseMoved(*desktop.MouseEvent) {}
 
 func (h *hoverText) MouseOut() { h.hideTooltip() }
 
+func (h *hoverText) Cursor() desktop.Cursor { return desktop.PointerCursor }
+
 type hoverTextRenderer struct {
 	txt *canvas.Text
 }
@@ -96,3 +98,4 @@ func (r *hoverTextRenderer) Destroy() {}
 
 var _ fyne.Tappable = (*hoverText)(nil)
 var _ desktop.Hoverable = (*hoverText)(nil)
+var _ desktop.Cursorable = (*hoverText)(nil)

@@ -101,6 +101,35 @@ func TestSplitPrimaryTagUsesLastTag(t *testing.T) {
 	}
 }
 
+func TestDaybookCoreDisplayKeepsPrimaryTagMarkerInPlace(t *testing.T) {
+	display := daybookCoreDisplay("Added a X to #foo and pushed")
+	if got := string(display.text); got != "Added a X to # and pushed" {
+		t.Fatalf("daybookCoreDisplay text = %q, want tag marker in place", got)
+	}
+	if display.primaryTag != "#foo" {
+		t.Fatalf("daybookCoreDisplay primaryTag = %q, want #foo", display.primaryTag)
+	}
+	if display.markerIndex != 13 {
+		t.Fatalf("daybookCoreDisplay markerIndex = %d, want 13", display.markerIndex)
+	}
+	if display.ellipsisIndex != -1 {
+		t.Fatalf("daybookCoreDisplay ellipsisIndex = %d, want -1", display.ellipsisIndex)
+	}
+}
+
+func TestDaybookCoreDisplayTruncatesAndRetainsPrimaryTag(t *testing.T) {
+	display := daybookCoreDisplay("one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen #foo")
+	if len(display.text) > daybookMaxTextRunes {
+		t.Fatalf("daybookCoreDisplay length = %d, want at most %d", len(display.text), daybookMaxTextRunes)
+	}
+	if display.ellipsisIndex < 0 {
+		t.Fatal("daybookCoreDisplay omitted ellipsis for long text")
+	}
+	if display.primaryTag != "#foo" || display.markerIndex < 0 {
+		t.Fatalf("daybookCoreDisplay lost primary tag marker: %+v", display)
+	}
+}
+
 func TestSortItemsByPrimaryTagThenTime(t *testing.T) {
 	items := []OpenItem{
 		{Text: "no tag here", Time: time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)},

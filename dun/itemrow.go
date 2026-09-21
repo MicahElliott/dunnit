@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -66,6 +67,11 @@ var ageIndicatorColors = map[string]color.NRGBA{
 // out. The slightly smaller size keeps emoji indicators aligned with
 // their adjacent Latin text.
 const metaTextSizeRatio = 0.80
+
+// daybookMaxTextRunes keeps a long ledger entry from determining Daybook's
+// minimum window width. The complete entry remains available from the
+// hoverable ellipsis appended to truncated rows.
+const daybookMaxTextRunes = 80
 
 // trailingMetaPattern matches one or more of the known trailing
 // display-metadata suffixes back-to-back at the very end of an item's
@@ -158,15 +164,15 @@ func itemTextLabel(text string) fyne.CanvasObject {
 	return container.New(newTightRowLayout(), runs...)
 }
 
-// daybookItemTextLabel displays a Daybook row with its last tag moved to
-// an italic prefix. The supplied prefix is kept before the tag, usually
-// the category icon. The original text remains the value used for edits
-// and ledger writes; only this canvas representation is rearranged.
+// daybookItemTextLabel displays a Daybook row with its primary tag represented
+// by a colored, hoverable "#" at the tag's original position. Long core text
+// is shortened with a hoverable ellipsis; trailing metadata remains visible.
+// The original text remains the value used for edits and ledger writes.
 func daybookItemTextLabel(prefix, text string, stats map[string]*tagStat) fyne.CanvasObject {
 	core, meta := splitTrailingMeta(text)
-	tag, body := splitPrimaryTag(core)
+	display := daybookCoreDisplay(core)
 
-	runs := make([]fyne.CanvasObject, 0, 4)
+	runs := make([]fyne.CanvasObject, 0, 6)
 	if prefix != "" {
 		if icon, rest, ok := splitCategoryIconPrefix(prefix); ok {
 			runs = append(runs, newDisplayIconText(icon, theme.Color(theme.ColorNameForeground)))
@@ -177,13 +183,112 @@ func daybookItemTextLabel(prefix, text string, stats map[string]*tagStat) fyne.C
 			runs = append(runs, canvas.NewText(prefix, theme.Color(theme.ColorNameForeground)))
 		}
 	}
-	if tag != "" {
-		runs = append(runs, newTagLinkWithStyle(
-			"["+tag+"] ", tagUsageTooltip(tag, stats[tag]), tagTextColor(tag), true, nil))
-	}
-	appendEntryRuns(&runs, body)
+	appendDaybookCoreRuns(&runs, display, stats, text)
 	appendMetadataRuns(&runs, meta)
 	return container.New(newTightRowLayout(), runs...)
+}
+
+type daybookCoreRender struct {
+	text          []rune
+	primaryTag    string
+	markerIndex   int
+	ellipsisIndex int
+}
+
+// daybookCoreDisplay replaces the primary tag with a single marker and
+// truncates only the prose portion. If the primary tag would be cut away, its
+// marker is retained after the ellipsis so every row still communicates that a
+// tag was present.
+func daybookCoreDisplay(core string) daybookCoreRender {
+	display := []rune(core)
+	primaryTag := ""
+	markerIndex := -1
+	if matches := tagPattern.FindAllStringIndex(core, -1); len(matches) > 0 {
+		match := matches[len(matches)-1]
+		primaryTag = core[match[0]:match[1]]
+		start := len([]rune(core[:match[0]]))
+		end := len([]rune(core[:match[1]]))
+		display = append(append(append([]rune{}, display[:start]...), '#'), display[end:]...)
+		markerIndex = start
+	}
+	if len(display) <= daybookMaxTextRunes {
+		return daybookCoreRender{
+			text: display, primaryTag: primaryTag, markerIndex: markerIndex, ellipsisIndex: -1,
+		}
+	}
+
+	keep := daybookMaxTextRunes - 1 // reserve one rune for the ellipsis
+	if markerIndex >= keep {
+		keep = daybookMaxTextRunes - 2 // reserve the ellipsis and the tag marker
+	}
+	visible := trimDaybookCut(display, keep)
+	if markerIndex >= len(visible) {
+		visible = append(visible, '\u2026')
+		markerIndex = len(visible)
+		visible = append(visible, '#')
+		return daybookCoreRender{
+			text:          visible,
+			primaryTag:    primaryTag,
+			markerIndex:   markerIndex,
+			ellipsisIndex: markerIndex - 1,
+		}
+	}
+	ellipsisIndex := len(visible)
+	visible = append(visible, '\u2026')
+	return daybookCoreRender{
+		text:          visible,
+		primaryTag:    primaryTag,
+		markerIndex:   markerIndex,
+		ellipsisIndex: ellipsisIndex,
+	}
+}
+
+func trimDaybookCut(text []rune, limit int) []rune {
+	if limit >= len(text) {
+		return text
+	}
+	cut := limit
+	for cut > limit/2 && !unicode.IsSpace(text[cut-1]) {
+		cut--
+	}
+	if cut <= limit/2 {
+		cut = limit
+	}
+	for cut > 0 && unicode.IsSpace(text[cut-1]) {
+		cut--
+	}
+	return text[:cut]
+}
+
+func appendDaybookCoreRuns(runs *[]fyne.CanvasObject, display daybookCoreRender, stats map[string]*tagStat, fullText string) {
+	positions := []int{display.markerIndex, display.ellipsisIndex}
+	sort.Ints(positions)
+	position := 0
+	for _, special := range positions {
+		if special < 0 || special >= len(display.text) || special < position {
+			continue
+		}
+		appendEntryRuns(runs, string(display.text[position:special]))
+		switch special {
+		case display.markerIndex:
+			*runs = append(*runs, newTagLinkWithStyle(
+				"#", daybookTagTooltip(display.primaryTag, stats[display.primaryTag]),
+				tagTextColor(display.primaryTag), false, nil))
+		case display.ellipsisIndex:
+			*runs = append(*runs, newHoverText("…", metaTextColor, theme.TextSize(),
+				"Full entry: "+strings.TrimSpace(fullText)))
+		}
+		position = special + 1
+	}
+	appendEntryRuns(runs, string(display.text[position:]))
+}
+
+func daybookTagTooltip(tag string, stat *tagStat) string {
+	tooltip := "Tag " + tag
+	if usage := tagUsageTooltip(tag, stat); usage != "" {
+		tooltip += " — " + usage
+	}
+	return tooltip
 }
 
 func appendEntryRuns(runs *[]fyne.CanvasObject, text string) {
