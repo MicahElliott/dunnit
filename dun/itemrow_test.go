@@ -1,6 +1,7 @@
 package dun
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -127,6 +128,19 @@ func TestDaybookCoreDisplayTruncatesAndRetainsPrimaryTag(t *testing.T) {
 	}
 	if display.primaryTag != "#foo" || display.markerIndex < 0 {
 		t.Fatalf("daybookCoreDisplay lost primary tag marker: %+v", display)
+	}
+}
+
+func TestSplitCategoryIconPrefixKeepsSeparator(t *testing.T) {
+	icon, rest, ok := splitCategoryIconPrefix(categoryIconPrefix("TODO") + "write the update")
+	if !ok {
+		t.Fatal("splitCategoryIconPrefix did not recognize TODO")
+	}
+	if !strings.HasSuffix(icon, " ") {
+		t.Fatalf("icon = %q, want trailing separator", icon)
+	}
+	if rest != "write the update" {
+		t.Fatalf("rest = %q, want entry text", rest)
 	}
 }
 

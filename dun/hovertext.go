@@ -18,6 +18,7 @@ type hoverText struct {
 	text      string
 	textColor color.Color
 	textSize  float32
+	textStyle fyne.TextStyle
 	tooltip   string
 
 	popup      *tooltipPopup
@@ -25,7 +26,11 @@ type hoverText struct {
 }
 
 func newHoverText(text string, textColor color.Color, textSize float32, tooltip string) *hoverText {
-	h := &hoverText{text: text, textColor: textColor, textSize: textSize, tooltip: tooltip}
+	return newHoverTextWithStyle(text, textColor, textSize, fyne.TextStyle{}, tooltip)
+}
+
+func newHoverTextWithStyle(text string, textColor color.Color, textSize float32, textStyle fyne.TextStyle, tooltip string) *hoverText {
+	h := &hoverText{text: text, textColor: textColor, textSize: textSize, textStyle: textStyle, tooltip: tooltip}
 	h.ExtendBaseWidget(h)
 	return h
 }
@@ -33,6 +38,7 @@ func newHoverText(text string, textColor color.Color, textSize float32, tooltip 
 func (h *hoverText) CreateRenderer() fyne.WidgetRenderer {
 	txt := canvas.NewText(h.text, h.textColor)
 	txt.TextSize = h.textSize
+	txt.TextStyle = h.textStyle
 	return &hoverTextRenderer{txt: txt}
 }
 

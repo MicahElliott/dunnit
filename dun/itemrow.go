@@ -164,10 +164,11 @@ func itemTextLabel(text string) fyne.CanvasObject {
 	return container.New(newTightRowLayout(), runs...)
 }
 
-// daybookItemTextLabel displays a Daybook row with its primary tag represented
-// by a colored, hoverable "#" at the tag's original position. Long core text
-// is shortened with a hoverable ellipsis; trailing metadata remains visible.
-// The original text remains the value used for edits and ledger writes.
+// daybookItemTextLabel displays a Daybook row with its primary tag in a
+// grouping prefix and as a colored, hoverable "#" at the tag's original
+// position. Long core text is shortened with a hoverable ellipsis; trailing
+// metadata remains visible. The original text remains the value used for
+// edits and ledger writes.
 func daybookItemTextLabel(prefix, text string, stats map[string]*tagStat) fyne.CanvasObject {
 	core, meta := splitTrailingMeta(text)
 	display := daybookCoreDisplay(core)
@@ -182,6 +183,11 @@ func daybookItemTextLabel(prefix, text string, stats map[string]*tagStat) fyne.C
 		} else {
 			runs = append(runs, canvas.NewText(prefix, theme.Color(theme.ColorNameForeground)))
 		}
+	}
+	if display.primaryTag != "" {
+		runs = append(runs, newTagLinkWithStyle(
+			"["+display.primaryTag+"] ", daybookTagTooltip(display.primaryTag, stats[display.primaryTag]),
+			tagTextColor(display.primaryTag), true, nil))
 	}
 	appendDaybookCoreRuns(&runs, display, stats, text)
 	appendMetadataRuns(&runs, meta)
@@ -275,8 +281,9 @@ func appendDaybookCoreRuns(runs *[]fyne.CanvasObject, display daybookCoreRender,
 				"#", daybookTagTooltip(display.primaryTag, stats[display.primaryTag]),
 				tagTextColor(display.primaryTag), false, nil))
 		case display.ellipsisIndex:
-			*runs = append(*runs, newHoverText("…", metaTextColor, theme.TextSize(),
-				"Full entry: "+strings.TrimSpace(fullText)))
+			*runs = append(*runs, newHoverTextWithStyle(" …",
+				theme.Color(theme.ColorNameForeground), theme.TextSize(),
+				fyne.TextStyle{Bold: true}, "Full entry: "+strings.TrimSpace(fullText)))
 		}
 		position = special + 1
 	}
@@ -424,7 +431,10 @@ func splitCategoryIconPrefix(text string) (icon, rest string, ok bool) {
 	for _, category := range Categories {
 		prefix := category.Emoji + " "
 		if strings.HasPrefix(text, prefix) {
-			return category.Emoji, text[len(prefix):], true
+			// Keep the separator with the rendered icon. The stored prefix
+			// is consumed here, so dropping its trailing space would make
+			// every categorized row visually run into its entry text.
+			return prefix, text[len(prefix):], true
 		}
 	}
 	return "", text, false

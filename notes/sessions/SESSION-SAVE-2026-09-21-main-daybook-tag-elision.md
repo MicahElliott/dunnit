@@ -7,8 +7,8 @@ long entries from forcing the window wider than necessary.
 
 ## Completed
 
-- Replaced the moved `[<tag>]` prefix with a colored, hoverable `#` marker at
-  the tag's original position.
+- Kept the `[<tag>]` grouping prefix and added a colored, hoverable `#` marker
+  at the tag's original position.
 - Added hoverable `…` truncation for long Daybook entry text, capped at about
   80 runes.
 - Kept duration, age, and lifecycle metadata after the truncated text.
