@@ -1027,7 +1027,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	refreshOpenItems()
 
 	// completedBox displays today's "end"-group entries (DONE/
-	// FAIL/WASTED) grouped by category with per-category
+	// HANDLED/FAIL/WASTED) grouped by category with per-category
 	// sub-headings, mirroring how Planned already splits
 	// TODO/GOAL/etc into their own sections (see groupOpenItemsByCategory).
 	// Also collapsible, placed right below Planned in the same accordion.

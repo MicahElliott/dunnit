@@ -142,9 +142,12 @@ type tagStat struct {
 // fix for why: an earlier version let heavy historical-but-stale
 // usage permanently outrank genuinely recent tags).
 func gatherTagStats() map[string]*tagStat {
+	return gatherTagStatsFromEntries(deduplicateCarryForwardEntries(AllLedgerEntries()), time.Now())
+}
+
+func gatherTagStatsFromEntries(entries []LedgerEntry, now time.Time) map[string]*tagStat {
 	stats := map[string]*tagStat{}
-	now := time.Now()
-	for _, e := range AllLedgerEntries() {
+	for _, e := range entries {
 		if len(e.Tags) == 0 {
 			continue
 		}
@@ -171,6 +174,60 @@ func gatherTagStats() map[string]*tagStat {
 	}
 	finalizeTagStats(stats, now)
 	return stats
+}
+
+// deduplicateCarryForwardEntries collapses daily copies of one TODO/DOING
+// lineage into its newest ledger entry. Carry-forward rows retain the
+// original date in an s/YYYY-MM-DD marker, which lets tag and people counts
+// treat a task carried across several days as one use while still keeping its
+// latest copy for recency scoring. Unmarked entries remain independent unless
+// a matching carried lineage exists.
+func deduplicateCarryForwardEntries(entries []LedgerEntry) []LedgerEntry {
+	carriedKeys := make(map[string]bool)
+	for _, entry := range entries {
+		if _, ok := parseCarryForwardSince(entry.Text); !ok {
+			continue
+		}
+		if key, ok := carryForwardEntryKey(entry); ok {
+			carriedKeys[key] = true
+		}
+	}
+
+	latest := make(map[string]int)
+	for i, entry := range entries {
+		key, ok := carryForwardEntryKey(entry)
+		if !ok || !carriedKeys[key] {
+			continue
+		}
+		latest[key] = i
+	}
+
+	out := make([]LedgerEntry, 0, len(entries))
+	for i, entry := range entries {
+		key, ok := carryForwardEntryKey(entry)
+		if ok && carriedKeys[key] && latest[key] != i {
+			continue
+		}
+		out = append(out, entry)
+	}
+	return out
+}
+
+func carryForwardEntryKey(entry LedgerEntry) (string, bool) {
+	if !isLifecycleCategory(entry.Category) && !isLifecycleEndpoint(entry.Category) {
+		return "", false
+	}
+	date, carried := parseCarryForwardSince(entry.Text)
+	if !carried {
+		date = entry.Date
+	}
+	text := stripResolutionSuffix(stripCarryForwardSince(entry.Text))
+	category := entry.Category
+	if isLifecycleCategory(category) || isLifecycleEndpoint(category) {
+		category = "TODO/DOING"
+		text = BaseTenseLeadingWord(text)
+	}
+	return date.Format("2006-01-02") + "\x00" + category + "\x00" + text, true
 }
 
 // finalizeTagStats combines a log-scaled frequency signal with the
@@ -290,7 +347,11 @@ func tagUsageTooltip(tag string, stat *tagStat) string {
 	if stat == nil {
 		return ""
 	}
-	return fmt.Sprintf("Used %d times in the last %d days", stat.recentCount,
+	word := "times"
+	if stat.recentCount == 1 {
+		word = "time"
+	}
+	return fmt.Sprintf("Used %d %s in the last %d days", stat.recentCount, word,
 		tagRecentWindowDays)
 }
 

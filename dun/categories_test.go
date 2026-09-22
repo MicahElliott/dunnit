@@ -1,6 +1,9 @@
 package dun
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestAllCategoriesHaveHelpText(t *testing.T) {
 	for _, category := range Categories {
@@ -53,5 +56,17 @@ func TestDoingCategoryIsVisiblePlannedAndTimeTrackable(t *testing.T) {
 	}
 	if len(labels) < 2 || labels[0] != doing.Label() || labels[1] != EmojiForCode("TODO")+" TODO" {
 		t.Errorf("Plan picker labels = %v, want DOING before TODO", labels)
+	}
+}
+
+func TestHandledIsALifecycleEndpoint(t *testing.T) {
+	if !CategoryExists("HANDLED") || !isLifecycleEndpoint("HANDLED") {
+		t.Fatal("HANDLED should be a registered lifecycle endpoint")
+	}
+	if got := GroupForCode("HANDLED"); got != "end" {
+		t.Fatalf("GroupForCode(HANDLED) = %q, want end", got)
+	}
+	if !strings.Contains(HelpForCode("HANDLED"), "@Name") {
+		t.Fatalf("HANDLED help = %q, want @Name guidance", HelpForCode("HANDLED"))
 	}
 }

@@ -123,7 +123,7 @@ func deleteLedgerItemLine(item OpenItem) error {
 // showEditItemDialog opens a small modal (dialog.NewCustomWithout
 // Buttons -- not a separate window) pre-filled with item.Text, letting the
 // user edit its text and category. Ordinary entries are restricted to their
-// own Group; lifecycle entries can move among TODO/DOING/DONE/FAIL/WASTED.
+// own Group; lifecycle entries can move among TODO/DOING/DONE/HANDLED/FAIL/WASTED.
 // Calls onSave after a successful save/delete so callers can refresh
 // dependent UI. Used by Daybook's inline ✏️ Edit action across
 // Planned/Endings/Hilites.
@@ -143,7 +143,7 @@ func showEditItemDialog(parent fyne.Window, item OpenItem, onSave func()) {
 
 // showEditItemDialogForCategory is used by the inline Edit action and
 // Planned's checkmark. Lifecycle entries can move between TODO, DOING, DONE,
-// FAIL, and WASTED; the leading verb follows the selected category.
+// HANDLED, FAIL, and WASTED; the leading verb follows the selected category.
 func showEditItemDialogForCategory(parent fyne.Window, item OpenItem, initialCategory string, onSave func()) {
 	group := GroupForCode(item.Category)
 	catOptions := CategoryOptionsForGroup(group)
@@ -222,7 +222,7 @@ func showEditItemDialogForCategory(parent fyne.Window, item OpenItem, initialCat
 
 func lifecycleCategoryOptions() []string {
 	var options []string
-	for _, code := range []string{"TODO", "DOING", "DONE", "FAIL", "WASTED"} {
+	for _, code := range []string{"TODO", "DOING", "DONE", "HANDLED", "FAIL", "WASTED"} {
 		options = append(options, categoryLabelForCode(code))
 	}
 	return options

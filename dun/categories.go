@@ -14,7 +14,7 @@ type Category struct {
 	Help string
 	// Group buckets categories for the picker's quick-filter buttons:
 	// "end" (the literal endpoints a "plan" item resolves into --
-	// DONE/FAIL/WASTED), "plan"
+	// DONE/HANDLED/FAIL/WASTED), "plan"
 	// (future-facing, open/tracked items), or "hilite" (freestanding
 	// notable-moment callouts, not tied to resolving any specific
 	// "plan" item -- see docs/category-taxonomy.md). Purely a UI
@@ -99,7 +99,7 @@ func GroupLabel(group string) string {
 //
 // "Endpoints" (2026-09-02 regroup, further narrowed later): "end" now
 // holds ONLY the literal terminal states a "Plan"-group item
-// (TODO/IDEA/GOAL/FIXME/etc.) resolves into -- DONE/FAIL/WASTED.
+// (TODO/IDEA/GOAL/FIXME/etc.) resolves into -- DONE/HANDLED/FAIL/WASTED.
 // TIL/KUDOS/WIN moved out of "end"
 // and into "hilite" alongside IMPACT/MILESTONE/CAREER/PSA: all of
 // these are freestanding notable-moment callouts that don't resolve
@@ -110,13 +110,14 @@ func GroupLabel(group string) string {
 // written by hand when closing a Plan item into one of these
 // endpoints -- not yet a structured/enforced mechanism).
 var Categories = []Category{
-	// end: literal endpoints only -- DONE/FAIL/WASTED, the terminal
+	// end: literal endpoints only -- DONE/HANDLED/FAIL/WASTED, the terminal
 	// states Plan-group items resolve into. WASTED is further
 	// gated behind Config.WastedTimeTrackingEnabled (default false,
 	// see config.go) -- an opt-in feature, hidden from the live
 	// picker when off, though still present here for Help/legend and
 	// historical ledger entries.
 	{"✔️", "DONE", "Completed work.", "end", "positive", false},
+	{"🤝", "HANDLED", "Someone else completed a TODO or DOING; add @Name when useful.", "end", "positive", false},
 	{"❌", "FAIL", "Work that did not succeed.", "end", "negative", false},
 	{"🗑️", "WASTED", "Unfocused or pointless work.", "end", "negative", false},
 
@@ -145,7 +146,7 @@ var Categories = []Category{
 	{"🏎️", "OPTIMIZE", "Working well, but worth improving.", "plan", "", false},
 
 	// hilite: freestanding notable-moment callouts -- not tied to
-	// resolving any specific "Plan" item (unlike DONE/FAIL/WASTED,
+	// resolving any specific "Plan" item (unlike DONE/HANDLED/FAIL/WASTED,
 	// which stay in "end" -- see the Categories doc comment above).
 	// TIL/KUDOS/WIN joined this group (moved from "end") alongside
 	// IMPACT/MILESTONE/CAREER/PSA -- all stay pickable by hand (you

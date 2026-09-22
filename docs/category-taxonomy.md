@@ -12,11 +12,12 @@ Most `plan`-group categories (TODO, DOING, IDEA, GOAL, QUESTION, WAITING,
 FIXME, RISK, SOMEDAY, OPTIMIZE) represent an *open item*: something
 logged now, tracked, and expected to eventually resolve. They all
 share the same lifecycle shape: **logged -> tracked as open ->
-resolved**. TODO has an explicit active state: **TODO -> DOING -> DONE**.
+resolved**. TODO has an explicit active state: **TODO -> DOING -> DONE**
+or **HANDLED** when someone else completes it.
 The state changes keep one logical task in the active Daybook view; daily
 carry-forward history remains readable.
 
-**DONE, FAIL, and WASTED are the resolution states of that lifecycle**
+**DONE, HANDLED, FAIL, and WASTED are the resolution states of that lifecycle**
 -- the "endpoints" a plan-group item can land on. This is why they
 belong conceptually with "End" (day-to-day capture, logged in the
 moment) rather than "Hilite" (which has a "retrospective, look-back"
@@ -62,7 +63,7 @@ sharing the bucket were.
 
 ## Current grouping (post-2026-09-12)
 
-- **End** -- terminal endpoints: DONE, FAIL, WASTED
+- **End** -- terminal endpoints: DONE, HANDLED, FAIL, WASTED
 - **Plan** -- open/tracked items: TODO, DOING, IDEA, GOAL, QUESTION, WAITING,
   FIXME, RISK, MEETING, SOMEDAY, OPTIMIZE
 - **Hilite** -- freestanding notable-event markers + day-meta: TIL,
@@ -108,7 +109,7 @@ only if a good replacement word surfaces.
 
 ## "(from X)" promotion-annotation convention
 
-When a Plan-group item resolves into an endpoint (DONE/FAIL/WASTED),
+When a Plan-group item resolves into an endpoint (DONE/HANDLED/FAIL/WASTED),
 it's useful to annotate the endpoint entry with where it came from,
 e.g. a DONE line noting `(from TODO)`. Current status:
 

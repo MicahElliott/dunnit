@@ -81,7 +81,7 @@ func TestParseLedgerLineTimeAcceptsMinuteAndLegacySecondStamps(t *testing.T) {
 func TestStandupCategories_IncludesEndAndHiliteExcludingInternalMarkers(t *testing.T) {
 	want := map[string]bool{
 		// end (excluding ONGOING)
-		"DONE": true, "FAIL": true, "WASTED": true,
+		"DONE": true, "HANDLED": true, "FAIL": true, "WASTED": true,
 		// hilite (excluding EODOnly SUMMARY/PRODUCTIVITY/MEETING_HOURS)
 		"TIL": true, "KUDOS": true, "WIN": true, "PSA": true, "OVERCOMING": true,
 		"INNOVATION": true, "LEADERSHIP": true,

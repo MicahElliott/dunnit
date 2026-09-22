@@ -43,7 +43,7 @@ func TestGetCategoryGroupItemsExcludesEODOnlyFromHilites(t *testing.T) {
 	}
 }
 
-func TestParseOpenItems_InflectedDoneResolvesSource(t *testing.T) {
+func TestParseOpenItems_InflectedEndpointsResolveSource(t *testing.T) {
 	lines := []string{
 		"[08:00:00] TODO write report",
 		"[08:05:00] DONE wrote report (via TODO)",
@@ -51,11 +51,13 @@ func TestParseOpenItems_InflectedDoneResolvesSource(t *testing.T) {
 		"[09:05:00] DONE fixed the login bug (via TODO)",
 		"[10:00:00] DOING send the update",
 		"[10:05:00] DONE sent the update (via DOING)",
+		"[11:00:00] TODO send the handoff",
+		"[11:05:00] HANDLED sent the handoff (via TODO)",
 	}
 
 	open := parseOpenItems(lines)
 	if len(open) != 0 {
-		t.Fatalf("expected inflected DONE entries to resolve TODOs, got %+v", open)
+		t.Fatalf("expected inflected endpoint entries to resolve TODOs, got %+v", open)
 	}
 }
 

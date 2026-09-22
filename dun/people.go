@@ -74,7 +74,7 @@ type personStat struct {
 func gatherPersonStats() map[string]*personStat {
 	stats := map[string]*personStat{}
 	now := time.Now()
-	for _, entry := range AllLedgerEntries() {
+	for _, entry := range deduplicateCarryForwardEntries(AllLedgerEntries()) {
 		for _, person := range entry.People {
 			key := personKey(person)
 			stat := stats[key]

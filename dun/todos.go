@@ -44,7 +44,7 @@ func isLifecycleCategory(cat string) bool {
 }
 
 func isLifecycleEndpoint(cat string) bool {
-	return cat == "DONE" || cat == "FAIL" || cat == "WASTED"
+	return cat == "DONE" || cat == "HANDLED" || cat == "FAIL" || cat == "WASTED"
 }
 
 // openItemKey identifies the logical item represented by an open ledger
@@ -78,9 +78,9 @@ func isOpenTrackedCategory(cat string) bool {
 // item from the open/Upcoming list. DISCARDED isn't a selectable
 // Daybook category (see categories.go) -- it only ever gets written
 // via recordDiscarded, never picked by hand.
-var resolvingCategories = []string{"DONE", "FAIL", "WASTED", "SOMEDAY", "DISCARDED"}
+var resolvingCategories = []string{"DONE", "HANDLED", "FAIL", "WASTED", "SOMEDAY", "DISCARDED"}
 
-// convertedSuffix marks a resolving line (DONE or SOMEDAY) as having
+// convertedSuffix marks a resolving line (DONE, HANDLED, or SOMEDAY) as having
 // been generated from an open item, so parseOpenItems can recognize
 // it and exclude the original from the "open" list. Kept as an exact,
 // greppable suffix rather than a separate marker file, to stay

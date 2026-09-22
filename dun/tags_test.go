@@ -37,6 +37,31 @@ func TestTagUsageTooltipUsesRecentCount(t *testing.T) {
 	}
 }
 
+func TestTagStatsCollapseCarryForwardCopies(t *testing.T) {
+	first := time.Date(2026, 9, 1, 0, 0, 0, 0, time.Local)
+	entries := []LedgerEntry{
+		{Date: first, Category: "TODO", Text: "ship it #foo", Tags: []string{"#foo"}},
+		{Date: first.AddDate(0, 0, 1), Category: "TODO", Text: "ship it #foo s/2026-09-01", Tags: []string{"#foo"}},
+		{Date: first.AddDate(0, 0, 2), Category: "DOING", Text: "shipping it #foo s/2026-09-01", Tags: []string{"#foo"}},
+		{Date: first.AddDate(0, 0, 2), Category: "DONE", Text: "shipped it #foo", Tags: []string{"#foo"}},
+	}
+
+	stats := gatherTagStatsFromEntries(deduplicateCarryForwardEntries(entries), first.AddDate(0, 0, 2))
+	if stats["#foo"].count != 2 {
+		t.Fatalf("tag count = %d, want original lineage plus independent DONE use", stats["#foo"].count)
+	}
+	if stats["#foo"].recentCount != 2 {
+		t.Fatalf("recent tag count = %d, want 2", stats["#foo"].recentCount)
+	}
+}
+
+func TestTagUsageTooltipUsesSingularForOneUse(t *testing.T) {
+	stat := &tagStat{recentCount: 1}
+	if got := tagUsageTooltip("#foo", stat); got != "Used 1 time in the last 30 days" {
+		t.Fatalf("tagUsageTooltip = %q, want singular wording", got)
+	}
+}
+
 func TestFinalizeTagStatsFavorsRecentUse(t *testing.T) {
 	now := time.Date(2026, 9, 18, 12, 0, 0, 0, time.UTC)
 	stats := map[string]*tagStat{

@@ -242,6 +242,7 @@ authoritative source; update this section whenever categories change._
 **End** — day-to-day capture, the terminal states a Plan item resolves into
 
 - ✔️ `DONE` — Something you completed. The most common endpoint a "Plan" item (TODO/IDEA/GOAL/etc.) resolves into.
+- 🤝 `HANDLED` — Someone else completed a TODO or DOING item. Add `@Name` when useful.
 - ❌ `FAIL` — Something that didn't go as hoped — an endpoint a "Plan" item can resolve into, same as DONE, just the unsuccessful outcome.
 - 🗑️ `WASTED` — Unfocused, pointless work or distraction. Opt-in: hidden from the live picker unless enabled in Settings.
 
