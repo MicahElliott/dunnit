@@ -179,9 +179,9 @@ func gatherTagStatsFromEntries(entries []LedgerEntry, now time.Time) map[string]
 // deduplicateCarryForwardEntries collapses daily copies of one TODO/DOING
 // lineage into its newest ledger entry. Carry-forward rows retain the
 // original date in an s/YYYY-MM-DD marker, which lets tag and people counts
-// treat a task carried across several days as one use while still keeping its
-// latest copy for recency scoring. Unmarked entries remain independent unless
-// a matching carried lineage exists.
+// treat a task carried across several days as one logical use while still
+// keeping its latest copy for recency scoring. Unmarked entries remain
+// independent unless a matching carried lineage exists.
 func deduplicateCarryForwardEntries(entries []LedgerEntry) []LedgerEntry {
 	carriedKeys := make(map[string]bool)
 	for _, entry := range entries {

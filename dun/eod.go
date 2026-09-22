@@ -264,7 +264,7 @@ func eodReportStats(date time.Time) string {
 	entries := 0
 	done := 0
 	meetingHours := ""
-	allEntries := AllLedgerEntries()
+	allEntries := deduplicateCarryForwardEntries(AllLedgerEntries())
 	cfg := LoadConfig()
 	for _, entry := range allEntries {
 		if !sameCalendarDate(entry.Date, date) || !eodEntryIncluded(entry, cfg) {

@@ -99,6 +99,7 @@ func periodReportSignals(from, to time.Time) string {
 			included = append(included, entry)
 		}
 	}
+	included = deduplicateCarryForwardEntries(included)
 	if len(included) == 0 {
 		return ""
 	}

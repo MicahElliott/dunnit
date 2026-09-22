@@ -288,6 +288,7 @@ func pluralCount(n int, singular, plural string) string {
 // count -- a small building block for a possible future "category
 // histogram" navigator mode (not yet surfaced in the UI).
 func categoryCounts(entries []LedgerEntry) map[string]int {
+	entries = deduplicateCarryForwardEntries(entries)
 	counts := make(map[string]int)
 	for _, e := range entries {
 		counts[e.Category]++
@@ -324,6 +325,7 @@ const histogramBarWidth = 40
 // trend.go's existing house style (no charting library, plain text)
 // rather than introducing a new dependency for this.
 func formatCategoryHistogram(entries []LedgerEntry) string {
+	entries = deduplicateCarryForwardEntries(entries)
 	if len(entries) == 0 {
 		return "(no entries to chart)"
 	}
@@ -363,6 +365,7 @@ func formatCategoryHistogram(entries []LedgerEntry) string {
 // side-by-side with the filtered browse view, same rationale as
 // showNavigatorAIAnswerWindow.
 func showNavigatorHistogramWindow(a fyne.App, entries []LedgerEntry) {
+	entries = deduplicateCarryForwardEntries(entries)
 	w := a.NewWindow("Dunnit: Navigator — Histogram")
 	body := widget.NewMultiLineEntry()
 	body.Wrapping = fyne.TextWrapOff

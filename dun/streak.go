@@ -204,6 +204,7 @@ func distinctTags(entries []LedgerEntry, from, through time.Time, tickets bool) 
 }
 
 func mostUsedTag(entries []LedgerEntry, from, through time.Time, minimum int) (string, bool) {
+	entries = deduplicateCarryForwardEntries(entries)
 	counts := map[string]int{}
 	labels := map[string]string{}
 	for _, entry := range entries {
@@ -248,6 +249,7 @@ func hasConsecutiveDoneDays(entries []LedgerEntry, through time.Time) bool {
 }
 
 func hasConsecutiveTagDays(entries []LedgerEntry, from, through time.Time, count int) (string, bool) {
+	entries = deduplicateCarryForwardEntries(entries)
 	for day := from; !day.After(through); day = day.AddDate(0, 0, 1) {
 		if !isWorkday(day) {
 			continue
@@ -296,7 +298,7 @@ func hasConsecutiveTagDays(entries []LedgerEntry, from, through time.Time, count
 // throughput, breadth, learning, time, and sustained focus. The ordinary
 // TODO -> DOING -> DONE path is not a signal because it is normal daily flow.
 func streakCalloutCandidates(entries []LedgerEntry, now time.Time, loggingStreak int) []string {
-	entries = filterExcludedStreakEntries(entries)
+	entries = deduplicateCarryForwardEntries(filterExcludedStreakEntries(entries))
 	weekFrom, weekThrough := weekStart(now), dateOnly(now)
 	recentFrom, recentThrough := recentWorkdayRange(now, 5)
 	var callouts []string

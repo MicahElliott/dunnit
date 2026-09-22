@@ -104,6 +104,22 @@ func TestStreakCalloutCandidatesExcludeOrdinaryLifecycleFlow(t *testing.T) {
 	}
 }
 
+func TestStreakTagSignalsCollapseCarryForwardCopies(t *testing.T) {
+	first := time.Date(2026, 9, 21, 0, 0, 0, 0, time.Local)
+	entries := []LedgerEntry{
+		{Date: first, Category: "TODO", Text: "follow up #alpha", Tags: []string{"#alpha"}},
+		{Date: first.AddDate(0, 0, 1), Category: "TODO", Text: "follow up #alpha s/2026-09-21", Tags: []string{"#alpha"}},
+		{Date: first.AddDate(0, 0, 2), Category: "DOING", Text: "follow up #alpha s/2026-09-21", Tags: []string{"#alpha"}},
+	}
+	through := first.AddDate(0, 0, 2)
+	if _, ok := mostUsedTag(entries, first, through, 2); ok {
+		t.Fatal("mostUsedTag counted carry-forward copies as separate uses")
+	}
+	if _, ok := hasConsecutiveTagDays(entries, first, through, 3); ok {
+		t.Fatal("hasConsecutiveTagDays counted carry-forward copies as daily use")
+	}
+}
+
 func TestStreakCalloutCandidatesExcludeConfiguredTags(t *testing.T) {
 	withTempDunnitDir(t)
 	cfg := LoadConfig()

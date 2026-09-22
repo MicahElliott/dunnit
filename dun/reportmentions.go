@@ -38,7 +38,7 @@ func rankedReportMentions(mentions map[string]reportMention) []reportMention {
 func reportMentionMaps(entries []LedgerEntry) (tags, people map[string]reportMention) {
 	tags = map[string]reportMention{}
 	people = map[string]reportMention{}
-	for _, entry := range entries {
+	for _, entry := range deduplicateCarryForwardEntries(entries) {
 		for _, tag := range entry.Tags {
 			addReportMention(tags, tag)
 		}
