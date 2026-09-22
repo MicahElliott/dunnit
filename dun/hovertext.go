@@ -2,6 +2,7 @@ package dun
 
 import (
 	"image/color"
+	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -58,7 +59,7 @@ func (h *hoverText) showTooltip() {
 		host:       host,
 		ownerPos:   ownerPos,
 		ownerSize:  h.Size(),
-		tooltipPos: tooltipPositionAbove(ownerPos, label),
+		tooltipPos: tooltipPositionAbove(ownerPos, h.Size(), label, host.Size(), strings.Contains(h.text, "…") || strings.Contains(h.text, "...")),
 		label:      label,
 	}
 	popup.ExtendBaseWidget(popup)

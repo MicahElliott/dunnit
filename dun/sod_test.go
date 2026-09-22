@@ -68,3 +68,20 @@ func TestLastActiveLedgerDateUsesNewestPriorDay(t *testing.T) {
 		t.Fatalf("lastActiveLedgerDate() = %v, %v; want 2026-09-15, true", got, ok)
 	}
 }
+
+func TestSortSODPlanItemsDoesDoingOldestFirst(t *testing.T) {
+	items := []OpenItem{
+		{Category: "TODO", Text: "new todo s/2026-09-20"},
+		{Category: "DOING", Text: "new doing s/2026-09-20"},
+		{Category: "DOING", Text: "old doing s/2026-09-11"},
+		{Category: "TODO", Text: "old todo s/2026-09-11"},
+	}
+
+	sortSODPlanItems(items)
+	want := []string{"old doing s/2026-09-11", "new doing s/2026-09-20", "old todo s/2026-09-11", "new todo s/2026-09-20"}
+	for i, text := range want {
+		if items[i].Text != text {
+			t.Errorf("position %d = %q, want %q", i, items[i].Text, text)
+		}
+	}
+}

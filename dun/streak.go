@@ -3,7 +3,6 @@ package dun
 import (
 	"fmt"
 	"math/rand"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -13,17 +12,30 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-// ledgerHasEntries reports whether the ledger file for the given date
-// exists and has at least one non-empty line (an empty file can be
-// left behind by some code paths, e.g. directory creation without an
-// actual entry -- treat that as "nothing logged").
+// ledgerHasEntries reports whether the given date has at least one ledger
+// entry that is not excluded by the user's report-exclude tags. Excluded-only
+// activity should not advance the streak shown in Daybook.
 func ledgerHasEntries(date time.Time) bool {
-	_, fname := ledgerPathFor(date)
-	info, err := os.Stat(fname)
-	if err != nil {
-		return false
+	for _, entry := range AllLedgerEntries() {
+		if dateOnly(entry.Date).Equal(dateOnly(date)) && !isExcludedStreakEntry(entry) {
+			return true
+		}
 	}
-	return info.Size() > 0
+	return false
+}
+
+func isExcludedStreakEntry(entry LedgerEntry) bool {
+	return lineHasExcludedTag(entry.Text, LoadConfig().ReportExcludeTags)
+}
+
+func filterExcludedStreakEntries(entries []LedgerEntry) []LedgerEntry {
+	filtered := make([]LedgerEntry, 0, len(entries))
+	for _, entry := range entries {
+		if !isExcludedStreakEntry(entry) {
+			filtered = append(filtered, entry)
+		}
+	}
+	return filtered
 }
 
 // CurrentStreak (FR-28) computes the number of consecutive workdays
@@ -284,6 +296,7 @@ func hasConsecutiveTagDays(entries []LedgerEntry, from, through time.Time, count
 // throughput, breadth, learning, time, and sustained focus. The ordinary
 // TODO -> DOING -> DONE path is not a signal because it is normal daily flow.
 func streakCalloutCandidates(entries []LedgerEntry, now time.Time, loggingStreak int) []string {
+	entries = filterExcludedStreakEntries(entries)
 	weekFrom, weekThrough := weekStart(now), dateOnly(now)
 	recentFrom, recentThrough := recentWorkdayRange(now, 5)
 	var callouts []string

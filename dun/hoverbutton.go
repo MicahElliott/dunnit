@@ -127,13 +127,28 @@ type tooltipPopupRenderer struct {
 	label      *widget.Label
 }
 
-func tooltipPositionAbove(ownerPos fyne.Position, label *widget.Label) fyne.Position {
+func tooltipPositionAbove(ownerPos fyne.Position, ownerSize fyne.Size, label *widget.Label, canvasSize fyne.Size, forceLeft bool) fyne.Position {
 	padding := theme.Padding()
+	tooltipSize := label.MinSize()
 	tooltipHeight := label.MinSize().Height + 2*padding
-	// The tooltip is a full-canvas overlay. Starting at the owner's X
-	// coordinate makes tooltips for right-edge controls render offscreen;
-	// keep them anchored near the window's left edge instead.
-	return fyne.NewPos(padding, ownerPos.Y-tooltipHeight)
+	x := ownerPos.X + (ownerSize.Width-tooltipSize.Width-2*padding)/2
+	if forceLeft {
+		// Long entry tooltips are full-canvas overlays. Keep those anchored
+		// near the window's left edge so they have room to render.
+		x = padding
+	} else {
+		if x < padding {
+			x = padding
+		}
+		maxX := canvasSize.Width - tooltipSize.Width - 2*padding
+		if x > maxX {
+			x = maxX
+		}
+		if x < padding {
+			x = padding
+		}
+	}
+	return fyne.NewPos(x, ownerPos.Y-tooltipHeight)
 }
 
 func (r *tooltipPopupRenderer) Layout(_ fyne.Size) {
@@ -179,7 +194,7 @@ func (b *hoverButton) showTooltip() {
 		host:        canvas,
 		ownerPos:    ownerPos,
 		ownerSize:   b.Size(),
-		tooltipPos:  tooltipPositionAbove(ownerPos, label),
+		tooltipPos:  tooltipPositionAbove(ownerPos, b.Size(), label, canvas.Size(), false),
 		label:       label,
 		ownerTapped: b.OnTapped,
 	}

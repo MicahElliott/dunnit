@@ -103,3 +103,43 @@ func TestStreakCalloutCandidatesExcludeOrdinaryLifecycleFlow(t *testing.T) {
 		}
 	}
 }
+
+func TestStreakCalloutCandidatesExcludeConfiguredTags(t *testing.T) {
+	withTempDunnitDir(t)
+	cfg := LoadConfig()
+	cfg.ReportExcludeTags = []string{"#home"}
+	if err := writeConfig(cfg); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	now := time.Date(2026, 9, 25, 12, 0, 0, 0, time.Local)
+	entries := []LedgerEntry{
+		{Date: now, Category: "DONE", Text: "finished #home", Tags: []string{"#home"}},
+	}
+	if got := streakCalloutCandidates(entries, now, 0); len(got) != 0 {
+		t.Fatalf("excluded-only entries produced streak callouts: %v", got)
+	}
+}
+
+func TestCurrentStreakIgnoresExcludedOnlyDays(t *testing.T) {
+	withTempDunnitDir(t)
+	cfg := LoadConfig()
+	cfg.ReportExcludeTags = []string{"#home"}
+	if err := writeConfig(cfg); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	yesterday := previousCarryWorkday(time.Now())
+	priorWorkday := previousCarryWorkday(yesterday)
+	writeLedgerLinesForDate(t, yesterday, []string{
+		"[09:00:00] DONE cleaned the garage #home",
+	})
+	writeLedgerLinesForDate(t, priorWorkday, []string{
+		"[09:00:00] DONE shipped the fix #work",
+	})
+	InvalidateLedgerCaches()
+
+	if got := CurrentStreak(); got != 0 {
+		t.Fatalf("CurrentStreak() = %d, want 0 after an excluded-only day", got)
+	}
+}

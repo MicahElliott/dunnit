@@ -149,7 +149,7 @@ func (t *tagLink) showTooltip() {
 		host:        host,
 		ownerPos:    ownerPos,
 		ownerSize:   t.Size(),
-		tooltipPos:  tooltipPositionAbove(ownerPos, label),
+		tooltipPos:  tooltipPositionAbove(ownerPos, t.Size(), label, host.Size(), false),
 		label:       label,
 		ownerTapped: func() { t.Tapped(nil) },
 	}
@@ -246,7 +246,7 @@ func (l *urlLink) showTooltip() {
 		host:        host,
 		ownerPos:    ownerPos,
 		ownerSize:   l.Size(),
-		tooltipPos:  tooltipPositionAbove(ownerPos, label),
+		tooltipPos:  tooltipPositionAbove(ownerPos, l.Size(), label, host.Size(), false),
 		label:       label,
 		ownerTapped: func() { l.Tapped(nil) },
 	}

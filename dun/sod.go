@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -30,6 +31,35 @@ var sodContextCategories = map[string]bool{
 	"WAITING":  true,
 	"QUESTION": true,
 	"FIXME":    true,
+}
+
+const sodAutoCloseAfter = 15 * time.Minute
+
+func sodPlanCategoryRank(category string) int {
+	if category == "DOING" {
+		return 0
+	}
+	return 1
+}
+
+func sodPlanSortTime(item OpenItem) time.Time {
+	if since, ok := parseCarryForwardSince(item.Text); ok {
+		return dateOnly(since)
+	}
+	if !item.Time.IsZero() {
+		return item.Time
+	}
+	return time.Date(9999, 12, 31, 0, 0, 0, 0, time.Local)
+}
+
+func sortSODPlanItems(items []OpenItem) {
+	sort.SliceStable(items, func(i, j int) bool {
+		a, b := sodPlanCategoryRank(items[i].Category), sodPlanCategoryRank(items[j].Category)
+		if a != b {
+			return a < b
+		}
+		return sodPlanSortTime(items[i]).Before(sodPlanSortTime(items[j]))
+	})
 }
 
 func dayReflection(entries []LedgerEntry, date time.Time) string {
@@ -114,11 +144,18 @@ func markStartOfDayRun() {
 // EOD reflection, and offers a quick-entry field for today's plan.
 func showSODWindow(a fyne.App) {
 	now := time.Now()
+	cfgAtOpen := LoadConfig()
+	alreadyRan := cfgAtOpen.LastStartOfDayDate == now.Format("2006-01-02")
+	resumeDaybook := daybookVisible
+	if resumeDaybook && trayWindow != nil {
+		hideDaybook(trayWindow)
+	}
 	// Ledger files may have been changed by git sync or another Dunnit
 	// process since the five-minute index refresh. SOD is a daily boundary,
 	// so its date/context decisions should always use the current files.
 	InvalidateLedgerCaches()
 	carrySource, _ := carryForwardDailyPlan(now)
+	markStartOfDayRun()
 	entries := AllLedgerEntries()
 	lastActive, hasLastActive := lastActiveLedgerDate(entries, now)
 
@@ -134,12 +171,34 @@ func showSODWindow(a fyne.App) {
 				plan = append(plan, item)
 			}
 		}
+		sortSODPlanItems(plan)
 		staleItems := staleDailyPlanItems(time.Now())
+		sort.SliceStable(staleItems, func(i, j int) bool {
+			a, b := sodPlanCategoryRank(staleItems[i].Category), sodPlanCategoryRank(staleItems[j].Category)
+			if a != b {
+				return a < b
+			}
+			return staleItems[i].Since.Before(staleItems[j].Since)
+		})
 		staleByKey := make(map[string]stalePlanItem, len(staleItems))
 		for _, stale := range staleItems {
 			staleByKey[openItemKey(stale.Category, stale.Text)] = stale
 		}
+		orderedPlan := append([]OpenItem{}, plan...)
 		seen := make(map[string]bool, len(plan)+len(staleItems))
+		for _, item := range plan {
+			seen[openItemKey(item.Category, item.Text)] = true
+		}
+		for _, stale := range staleItems {
+			key := openItemKey(stale.Category, stale.Text)
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			orderedPlan = append(orderedPlan, stale.OpenItem)
+		}
+		sortSODPlanItems(orderedPlan)
+		seen = make(map[string]bool, len(orderedPlan))
 		addPlanRow := func(item OpenItem, stale *stalePlanItem) {
 			text := item.Text
 			if stale != nil && !hasCarryForwardSince(text) {
@@ -163,7 +222,7 @@ func showSODWindow(a fyne.App) {
 			planBox.Add(container.NewBorder(nil, nil, nil, actions, row))
 		}
 
-		for _, item := range plan {
+		for _, item := range orderedPlan {
 			key := openItemKey(item.Category, item.Text)
 			if seen[key] {
 				continue
@@ -175,15 +234,6 @@ func showSODWindow(a fyne.App) {
 			} else {
 				addPlanRow(item, nil)
 			}
-		}
-		for _, stale := range staleItems {
-			key := openItemKey(stale.Category, stale.Text)
-			if seen[key] {
-				continue
-			}
-			seen[key] = true
-			item := stale.OpenItem
-			addPlanRow(item, &stale)
 		}
 		if len(seen) == 0 {
 			planBox.Add(widget.NewLabel("No TODOs carried in yet. Add one below or from Daybook."))
@@ -200,9 +250,9 @@ func showSODWindow(a fyne.App) {
 	}
 	var planNote *widget.Label
 	if !carrySource.IsZero() {
-		planNote = newExplanatoryLabel("These items are carrying into today.")
+		planNote = newExplanatoryLabel("These items are carrying into today. You’ll primarily change them in Daybook.")
 	} else if len(staleDailyPlanItems(now)) > 0 {
-		planNote = newExplanatoryLabel("These items remain open from an earlier day. Review the row actions or edit them below.")
+		planNote = newExplanatoryLabel("These items remain open from an earlier day. You’ll primarily change them in Daybook; use the row actions here to review them.")
 	} else {
 		planNote = newExplanatoryLabel("Add a TODO below or from Daybook.")
 	}
@@ -222,6 +272,7 @@ func showSODWindow(a fyne.App) {
 				actions := container.NewHBox(
 					newHoverIconButton(theme.Icon(theme.IconNameDocumentCreate), "Edit", func() {
 						showEditItemDialog(w, item, func() {
+							carryForwardEditedItem(item)
 							carryForwardDailyPlan(time.Now())
 							refreshContext()
 							refreshPlan()
@@ -308,26 +359,40 @@ func showSODWindow(a fyne.App) {
 			refreshStartOfDayNotice()
 		}
 	}
-	w.SetOnClosed(refreshDaybook)
+	var closeTimer *time.Timer
+	w.SetOnClosed(func() {
+		if closeTimer != nil {
+			closeTimer.Stop()
+		}
+		refreshDaybook()
+		if resumeDaybook && trayWindow != nil {
+			ShowDaybook(trayWindow, false)
+		}
+	})
 
-	done := func() {
-		markStartOfDayRun()
-		w.Close()
+	done := func() { w.Close() }
+
+	var statusNote fyne.CanvasObject
+	if alreadyRan {
+		statusNote = newExplanatoryLabel("Start of Day has already run today. It’s okay to run it again if you want to add more recurring items.")
+	} else {
+		statusNote = newExplanatoryLabel("Start of Day has now run today. It’s okay to run it again if you want to add more recurring items.")
 	}
 
 	content := container.NewVBox(
 		widget.NewLabelWithStyle("Let’s get your day planned.", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		statusNote,
 		streakSummary(a),
 		reportBox,
+		recurringBox,
+		sodHeading("Open context from the last active day (not copied into today’s plan)"),
+		newExplanatoryLabel("WAITING, RISK, QUESTION, FIXME, and GOAL stay here for context; editing to TODO/DOING will activate these for today."),
+		contextBox,
 		sodHeading(planHeading),
 		planNote,
 		planBox,
 		newExplanatoryLabel(fmt.Sprintf(
 			"Items open %d+ days show a red dot. Use the row actions to delete, postpone, or mark them done.", staleReviewDays+1)),
-		sodHeading("Open context from the last active day (not copied into today’s plan)"),
-		newExplanatoryLabel("WAITING, RISK, QUESTION, FIXME, and GOAL stay here for context; editing to TODO/DOING will activate these for today."),
-		contextBox,
-		recurringBox,
 		entryRow,
 		newItemSuggestions,
 		widget.NewButton("Done", done),
@@ -335,6 +400,9 @@ func showSODWindow(a fyne.App) {
 
 	w.SetContent(windowPad(container.NewVScroll(content)))
 	w.Resize(fyne.NewSize(560, 640))
+	closeTimer = time.AfterFunc(sodAutoCloseAfter, func() {
+		fyne.Do(func() { w.Close() })
+	})
 	w.Show()
 }
 

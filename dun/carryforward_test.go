@@ -117,7 +117,7 @@ func TestCarryForwardDailyPlan_IdempotentPerDay(t *testing.T) {
 func TestCarryForwardDailyPlan_PreservesOriginalSinceDate(t *testing.T) {
 	withTempDunnitDir(t)
 
-	twoDaysAgo := previousCarryWorkday(time.Now()).AddDate(0, 0, -2)
+	twoDaysAgo := previousCarryWorkday(previousCarryWorkday(time.Now()))
 	writeLedgerLinesForDate(t, twoDaysAgo, []string{
 		"[09:00:00] TODO finish the report",
 	})
@@ -335,6 +335,44 @@ func TestCarryForwardStartDoneCollapsesLifecycleAcrossDays(t *testing.T) {
 	}
 	if cat, _, ok := parseLedgerLine(lines[0]); !ok || cat != "DONE" {
 		t.Fatalf("current row = %q, want DONE", lines[0])
+	}
+}
+
+func TestCarryForwardEditedContextItemPromotesIntoToday(t *testing.T) {
+	withTempDunnitDir(t)
+
+	yesterday := previousCarryWorkday(time.Now())
+	writeLedgerLinesForDate(t, yesterday, []string{
+		"[09:00:00] WAITING waiting for review",
+	})
+	InvalidateLedgerCaches()
+
+	entries := AllLedgerEntries()
+	if len(entries) != 1 {
+		t.Fatalf("expected one historical entry, got %d", len(entries))
+	}
+	item := OpenItem{
+		Category:  entries[0].Category,
+		Text:      entries[0].Text,
+		LineIndex: entries[0].Line,
+		Source:    entries[0].Source,
+	}
+	if err := replaceLedgerItemAt(item, "DOING", "continue the review"); err != nil {
+		t.Fatalf("edit historical context item: %v", err)
+	}
+
+	carryForwardEditedItem(item)
+
+	lines := readLedgerLines()
+	if len(lines) != 1 {
+		t.Fatalf("expected promoted item in today's ledger, got %v", lines)
+	}
+	category, text, ok := parseLedgerLine(lines[0])
+	if !ok || category != "DOING" || !strings.HasPrefix(text, "continue the review") {
+		t.Fatalf("promoted item = %q, want DOING continue the review", lines[0])
+	}
+	if !strings.Contains(text, "s/"+yesterday.Format("2006-01-02")) {
+		t.Fatalf("promoted item lost its source date: %q", text)
 	}
 }
 

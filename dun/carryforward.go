@@ -1,6 +1,7 @@
 package dun
 
 import (
+	"log"
 	"regexp"
 	"strings"
 	"time"
@@ -349,6 +350,38 @@ func carryForwardDailyPlan(now time.Time) (sourceDate time.Time, items []OpenIte
 		todayKeys[key] = true
 	}
 	return sourceDate, candidates
+}
+
+// carryForwardEditedItem promotes a historical context item that the user
+// changed to TODO or DOING directly into today's plan. The ordinary daily
+// carry-forward intentionally chooses one source day; an explicit edit is a
+// stronger signal and should not disappear just because another day has a
+// newer plan.
+func carryForwardEditedItem(item OpenItem) {
+	if item.Source == "" {
+		return
+	}
+	entries := AllLedgerEntries()
+	for _, entry := range entries {
+		if entry.Source != item.Source || entry.Line != item.LineIndex {
+			continue
+		}
+		if sameCalendarDate(entry.Date, time.Now()) {
+			return
+		}
+		text := stripCarryForwardSince(entry.Text)
+		key := openItemKey(entry.Category, text)
+		for _, today := range entries {
+			if sameCalendarDate(today.Date, time.Now()) && dailyCarryCategories[today.Category] &&
+				openItemKey(today.Category, today.Text) == key {
+				return
+			}
+		}
+		if err := recordActivity(text+carryForwardSinceSuffix(staleDateFor(entry.Text, entry.Date)), entry.Category); err != nil {
+			log.Println("Error carrying edited SOD item into today:", err)
+		}
+		return
+	}
 }
 
 // staleReviewLookbackDays bounds SOD's daily-purpose review. This gives a

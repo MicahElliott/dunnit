@@ -58,7 +58,7 @@ func (s *hoverSelect) showTooltip() {
 		host:       canvas,
 		ownerPos:   ownerPos,
 		ownerSize:  s.Size(),
-		tooltipPos: tooltipPositionAbove(ownerPos, label),
+		tooltipPos: tooltipPositionAbove(ownerPos, s.Size(), label, canvas.Size(), false),
 		label:      label,
 		// Forward the real event so a click that lands on the Select
 		// while its tooltip is showing opens the dropdown immediately.

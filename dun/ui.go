@@ -79,6 +79,10 @@ var (
 var trayApp fyne.App
 var trayWindow fyne.Window
 
+// daybookVisible tracks whether the tray window was visible before a modal
+// Start of Day window temporarily takes over the screen.
+var daybookVisible bool
+
 // trayRefreshAll refreshes Daybook's picker and open/completed/
 // reflections/last-item sections -- set once by BuildMainWindow (which
 // owns the actual refreshX closures, scoped to its own widget state),
@@ -169,6 +173,7 @@ func hideDaybook(w fyne.Window) {
 		daybookAutoHideTimer = nil
 	}
 	daybookAutoHideMu.Unlock()
+	daybookVisible = false
 	w.Hide()
 }
 
@@ -203,6 +208,7 @@ func ShowDaybook(w fyne.Window, autoHide bool) {
 		prepareDaybookAutoPopup()
 	}
 	setDaybookAutoHideMode(autoHide)
+	daybookVisible = true
 	w.Show()
 	w.RequestFocus()
 	FocusMainInput()
@@ -894,7 +900,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 			// A hover tooltip is a full-canvas overlay in Fyne, so it can
 			// take the first click while the button is unfocused.
 			actions := []fyne.CanvasObject{
-				widget.NewButtonWithIcon("", theme.Icon(theme.IconNameContentClear), func() {
+				widget.NewButtonWithIcon("", theme.Icon(theme.IconNameDelete), func() {
 					recordDiscarded(item)
 					fyne.Do(func() {
 						refreshOpenItems()
