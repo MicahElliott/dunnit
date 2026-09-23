@@ -91,10 +91,10 @@ func standupSourceDates(now time.Time) []time.Time {
 
 // standupWindowStartLabel keeps a midnight boundary readable in the
 // standup window. "Tue 00:00" is easy to misread as the end of Tuesday,
-// while "Tue midnight" makes the boundary explicit.
+// so name the boundary as the start of that day.
 func standupWindowStartLabel(t time.Time) string {
 	if t.Hour() == 0 && t.Minute() == 0 {
-		return t.Format("Mon") + " midnight"
+		return "start of " + t.Format("Mon")
 	}
 	return t.Format("Mon 15:04")
 }
@@ -215,7 +215,7 @@ func summarizeStandupWithLLMCLI(lines []string) (string, error) {
 }
 
 func summarizeStandupWithLLMCLIContext(ctx context.Context, lines []string) (string, error) {
-	return summarizeStandupWithLLCLIAt(ctx, lines, time.Now())
+	return summarizeStandupWithLLMCLIItemsContext(ctx, lines, standupOpenItemsForReport())
 }
 
 func standupActivityLabel(now time.Time) string {
@@ -240,10 +240,71 @@ func standupOpenItemsForReport() []OpenItem {
 	return items
 }
 
-func summarizeStandupWithLLCLIAt(ctx context.Context, lines []string, now time.Time) (string, error) {
+const (
+	standupCompletedSection = "Completed/notable items (editable):"
+	standupOpenSection      = "Open items for today (editable):"
+)
+
+func formatStandupEditableInput(lines []string, openItems []OpenItem) string {
+	var sb strings.Builder
+	sb.WriteString(standupCompletedSection)
+	if len(lines) > 0 {
+		sb.WriteString("\n")
+		sb.WriteString(strings.Join(lines, "\n"))
+	}
+	sb.WriteString("\n\n")
+	sb.WriteString(standupOpenSection)
+	for _, item := range openItems {
+		sb.WriteString("\n[")
+		sb.WriteString(item.Category)
+		sb.WriteString("] ")
+		sb.WriteString(stripCarryForwardSince(item.Text))
+	}
+	return sb.String()
+}
+
+func parseStandupEditableInput(text string) (lines []string, openItems []OpenItem) {
+	section := "completed"
+	for _, raw := range strings.Split(text, "\n") {
+		line := strings.TrimSpace(raw)
+		if line == "" {
+			continue
+		}
+		switch strings.ToLower(line) {
+		case strings.ToLower(standupCompletedSection):
+			section = "completed"
+			continue
+		case strings.ToLower(standupOpenSection):
+			section = "open"
+			continue
+		}
+		line = strings.TrimSpace(strings.TrimPrefix(line, "-"))
+		if line == "" {
+			continue
+		}
+		if section != "open" {
+			lines = append(lines, line)
+			continue
+		}
+		category := "TODO"
+		if strings.HasPrefix(line, "[") {
+			if end := strings.IndexByte(line, ']'); end > 1 {
+				category = strings.TrimSpace(line[1:end])
+				line = strings.TrimSpace(line[end+1:])
+			}
+		}
+		if line == "" {
+			continue
+		}
+		openItems = append(openItems, OpenItem{Category: category, Text: line})
+	}
+	return lines, openItems
+}
+
+func standupPromptInput(lines []string, openItems []OpenItem, now time.Time) string {
 	var openBuf strings.Builder
-	for _, item := range standupOpenItemsForReport() {
-		openBuf.WriteString("- " + stripCarryForwardSince(item.Text) + "\n")
+	for _, item := range openItems {
+		openBuf.WriteString("- [" + item.Category + "] " + stripCarryForwardSince(item.Text) + "\n")
 	}
 	openSection := "(nothing currently open)"
 	if openBuf.Len() > 0 {
@@ -257,6 +318,16 @@ func summarizeStandupWithLLCLIAt(ctx context.Context, lines []string, now time.T
 	if mentions := formatReportMentionSections(tags, people, "Talking points from the supplied items"); mentions != "" {
 		input += "\n\n" + mentions
 	}
+	return input
+}
+
+func summarizeStandupWithLLMCLIItemsContext(ctx context.Context, lines []string, openItems []OpenItem) (string, error) {
+	return summarizeStandupWithLLCLIAt(ctx, lines, time.Now(), openItems)
+}
+
+func summarizeStandupWithLLCLIAt(ctx context.Context, lines []string, now time.Time, openItems []OpenItem) (string, error) {
+	activityLabel := standupActivityLabel(now)
+	input := standupPromptInput(lines, openItems, now)
 
 	return summarizeWithLLMCLIPromptContext(ctx,
 		"Turn this into a classic scrum daily standup update, structured "+
@@ -289,9 +360,9 @@ func showGeneratedStandupSummary(a fyne.App, summary string) {
 // everything since the last #dsu meeting (or the weekday-aware
 // yesterday fallback), copies it to the clipboard, and shows it in an
 // **editable** text area (2026-09-03, replacing the old per-line
-// Hide-icon list) seeded with one gathered item per line, plus a
-// bottom "Generate Summary" button that runs whatever's currently in
-// that box (after the user's own edits, additions, or deletions)
+// Hide-icon list) seeded with completed/notable and open-plan sections, plus a
+// bottom "Generate Standup Summary" button that runs both editable
+// sections (after the user's own edits, additions, or deletions)
 // through summarizeStandupWithLLMCLI and shows the result via
 // showGeneratedStandupSummary.
 //
@@ -300,43 +371,34 @@ func showGeneratedStandupSummary(a fyne.App, summary string) {
 // (an instructional note above the box says so explicitly). This
 // replaces the old Hide-only affordance with something strictly more
 // capable (hide was really just "remove a line from what gets sent,"
-// which free-text editing already covers, plus now supports adding
-// a line the deterministic gather step didn't pick up, or fixing/
-// clarifying wording before it goes to the LLM).
+// which free-text editing already covers, plus now supports editing
+// both completed/notable and open-plan context before it goes to the
+// LLM).
 func showStandupExport(a fyne.App) {
 	now := time.Now()
 	cfg := LoadConfig()
 	lines := gatherStandupLines(cfg, now)
+	openItems := standupOpenItemsForReport()
 	text := formatStandup(lines)
 	a.Clipboard().SetContent(text)
 
-	w := a.NewWindow("Dunnit: Standup Summary")
+	w := a.NewWindow("Standup Summary pre-generation seed")
 
 	itemsEntry := widget.NewMultiLineEntry()
 	itemsEntry.SetMinRowsVisible(10)
-	if len(lines) == 0 {
-		itemsEntry.SetPlaceHolder("(no standup-worthy entries found for the covered period — type your own below if you like)")
-	} else {
-		itemsEntry.SetText(strings.Join(lines, "\n"))
-	}
+	itemsEntry.SetText(formatStandupEditableInput(lines, openItems))
 
-	generateBtn := widget.NewButton("Generate Summary", func() {
-		var visible []string
-		for _, line := range strings.Split(itemsEntry.Text, "\n") {
-			line = strings.TrimSpace(line)
-			if line != "" {
-				visible = append(visible, line)
-			}
-		}
-		if len(visible) == 0 {
-			dialog.ShowInformation("Nothing to Summarize", "The items box is empty.", w)
+	generateBtn := widget.NewButton("Generate Standup Summary", func() {
+		visible, visibleOpenItems := parseStandupEditableInput(itemsEntry.Text)
+		if len(visible) == 0 && len(visibleOpenItems) == 0 {
+			dialog.ShowInformation("Nothing to Summarize", "The seed is empty and there are no open TODO, DOING, or GOAL items.", w)
 			return
 		}
 		request := newLLMCLIRequest()
 		progress := dialog.NewCustomWithoutButtons("Generating Summary", llmCLIProgressContent("Running configured LLM CLI, please wait\u2026", request), w)
 		progress.Show()
 		go func() {
-			summary, err := summarizeStandupWithLLMCLIContext(request.ctx, visible)
+			summary, err := summarizeStandupWithLLMCLIItemsContext(request.ctx, visible, visibleOpenItems)
 			request.finish()
 			fyne.Do(func() {
 				progress.Hide()
@@ -356,12 +418,11 @@ func showStandupExport(a fyne.App) {
 
 	content := container.NewBorder(
 		container.NewVBox(
-			newWindowHeading("📋 Standup Summary"),
-			widget.NewLabel(fmt.Sprintf("Standup items since %s:", standupWindowStartLabel(standupWindowStart(cfg, now)))),
+			newWindowHeading("📋 Standup Summary pre-generation seed"),
+			widget.NewLabel(fmt.Sprintf("Completed and notable items since %s:", standupWindowStartLabel(standupWindowStart(cfg, now)))),
 			newExplanatoryLabel(
-				"Edit freely before generating — add, remove, or reword lines "+
-					"(one item per line). This only changes what’s sent to the "+
-					"summary prompt; it never edits the ledger itself."),
+				"Edit every report input below — add, remove, or reword items in either section. Changes here only "+
+					"affect this report; they never edit the ledger."),
 		),
 		generateBtn,
 		nil, nil,

@@ -1,6 +1,7 @@
 package dun
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -15,7 +16,7 @@ func TestStandupWindowStartLabel(t *testing.T) {
 		{
 			name: "midnight is named explicitly",
 			when: time.Date(2026, time.September, 15, 0, 0, 0, 0, location),
-			want: "Tue midnight",
+			want: "start of Tue",
 		},
 		{
 			name: "timed boundary keeps clock format",
@@ -29,6 +30,65 @@ func TestStandupWindowStartLabel(t *testing.T) {
 				t.Fatalf("standupWindowStartLabel() = %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestStandupWindowStartFallbackIsStartOfSourceDay(t *testing.T) {
+	location := time.FixedZone("test", -7*60*60)
+	now := time.Date(2026, time.September, 16, 9, 0, 0, 0, location)
+	want := time.Date(2026, time.September, 15, 0, 0, 0, 0, location)
+	if got := standupWindowStart(Config{}, now); !got.Equal(want) {
+		t.Fatalf("standupWindowStart() = %v, want %v", got, want)
+	}
+}
+
+func TestStandupPromptInputIncludesOpenPlanItems(t *testing.T) {
+	now := time.Date(2026, time.September, 15, 9, 0, 0, 0, time.UTC)
+	input := standupPromptInput(
+		[]string{"finished the release"},
+		[]OpenItem{
+			{Category: "TODO", Text: "write the follow-up"},
+			{Category: "DOING", Text: "review the rollout"},
+			{Category: "GOAL", Text: "improve reliability"},
+		},
+		now,
+	)
+	for _, want := range []string{
+		"Completed/notable items from yesterday:",
+		"finished the release",
+		"Currently open TODOs/DOING/GOALs (candidates for \"today\"):",
+		"[TODO] write the follow-up",
+		"[DOING] review the rollout",
+		"[GOAL] improve reliability",
+		"write the follow-up",
+		"review the rollout",
+		"improve reliability",
+	} {
+		if !strings.Contains(input, want) {
+			t.Errorf("standup prompt input does not contain %q: %q", want, input)
+		}
+	}
+}
+
+func TestStandupEditableInputRoundTripsAllReportInputs(t *testing.T) {
+	lines := []string{"finished the release", "learned something useful"}
+	openItems := []OpenItem{
+		{Category: "TODO", Text: "write the follow-up"},
+		{Category: "DOING", Text: "review the rollout s/2026-09-14"},
+	}
+	text := formatStandupEditableInput(lines, openItems)
+	gotLines, gotOpenItems := parseStandupEditableInput(text)
+	if strings.Join(gotLines, "\x00") != strings.Join(lines, "\x00") {
+		t.Fatalf("editable completed items = %v, want %v", gotLines, lines)
+	}
+	if len(gotOpenItems) != len(openItems) {
+		t.Fatalf("editable open items = %+v, want %+v", gotOpenItems, openItems)
+	}
+	wantOpenText := []string{"write the follow-up", "review the rollout"}
+	for i, want := range openItems {
+		if gotOpenItems[i].Category != want.Category || gotOpenItems[i].Text != wantOpenText[i] {
+			t.Fatalf("editable open item %d = %+v, want category %q and text %q", i, gotOpenItems[i], want.Category, wantOpenText[i])
+		}
 	}
 }
 
