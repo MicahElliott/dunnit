@@ -106,7 +106,7 @@ func ensureEODReportContext(ctx context.Context, date time.Time) (path string, c
 	if content == "" {
 		content = "# " + date.Format("2006-01-02") + "\n\n(no ledger entries to summarize yet)\n"
 	}
-	content = augmentEODReport(content, date)
+	content = eodReportForDisplay(content, date)
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 		return path, false, err
 	}

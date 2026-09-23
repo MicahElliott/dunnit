@@ -1,6 +1,7 @@
 package dun
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -18,6 +19,14 @@ var shareUnsafeCategories = map[string]bool{
 
 func statusReportPath(anchor, generated time.Time) string {
 	return weeklyReportPathForKind("status", anchor, generated)
+}
+
+func statusReportTitle(anchor time.Time, audience string) string {
+	start, _ := periodNominalRange(periodWeek, anchor)
+	_, week := start.ISOWeek()
+	end := start.AddDate(0, 0, 6)
+	return fmt.Sprintf("%s Status Report (W%d — %s)", audience, week,
+		shortDateRange(start, end))
 }
 
 const privateStatusPrompt = "Summarize the following ledger entries into a " +
@@ -140,8 +149,9 @@ func runStatusReport(a fyne.App, anchor time.Time, audience string) {
 				w.Resize(fyne.NewSize(600, 500))
 				w.Show()
 			} else {
-				showGeneratedReport(a, "Dunnit: "+audience+" Status Report",
-					statusReportPath(anchor, time.Now()), summary)
+				title := statusReportTitle(anchor, audience)
+				showGeneratedReport(a, "Dunnit: "+title,
+					statusReportPath(anchor, time.Now()), normalizeReport(summary, title))
 			}
 		})
 	}()

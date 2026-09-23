@@ -225,6 +225,14 @@ func standupActivityLabel(now time.Time) string {
 	return "yesterday"
 }
 
+func standupReportTitle(now time.Time) string {
+	return "Standup Update — " + now.Format("Mon Jan 2, 2006")
+}
+
+func standupSeedReport(lines []string, now time.Time) string {
+	return normalizeReport(formatStandup(lines), standupReportTitle(now))
+}
+
 func standupOpenItemsForReport() []OpenItem {
 	excludeTags := LoadConfig().ReportExcludeTags
 	var items []OpenItem
@@ -351,8 +359,9 @@ func summarizeStandupWithLLCLIAt(ctx context.Context, lines []string, now time.T
 // Close), saving to standup-w<week>-<generation-date>.md.
 func showGeneratedStandupSummary(a fyne.App, summary string) {
 	now := time.Now()
-	showGeneratedReport(a, "Dunnit: Generated Standup Summary",
-		weeklyReportPathForKind("standup", now, now), summary)
+	title := standupReportTitle(now)
+	showGeneratedReport(a, "Dunnit: "+title,
+		weeklyReportPathForKind("standup", now, now), normalizeReport(summary, title))
 }
 
 // showStandupExport builds the deterministic standup summary (FR-17
@@ -379,7 +388,7 @@ func showStandupExport(a fyne.App) {
 	cfg := LoadConfig()
 	lines := gatherStandupLines(cfg, now)
 	openItems := standupOpenItemsForReport()
-	text := formatStandup(lines)
+	text := standupSeedReport(lines, now)
 	a.Clipboard().SetContent(text)
 
 	w := a.NewWindow("Standup Summary pre-generation seed")

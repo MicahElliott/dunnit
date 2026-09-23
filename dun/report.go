@@ -165,6 +165,31 @@ func reportHeadingAndBody(text string) (heading, body string) {
 	return heading, strings.TrimSpace(strings.Join(lines, "\n"))
 }
 
+// normalizeReport guarantees a canonical Markdown H1 and removes the common
+// title line that LLMs add despite being told that the caller owns the title.
+// Keeping this at the shared report boundary ensures copied and saved reports
+// have the same meaningful title shown in their preview window.
+func normalizeReport(text, title string) string {
+	lines := strings.Split(strings.TrimSpace(text), "\n")
+	for len(lines) > 0 && strings.TrimSpace(lines[0]) == "" {
+		lines = lines[1:]
+	}
+	if len(lines) > 0 {
+		first := strings.TrimSpace(lines[0])
+		lower := strings.ToLower(first)
+		if strings.HasPrefix(first, "# ") ||
+			(strings.HasPrefix(first, "**") && strings.HasSuffix(first, "**") &&
+				(strings.Contains(lower, "impact report") || strings.Contains(lower, "summary") || strings.Contains(lower, "review"))) {
+			lines = lines[1:]
+		}
+	}
+	body := strings.TrimSpace(strings.Join(lines, "\n"))
+	if body == "" {
+		return "# " + title + "\n"
+	}
+	return "# " + title + "\n\n" + body + "\n"
+}
+
 // reportCopyButtons returns the two clipboard actions shared by generated
 // report windows. Reports are authored as Markdown, while rich text is useful
 // for pasting into formatted editors and email.

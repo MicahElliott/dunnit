@@ -27,6 +27,21 @@ func TestReportFilenameUsesCoveredPeriodAndGenerationDate(t *testing.T) {
 	}
 }
 
+func TestNormalizeReportUsesCanonicalTitle(t *testing.T) {
+	got := normalizeReport("# Generated summary\n\n## Accomplishments\n- Shipped it", "Standup Update — Wed Sep 23, 2026")
+	want := "# Standup Update — Wed Sep 23, 2026\n\n## Accomplishments\n- Shipped it\n"
+	if got != want {
+		t.Fatalf("normalizeReport() = %q, want %q", got, want)
+	}
+}
+
+func TestStatusReportTitleIncludesAudienceAndWeekRange(t *testing.T) {
+	anchor := time.Date(2026, time.September, 16, 0, 0, 0, 0, time.Local)
+	if got, want := statusReportTitle(anchor, "Shareable"), "Shareable Status Report (W38 — Sep 14-20)"; got != want {
+		t.Fatalf("statusReportTitle() = %q, want %q", got, want)
+	}
+}
+
 func TestReportPathsUsePeriodDirectories(t *testing.T) {
 	withTempDunnitDir(t)
 	anchor := time.Date(2026, time.September, 16, 0, 0, 0, 0, time.Local)

@@ -401,10 +401,10 @@ func showEODWindow(a fyne.App) {
 	summaryPreviewScroll := container.NewVScroll(summaryPreview)
 	summaryPreviewScroll.SetMinSize(fyne.NewSize(0, 160))
 	copyMarkdownSummaryBtn := widget.NewButton("Copy as Markdown", func() {
-		a.Clipboard().SetContent(summary.Text)
+		a.Clipboard().SetContent(eodReportForDisplay(summary.Text, now))
 	})
 	copyRichTextSummaryBtn := widget.NewButton("Copy as rich text", func() {
-		copyRichText(a, summary.Text)
+		copyRichText(a, eodReportForDisplay(summary.Text, now))
 	})
 	var draftRequest *llmCLIRequest
 	generationRequested := false
@@ -526,7 +526,7 @@ func showEODWindow(a fyne.App) {
 		}
 		if generationRequested && writeEODReport && strings.TrimSpace(summary.Text) != "" {
 			_, path := eodReportPath(now)
-			if err := writeReportFileIfAbsent(path, augmentEODReport(summary.Text, now)); err != nil {
+			if err := writeReportFileIfAbsent(path, eodReportForDisplay(summary.Text, now)); err != nil {
 				log.Println("Error saving EOD report:", err)
 			}
 		}

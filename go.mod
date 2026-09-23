@@ -1,6 +1,6 @@
 module dun
 
-go 1.23.7
+go 1.27.1
 
 require (
 	fyne.io/fyne/v2 v2.8.0

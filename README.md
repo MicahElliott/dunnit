@@ -33,7 +33,7 @@ popup and day-start/day-end prompts are not yet wired up — see
 
 ## Building & Running
 
-Requires Go 1.23+.
+Requires Go 1.27.1+.
 
 ```sh
 make build   # -> ./dun

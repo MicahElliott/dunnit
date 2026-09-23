@@ -104,6 +104,20 @@ func TestStandupActivityLabelNamesFridayAfterWeekend(t *testing.T) {
 	}
 }
 
+func TestStandupReportTitleIncludesGenerationDate(t *testing.T) {
+	date := time.Date(2026, time.September, 23, 9, 0, 0, 0, time.Local)
+	if got, want := standupReportTitle(date), "Standup Update — Wed Sep 23, 2026"; got != want {
+		t.Fatalf("standupReportTitle() = %q, want %q", got, want)
+	}
+}
+
+func TestStandupSeedReportIncludesTitle(t *testing.T) {
+	date := time.Date(2026, time.September, 23, 9, 0, 0, 0, time.Local)
+	if got := standupSeedReport([]string{"shipped the fix"}, date); !strings.HasPrefix(got, "# Standup Update — Wed Sep 23, 2026\n") {
+		t.Fatalf("standupSeedReport() lacks dated title: %q", got)
+	}
+}
+
 func TestStandupOpenItemsForReportFiltersExcludedTags(t *testing.T) {
 	withTempDunnitDir(t)
 	cfg := LoadConfig()
