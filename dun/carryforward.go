@@ -180,6 +180,7 @@ type stalePlanItem struct {
 var dailyCarryCategories = map[string]bool{
 	"TODO":  true,
 	"DOING": true,
+	"GOAL":  true,
 }
 
 const dailyCarryLookbackDays = 7
@@ -288,7 +289,7 @@ func openItemsAtDate(entries []LedgerEntry, date, now time.Time) []OpenItem {
 }
 
 // dailyCarryForwardItems finds the newest prior workday in the seven-day
-// lookback whose still-open plan contains TODO/DOING items. Weekend and other
+// lookback whose still-open plan contains TODO/DOING/GOAL items. Weekend and other
 // configured off-day ledgers do not become the source for the next workday;
 // items resolved by today are excluded, so a completed task cannot be
 // resurrected by kickoff.
@@ -324,7 +325,7 @@ func dailyCarryForwardItems(now time.Time) (sourceDate time.Time, items []OpenIt
 	return time.Time{}, nil, nil
 }
 
-// carryForwardDailyPlan copies the selected source day's TODO/DOING items
+// carryForwardDailyPlan copies the selected source day's TODO/DOING/GOAL items
 // into today's ledger. The ledger itself is the idempotency guard: this can
 // safely be called again after a window is reopened or another machine's
 // already-synced copies are present.
@@ -353,7 +354,7 @@ func carryForwardDailyPlan(now time.Time) (sourceDate time.Time, items []OpenIte
 }
 
 // carryForwardEditedItem promotes a historical context item that the user
-// changed to TODO or DOING directly into today's plan. The ordinary daily
+// changed to TODO, DOING, or GOAL directly into today's plan. The ordinary daily
 // carry-forward intentionally chooses one source day; an explicit edit is a
 // stronger signal and should not disappear just because another day has a
 // newer plan.
@@ -389,7 +390,7 @@ func carryForwardEditedItem(item OpenItem) {
 // an archive of every unresolved item ever logged.
 const staleReviewLookbackDays = 30
 
-// staleDailyPlanItems returns unresolved TODO/DOING items old enough to need
+// staleDailyPlanItems returns unresolved TODO/DOING/GOAL items old enough to need
 // an explicit SOMEDAY decision, limited to the recent daily-planning horizon.
 func staleDailyPlanItems(now time.Time) []stalePlanItem {
 	entries := AllLedgerEntries()
@@ -435,7 +436,7 @@ func daysSince(since time.Time) int {
 }
 
 // staleReviewDays is the age at which Start of Day asks whether an open
-// TODO/DOING item should move to SOMEDAY. The move remains explicit; age
+// TODO/DOING/GOAL item should move to SOMEDAY. The move remains explicit; age
 // alone never changes the ledger.
 const staleReviewDays = 7
 

@@ -64,8 +64,8 @@ func reportMentionMapsFromText(lines []string) (tags, people map[string]reportMe
 }
 
 // formatReportMentionSections gives every report generator the same compact,
-// readable talking-point material. Keeping one tag/person per bullet gives an
-// LLM a structure it can group without turning the input into a tag cloud.
+// readable talking-point material. Tags and people each fit on one line so a
+// report can retain the useful counts without growing several screenfuls.
 func formatReportMentionSections(tags, people map[string]reportMention, heading string) string {
 	if len(tags) == 0 && len(people) == 0 {
 		return ""
@@ -74,18 +74,25 @@ func formatReportMentionSections(tags, people map[string]reportMention, heading 
 	b.WriteString(heading)
 	b.WriteString(":\n")
 	if len(tags) > 0 {
-		b.WriteString("### Tags\n")
-		for _, mention := range rankedReportMentions(tags) {
-			fmt.Fprintf(&b, "- **%s** — %d %s\n", mention.label, mention.count, pluralizeCount(mention.count, "mention", "mentions"))
-		}
+		b.WriteString("Tags: ")
+		b.WriteString(formatCompactReportMentions(tags))
+		b.WriteByte('\n')
 	}
 	if len(people) > 0 {
-		b.WriteString("### People\n")
-		for _, mention := range rankedReportMentions(people) {
-			fmt.Fprintf(&b, "- **%s** — %d %s\n", mention.label, mention.count, pluralizeCount(mention.count, "mention", "mentions"))
-		}
+		b.WriteString("People: ")
+		b.WriteString(formatCompactReportMentions(people))
+		b.WriteByte('\n')
 	}
 	return strings.TrimRight(b.String(), "\n")
+}
+
+func formatCompactReportMentions(mentions map[string]reportMention) string {
+	ranked := rankedReportMentions(mentions)
+	values := make([]string, len(ranked))
+	for i, mention := range ranked {
+		values[i] = fmt.Sprintf("%s(%d)", mention.label, mention.count)
+	}
+	return strings.Join(values, " ")
 }
 
 const reportMentionPromptGuidanceText = " Use the supplied talking-point lists as source material: group related entries under a small number of concrete bullets, and preserve useful tags and people as bold Markdown (for example **#project** and **@person**) when they clarify the point. Do not produce a tag cloud, and do not mention filtering or internal report setup."

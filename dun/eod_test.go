@@ -163,6 +163,9 @@ func TestEODReportFactsDeduplicatePeopleAndTopics(t *testing.T) {
 	if !strings.HasSuffix(got, "\n\n"+"Worked with 2 people across 2 topics.\n") {
 		t.Fatalf("augmented report = %q", got)
 	}
+	if !strings.Contains(got, "\n\nWorked with 2 people across 2 topics.") {
+		t.Fatalf("facts line needs a blank line above it: %q", got)
+	}
 }
 
 func TestAugmentEODReportKeepsEveryDoneAndTIL(t *testing.T) {
@@ -178,11 +181,12 @@ func TestAugmentEODReportKeepsEveryDoneAndTIL(t *testing.T) {
 
 	got := augmentEODReport("AI summary", date)
 	for _, want := range []string{
-		"## Completed items (from ledger)",
+		"## Ledger entries by category",
+		"### DONE",
 		"- first outcome",
 		"- second outcome",
 		"- third outcome",
-		"## Learnings (from ledger)",
+		"### TIL",
 		"- learned the useful thing",
 	} {
 		if !strings.Contains(got, want) {
@@ -191,6 +195,9 @@ func TestAugmentEODReportKeepsEveryDoneAndTIL(t *testing.T) {
 	}
 	if strings.Count(got, "- first outcome") != 1 || strings.Count(got, "- second outcome") != 1 || strings.Count(got, "- third outcome") != 1 {
 		t.Fatalf("completed entries were not preserved exactly once: %q", got)
+	}
+	if strings.Index(got, "## Ledger entries by category") > strings.Index(got, "AI summary") {
+		t.Fatalf("category grouping should be the first report section: %q", got)
 	}
 }
 

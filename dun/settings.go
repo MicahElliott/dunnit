@@ -30,6 +30,9 @@ func showSettings(a fyne.App) {
 	fileSearchPath.SetPlaceHolder("~/work/cc3 ~/work/kp")
 	llmCLISelect := widget.NewSelect(llmCLISettingOptions(), nil)
 	llmCLISelect.SetSelected(llmCLISettingLabel(cfg.LLMCLI))
+	llmModelEntry := widget.NewEntry()
+	llmModelEntry.SetText(cfg.LLMModel)
+	llmModelEntry.SetPlaceHolder("e.g. gpt-6-luna")
 	browseDir := widget.NewButtonWithIcon("", theme.FolderOpenIcon(), func() {
 		dialog.ShowFolderOpen(func(uri fyne.ListableURI, err error) {
 			if err != nil {
@@ -111,6 +114,7 @@ func showSettings(a fyne.App) {
 		widget.NewFormItem("Dunnit Data Directory", container.NewBorder(nil, nil, nil, browseDir, dunnitDir)),
 		widget.NewFormItem("Project Folders for Links", fileSearchPath),
 		widget.NewFormItem("LLM CLI for Reports", llmCLISelect),
+		widget.NewFormItem("LLM Model (optional)", llmModelEntry),
 		widget.NewFormItem("Enable Git Sync", gitSync),
 		widget.NewFormItem("Day Start (HH:MM or 6am)", dayStart),
 		widget.NewFormItem("Day End (HH:MM or 6pm)", dayEnd),
@@ -195,6 +199,7 @@ func showSettings(a fyne.App) {
 		newCfg.DunnitDir = strings.TrimSpace(dunnitDir.Text)
 		newCfg.FileSearchPath = strings.Fields(fileSearchPath.Text)
 		newCfg.LLMCLI = llmCLISettingFromLabel(llmCLISelect.Selected)
+		newCfg.LLMModel = normalizeLLMModel(llmModelEntry.Text)
 		newCfg.GitSyncEnabled = gitSync.Checked
 		newCfg.DayStart = dayStartValue
 		newCfg.DayEnd = dayEndValue

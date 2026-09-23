@@ -214,8 +214,8 @@ func TestDailyCarryForwardSkipsResolvedAndOlderThanLookback(t *testing.T) {
 	withTempDunnitDir(t)
 
 	now := time.Now()
-	older := now.AddDate(0, 0, -4)
 	yesterday := previousCarryWorkday(now)
+	older := previousCarryWorkday(yesterday)
 	writeLedgerLinesForDate(t, older, []string{
 		"[09:00:00] TODO older unresolved task",
 		"[09:01:00] TODO resolved task",

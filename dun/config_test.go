@@ -76,6 +76,7 @@ func TestConfigRoundTripsFileLinkRoots(t *testing.T) {
 	want := Config{
 		FileSearchPath: []string{"~/work/cc3", "~/work/kp"},
 		FileAliases:    map[string]string{"cc3": "~/work/cc3", "kp": "~/work/kp"},
+		LLMModel:       "gpt-6-luna",
 	}
 	if err := writeConfig(want); err != nil {
 		t.Fatalf("writeConfig: %v", err)
@@ -94,5 +95,8 @@ func TestConfigRoundTripsFileLinkRoots(t *testing.T) {
 		if got.FileAliases[key] != value {
 			t.Errorf("FileAliases[%q] = %q, want %q", key, got.FileAliases[key], value)
 		}
+	}
+	if got.LLMModel != want.LLMModel {
+		t.Errorf("LLMModel = %q, want %q", got.LLMModel, want.LLMModel)
 	}
 }

@@ -18,6 +18,10 @@ type Config struct {
 	// the documented availability order; the other values pin one CLI.
 	LLMCLI string `toml:"llm_cli"`
 
+	// LLMModel is an optional model name passed to providers that expose a
+	// model command-line option. Providers without one ignore it.
+	LLMModel string `toml:"llm_model"`
+
 	// DunnitDir is the directory containing ledgers and related data. The
 	// DUNNIT_DIR environment variable still takes precedence.
 	DunnitDir string `toml:"dunnit_dir"`
@@ -307,6 +311,7 @@ func loadConfig() (Config, error) {
 		return defaultConfig(), fmt.Errorf("decode config: %w", err)
 	}
 	cfg.LLMCLI = normalizeLLMCLI(cfg.LLMCLI)
+	cfg.LLMModel = normalizeLLMModel(cfg.LLMModel)
 	if os.Getenv("DUNNIT_DIR") == "" && cfg.DunnitDir != "" {
 		configuredDunnitDir = cfg.DunnitDir
 	}

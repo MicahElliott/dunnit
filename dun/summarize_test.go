@@ -76,7 +76,7 @@ func TestReportMentionContextExcludesConfiguredTags(t *testing.T) {
 	if strings.Contains(got, "#home") {
 		t.Fatalf("excluded tag appeared in report context: %q", got)
 	}
-	for _, want := range []string{"**#work**", "**@Brandon**"} {
+	for _, want := range []string{"Tags: #work(1)", "People: @Brandon(1)"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("report context missing %q: %q", want, got)
 		}

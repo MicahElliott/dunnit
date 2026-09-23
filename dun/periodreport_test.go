@@ -44,8 +44,8 @@ func TestPeriodReportSignalsIncludesMetricsHilitesAndPendingItems(t *testing.T) 
 		"WIN: shipped the fix #alpha",
 		"TODO: follow up with @Brandon #alpha",
 		"Talking points from the ledger:",
-		"- **#alpha** — 3 mentions",
-		"- **@Brandon** — 1 mention",
+		"Tags: #alpha(3)",
+		"People: @Brandon(1)",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("periodReportSignals() missing %q in %q", want, got)
@@ -69,8 +69,8 @@ func TestPeriodReportSignalsCollapseCarryForwardCopies(t *testing.T) {
 		"- Entries: 1",
 		"- People mentioned: 1",
 		"- Topics mentioned: 1",
-		"- **#alpha** — 1 mention",
-		"- **@Brandon** — 1 mention",
+		"Tags: #alpha(1)",
+		"People: @Brandon(1)",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("periodReportSignals() missing %q in %q", want, got)

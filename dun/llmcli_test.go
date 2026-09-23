@@ -67,6 +67,12 @@ func TestNormalizeLLMCLI(t *testing.T) {
 	}
 }
 
+func TestNormalizeLLMModel(t *testing.T) {
+	if got := normalizeLLMModel("  gpt-6-luna  "); got != "gpt-6-luna" {
+		t.Fatalf("normalized model = %q, want gpt-6-luna", got)
+	}
+}
+
 func TestLoadConfigNormalizesLLMCLI(t *testing.T) {
 	withTempDunnitDir(t)
 	path := filepath.Join(DunnitDir(), "config.toml")
@@ -139,6 +145,22 @@ func TestBuildLLMCLICommands(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestBuildLLMCLICommandPassesConfiguredModel(t *testing.T) {
+	args, _ := buildLLMCLICommand(
+		llmCLIInvocation{provider: llmCLICodex, executable: "/bin/codex", model: "gpt-6-luna"},
+		"instructions", "ledger")
+	if !containsLLMCLIString(args, "--model") || !containsLLMCLIString(args, "gpt-6-luna") {
+		t.Fatalf("model was not passed to Codex CLI: %q", args)
+	}
+
+	args, _ = buildLLMCLICommand(
+		llmCLIInvocation{provider: llmCLILLM, executable: "/bin/llm", model: "gpt-6-luna"},
+		"instructions", "ledger")
+	if !containsLLMCLIString(args, "-m") || !containsLLMCLIString(args, "gpt-6-luna") {
+		t.Fatalf("model was not passed to llm CLI: %q", args)
 	}
 }
 

@@ -53,6 +53,9 @@ func draftDailySummaryContext(ctx context.Context, date time.Time) (string, erro
 func eodSummaryPrompt() string {
 	return "Create a detailed but compact Markdown end-of-day recap from this ledger. " +
 		"Treat the ledger as the source of truth and account for every meaningful entry. " +
+		"Make the first section a grouped ledger summary with separate headings for " +
+		"categories such as DONE, DOING, TODO, and GOAL; do not scatter entries from " +
+		"different categories together. " +
 		"Do not omit repeated DONE entries: preserve each distinct completed outcome, " +
 		"combining entries only when they clearly describe the same work. " +
 		"Use this vocabulary: DONE means completed work; TODO means an open task; " +

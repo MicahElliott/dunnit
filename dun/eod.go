@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -180,7 +181,7 @@ func appendEODReportFacts(report string, date time.Time) string {
 
 func appendEODLedgerDetails(report string, date time.Time) string {
 	cfg := LoadConfig()
-	var completed, learned []string
+	grouped := make(map[string][]string)
 	for _, entry := range AllLedgerEntries() {
 		if !sameCalendarDate(entry.Date, date) || !eodEntryIncluded(entry, cfg) {
 			continue
@@ -189,45 +190,49 @@ func appendEODLedgerDetails(report string, date time.Time) string {
 		if text == "" {
 			continue
 		}
-		switch entry.Category {
-		case "DONE":
-			completed = append(completed, text)
-		case "TIL":
-			learned = append(learned, text)
-		}
+		grouped[entry.Category] = append(grouped[entry.Category], text)
 	}
-	if len(completed) == 0 && len(learned) == 0 {
+	if len(grouped) == 0 {
 		return report
 	}
+	var order []string
+	seen := make(map[string]bool, len(grouped))
+	for _, category := range Categories {
+		if len(grouped[category.Code]) == 0 {
+			continue
+		}
+		order = append(order, category.Code)
+		seen[category.Code] = true
+	}
+	var unknown []string
+	for category := range grouped {
+		if !seen[category] {
+			unknown = append(unknown, category)
+		}
+	}
+	sort.Strings(unknown)
+	order = append(order, unknown...)
+	var section strings.Builder
+	section.WriteString("## Ledger entries by category\n")
+	for _, category := range order {
+		section.WriteString("### ")
+		section.WriteString(category)
+		section.WriteByte('\n')
+		for _, text := range grouped[category] {
+			section.WriteString("- ")
+			section.WriteString(text)
+			section.WriteByte('\n')
+		}
+	}
+	groupedSection := strings.TrimSpace(section.String())
 	trimmed := strings.TrimSpace(report)
-	var sections []string
-	if len(completed) > 0 && !strings.Contains(trimmed, "## Completed items (from ledger)") {
-		var b strings.Builder
-		b.WriteString("## Completed items (from ledger)\n")
-		for _, text := range completed {
-			b.WriteString("- ")
-			b.WriteString(text)
-			b.WriteByte('\n')
-		}
-		sections = append(sections, strings.TrimSpace(b.String()))
+	if trimmed == "" {
+		return groupedSection + "\n"
 	}
-	if len(learned) > 0 && !strings.Contains(trimmed, "## Learnings (from ledger)") {
-		var b strings.Builder
-		b.WriteString("## Learnings (from ledger)\n")
-		for _, text := range learned {
-			b.WriteString("- ")
-			b.WriteString(text)
-			b.WriteByte('\n')
-		}
-		sections = append(sections, strings.TrimSpace(b.String()))
-	}
-	if len(sections) == 0 {
+	if strings.Contains(trimmed, "## Ledger entries by category") {
 		return trimmed + "\n"
 	}
-	if trimmed == "" {
-		return strings.Join(sections, "\n\n") + "\n"
-	}
-	return trimmed + "\n\n" + strings.Join(sections, "\n\n") + "\n"
+	return groupedSection + "\n\n" + trimmed + "\n"
 }
 
 func augmentEODReport(report string, date time.Time) string {

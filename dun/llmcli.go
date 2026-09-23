@@ -25,6 +25,7 @@ const llmCLITimeout = 5 * time.Minute
 type llmCLIInvocation struct {
 	provider   string
 	executable string
+	model      string
 }
 
 type llmCLILookPath func(string) (string, error)
@@ -44,6 +45,10 @@ func normalizeLLMCLI(value string) string {
 		return llmCLIAuto
 	}
 	return value
+}
+
+func normalizeLLMModel(value string) string {
+	return strings.TrimSpace(value)
 }
 
 func llmCLIProviderLabel(provider string) string {
@@ -154,31 +159,42 @@ func resolveLLMCLIWithLookup(setting string, lookPath llmCLILookPath) (llmCLIInv
 
 func buildLLMCLICommand(inv llmCLIInvocation, instructions, ledgerText string) ([]string, string) {
 	prompt := instructions + "\n\n" + ledgerText
+	modelArgs := func(args []string) []string {
+		model := normalizeLLMModel(inv.model)
+		if model == "" {
+			return args
+		}
+		return append(args, "--model", model)
+	}
 
 	switch inv.provider {
 	case llmCLICopilot:
-		return []string{
+		return modelArgs([]string{
 			"--silent", "--allow-all-tools", "--no-ask-user", "--no-color",
 			"--no-custom-instructions", "--disable-builtin-mcps", "--available-tools=",
-		}, prompt
+		}), prompt
 	case llmCLIClaude:
-		return []string{
+		return modelArgs([]string{
 			"-p", "--output-format", "text", "--no-session-persistence", "--bare",
 			"--tools", "", "--disallowedTools", "mcp__*", "--max-turns", "1",
-		}, prompt
+		}), prompt
 	case llmCLICodex:
-		return []string{
+		return modelArgs([]string{
 			"exec", "--ephemeral", "--skip-git-repo-check", "--sandbox", "read-only",
 			"--color", "never", "--ignore-rules", "-",
-		}, prompt
+		}), prompt
 	case llmCLIGemini:
 		// Gemini requires -p to enter headless mode. Its documented behavior
 		// appends piped stdin to this prompt, so keep the ledger off argv.
-		return []string{
+		return modelArgs([]string{
 			"-p", instructions, "--output-format", "text", "--approval-mode", "plan",
-		}, ledgerText
+		}), ledgerText
 	case llmCLILLM:
-		return []string{"prompt", "--no-stream", "--no-log"}, prompt
+		args := []string{"prompt", "--no-stream", "--no-log"}
+		if model := normalizeLLMModel(inv.model); model != "" {
+			args = append(args, "-m", model)
+		}
+		return args, prompt
 	default:
 		return nil, ""
 	}
@@ -205,6 +221,7 @@ func summarizeWithLLMCLIPromptContext(ctx context.Context, instructions, ledgerT
 	if err != nil {
 		return "", err
 	}
+	inv.model = normalizeLLMModel(cfg.LLMModel)
 	return runLLMCLIWithContext(ctx, inv, instructions, ledgerText, llmCLITimeout)
 }
 

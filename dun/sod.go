@@ -140,7 +140,7 @@ func markStartOfDayRun() {
 }
 
 // showSODWindow opens the daily planning checkpoint: it carries forward the
-// newest prior day's TODO/DOING items, shows the last active day's context and
+// newest prior day's TODO/DOING/GOAL items, shows the last active day's context and
 // EOD reflection, and offers a quick-entry field for today's plan.
 func showSODWindow(a fyne.App) {
 	now := time.Now()
@@ -254,7 +254,7 @@ func showSODWindow(a fyne.App) {
 	} else if len(staleDailyPlanItems(now)) > 0 {
 		planNote = newExplanatoryLabel("These items remain open from an earlier day. You’ll primarily change them in Daybook; use the row actions here to review them.")
 	} else {
-		planNote = newExplanatoryLabel("Add a TODO below or from Daybook.")
+		planNote = newExplanatoryLabel("Add a TODO, DOING, or GOAL below or from Daybook.")
 	}
 	contextBox := container.NewVBox()
 	var refreshContext func()
@@ -333,10 +333,10 @@ func showSODWindow(a fyne.App) {
 	}
 	refreshRecurring()
 
-	newItemCat := widget.NewSelect([]string{"TODO", "DOING"}, nil)
+	newItemCat := widget.NewSelect([]string{"TODO", "DOING", "GOAL"}, nil)
 	newItemCat.SetSelected("TODO")
 	newItemText := newTagAutoEntry()
-	newItemText.SetPlaceHolder("Add a TODO for today…")
+	newItemText.SetPlaceHolder("Add a TODO, DOING, or GOAL for today…")
 	newItemSuggestions := newItemText.SuggestionBox()
 	addItem := func() {
 		text := strings.TrimSpace(newItemText.Text)
@@ -386,7 +386,7 @@ func showSODWindow(a fyne.App) {
 		reportBox,
 		recurringBox,
 		sodHeading("Open context from the last active day (not copied into today’s plan)"),
-		newExplanatoryLabel("WAITING, RISK, QUESTION, FIXME, and GOAL stay here for context; editing to TODO/DOING will activate these for today."),
+		newExplanatoryLabel("WAITING, RISK, QUESTION, and FIXME stay here for context; TODO, DOING, and GOAL are active in today’s plan."),
 		contextBox,
 		sodHeading(planHeading),
 		planNote,
