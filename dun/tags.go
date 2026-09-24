@@ -251,6 +251,7 @@ func carryForwardEntryText(entry LedgerEntry) (string, bool) {
 // variants such as "Wrap", "Wrapping", and "Wrapped" share an identity
 // while keeping every other part of the task text meaningful.
 func normalizeLifecycleEntryText(text string) string {
+	text = stripFlags(text)
 	text = stripResolutionSuffix(stripAllCarryForwardSince(text))
 	for {
 		start, end, _, ok := entryMinsMatch(text)

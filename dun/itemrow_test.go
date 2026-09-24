@@ -170,6 +170,21 @@ func TestSortItemsByPrimaryTagThenTime(t *testing.T) {
 	}
 }
 
+func TestSortItemsByImportantFlagBeforePrimaryTag(t *testing.T) {
+	items := []OpenItem{
+		{Text: "ordinary #alpha", Time: time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)},
+		{Text: "!! important #zeta", Time: time.Date(2026, 1, 1, 12, 1, 0, 0, time.UTC)},
+		{Text: "ordinary #beta", Time: time.Date(2026, 1, 1, 12, 2, 0, 0, time.UTC)},
+	}
+	sortItemsByPrimaryTag(items)
+	want := []string{"!! important #zeta", "ordinary #alpha", "ordinary #beta"}
+	for i, expected := range want {
+		if items[i].Text != expected {
+			t.Errorf("position %d: got %q, want %q", i, items[i].Text, expected)
+		}
+	}
+}
+
 func TestSplitExcludedTagItems(t *testing.T) {
 	items := []OpenItem{
 		{Text: "#work do the thing"},

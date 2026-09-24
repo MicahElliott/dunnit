@@ -113,6 +113,12 @@ Entries can carry two lightweight kinds of trackable references:
 - `#tags` identify projects, tickets, topics, or other work themes.
 - `@Name` identifies a person mentioned or worked with, such as `@Brandon`
   or `@Surbhi`.
+- Standalone flags add lightweight item-level signals without becoming tags:
+  `!!` means important, `??` means the item needs clarification, `@@` means
+  follow up with someone, and `++` means follow-on work is expected. Daybook
+  renders compact icons for these flags and puts `!!` items first in the
+  Planned lists. Flags can appear anywhere in an entry; the Edit Entry dialog
+  provides toggles for adding or removing them.
 - `~20m`, `~2h`, and `~4d` record self-reported time spent on a
   time-trackable entry.
 

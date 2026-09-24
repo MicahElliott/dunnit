@@ -158,6 +158,33 @@ func showEditItemDialogForCategory(parent fyne.Window, item OpenItem, initialCat
 	entry.SetText(inflectLifecycleText(item.Text, initialCategory))
 	entry.SetMinRowsVisible(2)
 
+	flagChecks := make(map[string]*widget.Check)
+	updatingFlags := false
+	for _, flag := range flagDefinitions() {
+		code := flag.Code
+		check := widget.NewCheck(flag.Icon+" "+flag.Label, func(checked bool) {
+			if updatingFlags {
+				return
+			}
+			entry.SetText(toggleFlag(entry.Text, code, checked))
+		})
+		flagChecks[code] = check
+	}
+	refreshFlagChecks := func() {
+		updatingFlags = true
+		defer func() { updatingFlags = false }()
+		for _, flag := range flagDefinitions() {
+			flagChecks[flag.Code].SetChecked(hasFlag(entry.Text, flag.Code))
+		}
+	}
+	entry.OnChanged = func(string) { refreshFlagChecks() }
+	refreshFlagChecks()
+	flagRowObjects := make([]fyne.CanvasObject, 0, len(flagChecks))
+	for _, flag := range flagDefinitions() {
+		flagRowObjects = append(flagRowObjects, flagChecks[flag.Code])
+	}
+	flagRow := container.NewHBox(flagRowObjects...)
+
 	selectedCategory := initialCategory
 	catSelect := widget.NewSelect(catOptions, nil)
 	catSelect.SetSelected(categoryLabelForCode(initialCategory))
@@ -193,7 +220,7 @@ func showEditItemDialogForCategory(parent fyne.Window, item OpenItem, initialCat
 	}
 
 	d = dialog.NewCustomWithoutButtons("Edit Entry",
-		container.NewBorder(nil, nil, catSelect, nil, entry), parent)
+		container.NewBorder(flagRow, nil, catSelect, nil, entry), parent)
 	entry.onEscape = func() { d.Hide() }
 	entry.OnSubmitted = func(string) { doSave() }
 
@@ -216,7 +243,7 @@ func showEditItemDialogForCategory(parent fyne.Window, item OpenItem, initialCat
 			c.Focus(saveBtn)
 		}
 	}
-	d.Resize(fyne.NewSize(624, 140))
+	d.Resize(fyne.NewSize(624, 178))
 	d.Show()
 }
 

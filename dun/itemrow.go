@@ -143,8 +143,11 @@ func stripDisplayMetadata(text string) string {
 // tag).
 func itemTextLabel(text string) fyne.CanvasObject {
 	core, meta := splitTrailingMeta(text)
+	flags := extractFlags(core)
+	core = stripFlags(core)
 
 	var runs []fyne.CanvasObject
+	appendFlagRuns(&runs, flags)
 	links := parseEntryLinks(core)
 	position := 0
 	for _, link := range links {
@@ -171,6 +174,8 @@ func itemTextLabel(text string) fyne.CanvasObject {
 // edits and ledger writes.
 func daybookItemTextLabel(prefix, text string, stats map[string]*tagStat, onTagTap func(string)) fyne.CanvasObject {
 	core, meta := splitTrailingMeta(text)
+	flags := extractFlags(core)
+	core = stripFlags(core)
 	display := daybookCoreDisplay(core)
 
 	runs := make([]fyne.CanvasObject, 0, 6)
@@ -189,9 +194,37 @@ func daybookItemTextLabel(prefix, text string, stats map[string]*tagStat, onTagT
 			"["+display.primaryTag+"] ", daybookTagTooltip(display.primaryTag, stats[display.primaryTag]),
 			tagTextColor(display.primaryTag), true, func() { onTagTap(display.primaryTag) }))
 	}
+	appendFlagRuns(&runs, flags)
 	appendDaybookCoreRuns(&runs, display, stats, onTagTap)
 	appendMetadataRuns(&runs, meta)
 	return container.New(newTightRowLayout(), runs...)
+}
+
+var flagTextColors = map[string]color.NRGBA{
+	"!!": {R: 0xc0, G: 0x32, B: 0x32, A: 0xff},
+	"??": {R: 0xa0, G: 0x72, B: 0x00, A: 0xff},
+	"@@": {R: 0x6b, G: 0x3f, B: 0xa0, A: 0xff},
+	"++": {R: 0x2e, G: 0x7d, B: 0x32, A: 0xff},
+}
+
+func appendFlagRuns(runs *[]fyne.CanvasObject, flags []string) {
+	for _, code := range flags {
+		flag, ok := flagDefinition(code)
+		if !ok {
+			continue
+		}
+		textColor := color.Color(metaTextColor)
+		if specific, exists := flagTextColors[code]; exists {
+			textColor = specific
+		}
+		*runs = append(*runs, newHoverTextWithStyle(
+			" "+flag.Icon+" ",
+			textColor,
+			theme.TextSize()*0.84,
+			fyne.TextStyle{Bold: true},
+			flag.Label+" — "+flag.Help,
+		))
+	}
 }
 
 type daybookCoreRender struct {

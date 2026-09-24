@@ -94,6 +94,8 @@ func convertedSuffix(category string) string {
 // (for example, "write report" becomes "wrote report"), while SOMEDAY
 // and DISCARDED entries retain the original text.
 func resolutionMatches(sourceText, resolvedText string) bool {
+	sourceText = stripFlags(sourceText)
+	resolvedText = stripFlags(resolvedText)
 	return resolvedText == sourceText ||
 		resolvedText == PastTenseLeadingWord(sourceText) ||
 		resolvedText == inflectLifecycleText(sourceText, "DONE")
@@ -238,18 +240,21 @@ func recordConvertedDone(item OpenItem) {
 // and terminal categories use simple past. Resolution metadata is removed
 // before inflection and is added by the transition that needs it.
 func inflectLifecycleText(text, category string) string {
+	flags := extractFlags(text)
 	if !isLifecycleCategory(category) && !isLifecycleEndpoint(category) {
 		return text
 	}
-	base := BaseTenseLeadingWord(stripResolutionSuffix(text))
+	base := BaseTenseLeadingWord(stripResolutionSuffix(stripFlags(text)))
+	var result string
 	switch {
 	case category == "DOING":
-		return PresentParticipleLeadingWord(base)
+		result = PresentParticipleLeadingWord(base)
 	case isLifecycleEndpoint(category):
-		return PastTenseLeadingWord(base)
+		result = PastTenseLeadingWord(base)
 	default:
-		return base
+		result = base
 	}
+	return setFlags(result, flags)
 }
 
 func transitionLifecycleText(text, fromCategory, toCategory string) string {
@@ -365,6 +370,11 @@ func primaryTagSortKey(text string) string {
 // sharing a tag are then ordered by their ledger timestamp.
 func sortItemsByPrimaryTag(items []OpenItem) {
 	sort.SliceStable(items, func(i, j int) bool {
+		aImportant := hasFlag(items[i].Text, "!!")
+		bImportant := hasFlag(items[j].Text, "!!")
+		if aImportant != bImportant {
+			return aImportant
+		}
 		a, b := primaryTagSortKey(items[i].Text), primaryTagSortKey(items[j].Text)
 		if a == "" && b == "" {
 			return items[i].Time.Before(items[j].Time)

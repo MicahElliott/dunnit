@@ -34,6 +34,10 @@ type LedgerEntry struct {
 	// The marker remains embedded in Text so raw ledger editing stays
 	// lossless.
 	People []string
+	// Flags is Text's known standalone item flags, pre-extracted via
+	// extractFlags. Flag tokens remain embedded in Text so raw ledger
+	// editing stays lossless.
+	Flags []string
 	// Mins is parsed from a " ~N[mhd]" suffix in Text (see ui.go's
 	// withMins), converting hours and days to minutes, including when
 	// lifecycle metadata follows it. 0 if absent/invalid.
@@ -168,6 +172,7 @@ func parseLedgerEntry(line string, date time.Time, source string, lineNum int) (
 		Text:     text,
 		Tags:     extractTags(text),
 		People:   extractPeople(text),
+		Flags:    extractFlags(text),
 		Mins:     parseEntryMins(text),
 		Source:   source,
 		Line:     lineNum,
