@@ -1,5 +1,8 @@
 .PHONY: run build package clean vet release tag-release dun
 
+# Go toolchain downloads need checksum verification; don't inherit GOSUMDB=off.
+export GOSUMDB := sum.golang.org
+
 TARGET_OS ?= $(shell go env GOOS)
 
 build: dun
