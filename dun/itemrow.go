@@ -169,7 +169,7 @@ func itemTextLabel(text string) fyne.CanvasObject {
 // position. Long core text is shortened with a hoverable ellipsis; trailing
 // metadata remains visible. The original text remains the value used for
 // edits and ledger writes.
-func daybookItemTextLabel(prefix, text string, stats map[string]*tagStat) fyne.CanvasObject {
+func daybookItemTextLabel(prefix, text string, stats map[string]*tagStat, onTagTap func(string)) fyne.CanvasObject {
 	core, meta := splitTrailingMeta(text)
 	display := daybookCoreDisplay(core)
 
@@ -187,9 +187,9 @@ func daybookItemTextLabel(prefix, text string, stats map[string]*tagStat) fyne.C
 	if display.primaryTag != "" {
 		runs = append(runs, newTagLinkWithStyle(
 			"["+display.primaryTag+"] ", daybookTagTooltip(display.primaryTag, stats[display.primaryTag]),
-			tagTextColor(display.primaryTag), true, nil))
+			tagTextColor(display.primaryTag), true, func() { onTagTap(display.primaryTag) }))
 	}
-	appendDaybookCoreRuns(&runs, display, stats, text)
+	appendDaybookCoreRuns(&runs, display, stats, onTagTap)
 	appendMetadataRuns(&runs, meta)
 	return container.New(newTightRowLayout(), runs...)
 }
@@ -199,6 +199,7 @@ type daybookCoreRender struct {
 	primaryTag    string
 	markerIndex   int
 	ellipsisIndex int
+	elidedText    string
 }
 
 // daybookCoreDisplay replaces the primary tag with a single marker and
@@ -229,6 +230,11 @@ func daybookCoreDisplay(core string) daybookCoreRender {
 	}
 	visible := trimDaybookCut(display, keep)
 	if markerIndex >= len(visible) {
+		elided := append([]rune{}, display[len(visible):]...)
+		markerOffset := markerIndex - len(visible)
+		if markerOffset >= 0 && markerOffset < len(elided) {
+			elided = append(elided[:markerOffset], elided[markerOffset+1:]...)
+		}
 		visible = append(visible, '\u2026')
 		markerIndex = len(visible)
 		visible = append(visible, '#')
@@ -237,15 +243,18 @@ func daybookCoreDisplay(core string) daybookCoreRender {
 			primaryTag:    primaryTag,
 			markerIndex:   markerIndex,
 			ellipsisIndex: markerIndex - 1,
+			elidedText:    strings.TrimSpace(string(elided)),
 		}
 	}
 	ellipsisIndex := len(visible)
+	elidedText := strings.TrimSpace(string(display[len(visible):]))
 	visible = append(visible, '\u2026')
 	return daybookCoreRender{
 		text:          visible,
 		primaryTag:    primaryTag,
 		markerIndex:   markerIndex,
 		ellipsisIndex: ellipsisIndex,
+		elidedText:    elidedText,
 	}
 }
 
@@ -266,7 +275,7 @@ func trimDaybookCut(text []rune, limit int) []rune {
 	return text[:cut]
 }
 
-func appendDaybookCoreRuns(runs *[]fyne.CanvasObject, display daybookCoreRender, stats map[string]*tagStat, fullText string) {
+func appendDaybookCoreRuns(runs *[]fyne.CanvasObject, display daybookCoreRender, stats map[string]*tagStat, onTagTap func(string)) {
 	positions := []int{display.markerIndex, display.ellipsisIndex}
 	sort.Ints(positions)
 	position := 0
@@ -274,20 +283,20 @@ func appendDaybookCoreRuns(runs *[]fyne.CanvasObject, display daybookCoreRender,
 		if special < 0 || special >= len(display.text) || special < position {
 			continue
 		}
-		appendEntryRuns(runs, string(display.text[position:special]))
+		appendDaybookEntryRuns(runs, string(display.text[position:special]), stats, onTagTap)
 		switch special {
 		case display.markerIndex:
 			*runs = append(*runs, newTagLinkWithStyle(
 				"#", daybookTagTooltip(display.primaryTag, stats[display.primaryTag]),
-				tagTextColor(display.primaryTag), false, nil))
+				tagTextColor(display.primaryTag), false, func() { onTagTap(display.primaryTag) }))
 		case display.ellipsisIndex:
 			*runs = append(*runs, newHoverTextWithStyle(" …",
 				theme.Color(theme.ColorNameForeground), theme.TextSize(),
-				fyne.TextStyle{Bold: true}, "Full entry: "+strings.TrimSpace(fullText)))
+				fyne.TextStyle{Bold: true}, "Elided: "+display.elidedText))
 		}
 		position = special + 1
 	}
-	appendEntryRuns(runs, string(display.text[position:]))
+	appendDaybookEntryRuns(runs, string(display.text[position:]), stats, onTagTap)
 }
 
 func daybookTagTooltip(tag string, stat *tagStat) string {
@@ -307,6 +316,17 @@ func appendEntryRuns(runs *[]fyne.CanvasObject, text string) {
 		position = link.End
 	}
 	appendTextAndTrackables(runs, text[position:])
+}
+
+func appendDaybookEntryRuns(runs *[]fyne.CanvasObject, text string, stats map[string]*tagStat, onTagTap func(string)) {
+	links := parseEntryLinks(text)
+	position := 0
+	for _, link := range links {
+		appendDaybookTextAndTrackables(runs, text[position:link.Start], stats, onTagTap)
+		*runs = append(*runs, newURLLink(link.Text, link.URL, link.LocalPath))
+		position = link.End
+	}
+	appendDaybookTextAndTrackables(runs, text[position:], stats, onTagTap)
 }
 
 func appendMetadataRuns(runs *[]fyne.CanvasObject, meta string) {
@@ -380,6 +400,10 @@ func ageIndicatorColor(days int) color.NRGBA {
 }
 
 func appendTextAndTrackables(runs *[]fyne.CanvasObject, text string) {
+	appendDaybookTextAndTrackables(runs, text, nil, nil)
+}
+
+func appendDaybookTextAndTrackables(runs *[]fyne.CanvasObject, text string, stats map[string]*tagStat, onTagTap func(string)) {
 	if icon, rest, ok := splitCategoryIconPrefix(text); ok {
 		*runs = append(*runs, newDisplayIconText(icon, theme.Color(theme.ColorNameForeground)))
 		text = rest
@@ -411,6 +435,12 @@ func appendTextAndTrackables(runs *[]fyne.CanvasObject, text string) {
 		if text[match.start] == '@' && match.color == personTextColor {
 			*runs = append(*runs, newDisplayIconText(personIcon, personTextColor))
 			*runs = append(*runs, canvas.NewText(text[match.start+1:match.end], match.color))
+		} else if text[match.start] == '#' && onTagTap != nil {
+			tag := text[match.start:match.end]
+			tooltip := daybookTagTooltip(tag, stats[tag])
+			*runs = append(*runs, newTagLinkWithStyle(tag, tooltip, match.color, false, func() {
+				onTagTap(tag)
+			}))
 		} else {
 			*runs = append(*runs, canvas.NewText(text[match.start:match.end], match.color))
 		}

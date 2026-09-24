@@ -104,6 +104,32 @@ func TestEODReportPathUsesDescriptorAndWeekday(t *testing.T) {
 	}
 }
 
+func TestEODIncludedLedgerLinesHonorsReportExclusions(t *testing.T) {
+	lines := []string{
+		"[09:00] DONE shipped #work",
+		"[09:05] DONE bought groceries #Home",
+		"[09:10] DONE no tag",
+	}
+	got := eodIncludedLedgerLines(lines, Config{ReportExcludeTags: []string{"#home"}})
+	if len(got) != 2 || got[0] != lines[0] || got[1] != lines[2] {
+		t.Fatalf("eodIncludedLedgerLines() = %v, want work and untagged lines", got)
+	}
+}
+
+func TestEODReportForDisplayRemovesExcludedBodyLines(t *testing.T) {
+	withTempDunnitDir(t)
+	cfg := LoadConfig()
+	cfg.ReportExcludeTags = []string{"#home"}
+	if err := writeConfig(cfg); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	date := time.Date(2026, time.September, 23, 0, 0, 0, 0, time.Local)
+	got := eodReportForDisplay("# old title\n\nKeep this #work\nDrop this #home", date)
+	if strings.Contains(got, "Drop this") || !strings.Contains(got, "Keep this") {
+		t.Fatalf("EOD display report filtering = %q", got)
+	}
+}
+
 func TestMarkdownToPlainTextRemovesFormatting(t *testing.T) {
 	tests := []struct {
 		name string
@@ -132,7 +158,7 @@ func TestEODReportForDisplayUsesCoveredDateAndStats(t *testing.T) {
 	InvalidateLedgerCaches()
 
 	got := eodReportForDisplay("# End-of-Day Recap — Tue Sep 15\n\nThe work\n\nStats: old", date)
-	if !strings.Contains(got, "# End-of-Day Recap — Wed Sep 16") {
+	if !strings.Contains(got, "# End-of-Day Recap — Wed Sep 16, 2026") {
 		t.Fatalf("report heading did not use covered date: %q", got)
 	}
 	if !strings.Contains(got, "*Stats: 2 entries · 1 done · productivity 4/5*") {

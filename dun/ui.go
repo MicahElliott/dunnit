@@ -951,7 +951,8 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 				})
 			}))
 			row := container.NewBorder(nil, nil, nil, container.NewHBox(actions...),
-				daybookItemTextLabel(categoryIconPrefix(item.Category), openItemDisplayText(item.Text), tagStats))
+				daybookItemTextLabel(categoryIconPrefix(item.Category), openItemDisplayText(item.Text), tagStats,
+					func(tag string) { showTagEntriesWindow(a, tag) }))
 			openItemsBox.Add(row)
 		}
 		cats, grouped := groupOpenItemsByCategory(items)
@@ -1069,7 +1070,8 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 							})
 						})
 					}),
-					daybookItemTextLabel(categoryIconPrefix(item.Category), item.Text, tagStats))
+					daybookItemTextLabel(categoryIconPrefix(item.Category), item.Text, tagStats,
+						func(tag string) { showTagEntriesWindow(a, tag) }))
 				completedBox.Add(row)
 			}
 		}
@@ -1127,7 +1129,8 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 							})
 						})
 					}),
-					daybookItemTextLabel(categoryIconPrefix(item.Category), item.Text, tagStats))
+					daybookItemTextLabel(categoryIconPrefix(item.Category), item.Text, tagStats,
+						func(tag string) { showTagEntriesWindow(a, tag) }))
 				reflectionsBox.Add(row)
 			}
 		}
@@ -1156,6 +1159,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	completedItem := widget.NewAccordionItem("Endings", completedBox)
 	reflectionsItem := widget.NewAccordionItem("Hilites", reflectionsBox)
 	itemsAccordion = widget.NewAccordion(completedItem, upcomingItem, reflectionsItem)
+	itemsAccordion.CloseAll()
 
 	saveEntry := func() {
 		if strings.TrimSpace(input.Text) == "" {
@@ -1228,19 +1232,9 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	// main entry box and refocuses it, so tags can be added without
 	// typing "#" and waiting for autocomplete.
 	insertTrackableAtCursor := func(trackable string) {
-		runes := []rune(input.Text)
-		col := input.CursorColumn
-		if col < 0 || col > len(runes) {
-			col = len(runes)
-		}
-		insert := trackable
-		if col > 0 && !isTagBreak(runes[col-1]) {
-			insert = " " + insert
-		}
-		insert += " "
-		newText := string(runes[:col]) + insert + string(runes[col:])
+		newText, cursor := tagInsertionText(input.Text, trackable)
 		input.SetText(newText)
-		input.CursorColumn = col + len([]rune(insert))
+		input.CursorColumn = cursor
 		input.Refresh()
 		FocusMainInput()
 	}

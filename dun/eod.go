@@ -93,8 +93,9 @@ func recordTomorrowGoals(lines []string) {
 // item (recordPostponed, into SOMEDAY); leaving it unchecked leaves
 // it available for the next Start of Day carry-forward.
 func eodOpenItemsSection(category string) (box *fyne.Container, items []OpenItem, checks []*widget.Check) {
+	excludeTags := LoadConfig().ReportExcludeTags
 	for _, item := range getOpenItems() {
-		if item.Category == category {
+		if item.Category == category && !lineHasExcludedTag(item.Text, excludeTags) {
 			items = append(items, item)
 		}
 	}
@@ -119,6 +120,17 @@ func eodLedgerLineLabel(line string) fyne.CanvasObject {
 	}
 	return itemTextLabel(categoryIconPrefix(category) +
 		openItemDisplayText(stripResolutionSuffix(text)))
+}
+
+func eodIncludedLedgerLines(lines []string, cfg Config) []string {
+	kept := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if lineHasExcludedTag(line, cfg.ReportExcludeTags) {
+			continue
+		}
+		kept = append(kept, line)
+	}
+	return kept
 }
 
 func eodEntryIncluded(entry LedgerEntry, cfg Config) bool {
@@ -314,8 +326,9 @@ func eodReportForDisplay(report string, date time.Time) string {
 		bodyLines = append(bodyLines, line)
 	}
 	body := strings.TrimSpace(strings.Join(bodyLines, "\n"))
+	body = strings.TrimSpace(filterExcludedTagLines(body, LoadConfig().ReportExcludeTags))
 	body = strings.TrimSpace(augmentEODReport(body, date))
-	heading := "# End-of-Day Recap — " + date.Format("Mon Jan 2")
+	heading := "# End-of-Day Recap — " + date.Format("Mon Jan 2, 2006")
 	stats := "*Stats: " + eodReportStats(date) + "*"
 	if body == "" {
 		return heading + "\n\n" + stats + "\n"
@@ -324,7 +337,7 @@ func eodReportForDisplay(report string, date time.Time) string {
 }
 
 func showEODReport(a fyne.App, date time.Time, path, report string) {
-	showGeneratedReport(a, "Dunnit: EOD Report — "+date.Format("Mon Jan 2"), path,
+	showGeneratedReport(a, "Dunnit: EOD Report — "+date.Format("Mon Jan 2, 2006"), path,
 		eodReportForDisplay(report, date))
 }
 
@@ -365,7 +378,7 @@ func showEODWindow(a fyne.App) {
 	// full day in view before answering anything below. Render each
 	// line separately so inline entry links remain clickable.
 	todayBody := container.NewVBox()
-	for _, line := range readLedgerLines() {
+	for _, line := range eodIncludedLedgerLines(readLedgerLines(), LoadConfig()) {
 		todayBody.Add(eodLedgerLineLabel(line))
 	}
 	if len(todayBody.Objects) == 0 {
@@ -438,7 +451,7 @@ func showEODWindow(a fyne.App) {
 			var err error
 			if hasContent {
 				draft, err = summarizeWithLLMCLIPromptContext(request.ctx,
-					eodSummaryPrompt(), ledgerText)
+					eodSummaryPrompt(now), ledgerText)
 			}
 			request.finish()
 			fyne.Do(func() {

@@ -2,6 +2,7 @@ package dun
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -32,7 +33,7 @@ func TestFormatTagWithCountIsCompact(t *testing.T) {
 
 func TestTagUsageTooltipUsesRecentCount(t *testing.T) {
 	stat := &tagStat{count: 234, recentCount: 14}
-	if got := tagUsageTooltip("#foo", stat); got != "Used 14 times in the last 30 days" {
+	if got := tagUsageTooltip("#foo", stat); got != "Used 14 times in the last 30 days; 234 total" {
 		t.Fatalf("tagUsageTooltip = %q, want recent-count tooltip", got)
 	}
 }
@@ -56,9 +57,43 @@ func TestTagStatsCollapseCarryForwardCopies(t *testing.T) {
 }
 
 func TestTagUsageTooltipUsesSingularForOneUse(t *testing.T) {
-	stat := &tagStat{recentCount: 1}
-	if got := tagUsageTooltip("#foo", stat); got != "Used 1 time in the last 30 days" {
+	stat := &tagStat{count: 1, recentCount: 1}
+	if got := tagUsageTooltip("#foo", stat); got != "Used 1 time in the last 30 days; 1 total" {
 		t.Fatalf("tagUsageTooltip = %q, want singular wording", got)
+	}
+}
+
+func TestTagInsertionTextKeepsTagAtEnd(t *testing.T) {
+	cases := []struct {
+		name, text, tag, wantText string
+		wantCursor                int
+	}{
+		{name: "empty entry", tag: "#foo", wantText: " #foo", wantCursor: 0},
+		{name: "existing entry", text: "write update", tag: "#foo", wantText: "write update #foo", wantCursor: 13},
+		{name: "trailing whitespace", text: "write update  ", tag: "#foo", wantText: "write update #foo", wantCursor: 13},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			gotText, gotCursor := tagInsertionText(tc.text, tc.tag)
+			if gotText != tc.wantText || gotCursor != tc.wantCursor {
+				t.Fatalf("tagInsertionText(%q, %q) = (%q, %d), want (%q, %d)",
+					tc.text, tc.tag, gotText, gotCursor, tc.wantText, tc.wantCursor)
+			}
+		})
+	}
+}
+
+func TestTagEntriesLast30DaysUsesCalendarWindow(t *testing.T) {
+	withTempDunnitDir(t)
+	now := time.Date(2026, time.September, 23, 12, 0, 0, 0, time.Local)
+	writeLedgerLinesForDate(t, now.AddDate(0, 0, -29), []string{"[09:00] DONE first #foo"})
+	writeLedgerLinesForDate(t, now.AddDate(0, 0, -30), []string{"[09:00] DONE too old #foo"})
+	writeLedgerLinesForDate(t, now, []string{"[10:00] DONE latest #foo"})
+	InvalidateLedgerCaches()
+
+	entries := tagEntriesLast30Days("#foo", now)
+	if len(entries) != 2 || !strings.Contains(entries[0].Text, "latest") || !strings.Contains(entries[1].Text, "first") {
+		t.Fatalf("tagEntriesLast30Days() = %+v, want newest first with two entries", entries)
 	}
 }
 

@@ -43,8 +43,16 @@ func withinWorkHours(cfg Config, now time.Time) bool {
 	if isOffDay(cfg, now) {
 		return false
 	}
-	startH, startM, startOK := parseTimeInput(cfg.DayStart)
-	endH, endM, endOK := parseTimeInput(cfg.DayEnd)
+	startValue := cfg.DayStart
+	if strings.TrimSpace(startValue) == "" {
+		startValue = "08:00"
+	}
+	endValue := cfg.DayEnd
+	if strings.TrimSpace(endValue) == "" {
+		endValue = "17:30"
+	}
+	startH, startM, startOK := parseTimeInput(startValue)
+	endH, endM, endOK := parseTimeInput(endValue)
 	if !startOK || !endOK {
 		return false
 	}

@@ -15,6 +15,7 @@ func TestParseTimeInput(t *testing.T) {
 	}{
 		{name: "24 hour with leading zero", input: "06:30", wantHour: 6, wantMinute: 30, wantOK: true},
 		{name: "24 hour without leading zero", input: "6:30", wantHour: 6, wantMinute: 30, wantOK: true},
+		{name: "legacy seconds", input: "06:30:00", wantHour: 6, wantMinute: 30, wantOK: true},
 		{name: "compact am", input: "6a", wantHour: 6, wantOK: true},
 		{name: "full am", input: "6am", wantHour: 6, wantOK: true},
 		{name: "compact pm with minutes", input: "6:30p", wantHour: 18, wantMinute: 30, wantOK: true},
@@ -37,6 +38,13 @@ func TestParseTimeInput(t *testing.T) {
 				t.Fatalf("parseTimeInput(%q) = (%d, %d, %v), want (%d, %d, %v)", tc.input, hour, minute, ok, tc.wantHour, tc.wantMinute, tc.wantOK)
 			}
 		})
+	}
+}
+
+func TestWithinWorkHoursDefaultsBlankBounds(t *testing.T) {
+	now := time.Date(2026, time.September, 23, 9, 0, 0, 0, time.Local)
+	if !withinWorkHours(Config{}, now) {
+		t.Fatal("withinWorkHours(Config{}, 09:00) = false, want true using default bounds")
 	}
 }
 

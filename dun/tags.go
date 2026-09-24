@@ -351,8 +351,21 @@ func tagUsageTooltip(tag string, stat *tagStat) string {
 	if stat.recentCount == 1 {
 		word = "time"
 	}
-	return fmt.Sprintf("Used %d %s in the last %d days", stat.recentCount, word,
-		tagRecentWindowDays)
+	return fmt.Sprintf("Used %d %s in the last %d days; %d total", stat.recentCount, word,
+		tagRecentWindowDays, stat.count)
+}
+
+// tagInsertionText places a clicked tag at the end of the current entry and
+// returns a cursor position immediately before it. With an empty entry the
+// leading separator remains at index zero, so typing naturally leaves the tag
+// at the end of the line.
+func tagInsertionText(text, tag string) (newText string, cursor int) {
+	text = strings.TrimRight(text, " \t\r\n")
+	if text == "" {
+		return " " + tag, 0
+	}
+	newText = text + " " + tag
+	return newText, len([]rune(text)) + 1
 }
 
 // matchingTags returns tags from candidates that contain fragment as
@@ -425,10 +438,49 @@ func showAllTagsWindow(a fyne.App) {
 		list.Add(widget.NewLabel("No tags found in ledger history yet."))
 	}
 	for _, tag := range ranked {
-		list.Add(widget.NewLabel(formatTagWithCount(tag, stats[tag])))
+		tag := tag
+		list.Add(newTagLink(formatTagWithCount(tag, stats[tag]), tagUsageTooltip(tag, stats[tag]), func() {
+			showTagEntriesWindow(a, tag)
+		}))
 	}
 
 	w.SetContent(windowPad(container.NewVScroll(list)))
 	w.Resize(fyne.NewSize(300, 500))
+	w.Show()
+}
+
+// tagEntriesLast30Days returns every ledger entry carrying tag in the
+// inclusive calendar window ending today. Carry-forward rows are retained:
+// this view is an entry history, while frecent counts use deduplicated
+// logical lineage counts.
+func tagEntriesLast30Days(tag string, now time.Time) []LedgerEntry {
+	today := dateOnly(now)
+	from := today.AddDate(0, 0, -(tagRecentWindowDays - 1))
+	entries := FilterLedgerEntries(LedgerQuery{Tags: []string{tag}, From: from, To: today})
+	for i, j := 0, len(entries)-1; i < j; i, j = i+1, j-1 {
+		entries[i], entries[j] = entries[j], entries[i]
+	}
+	return entries
+}
+
+// showTagEntriesWindow displays the recent ledger history behind a Daybook
+// tag link. It is shared by colored Daybook tags and the All Tags window.
+func showTagEntriesWindow(a fyne.App, tag string) {
+	w := a.NewWindow("Dunnit: " + tag)
+	list := container.NewVBox()
+	entries := tagEntriesLast30Days(tag, time.Now())
+	if len(entries) == 0 {
+		list.Add(widget.NewLabel("No entries for this tag in the last 30 days."))
+	} else {
+		for _, entry := range entries {
+			stamp := entry.Date.Format("Mon Jan 2")
+			if !entry.Time.IsZero() {
+				stamp += " " + entry.Time.Format("15:04")
+			}
+			list.Add(itemTextLabel(stamp + " " + categoryIconPrefix(entry.Category) + entry.Text))
+		}
+	}
+	w.SetContent(windowPad(container.NewVScroll(list)))
+	w.Resize(fyne.NewSize(620, 500))
 	w.Show()
 }

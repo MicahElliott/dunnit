@@ -2,6 +2,7 @@ package dun
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -47,11 +48,13 @@ func draftDailySummaryContext(ctx context.Context, date time.Time) (string, erro
 	if mentions := reportMentionContextForRange(from, to, nil); mentions != "" {
 		ledgerText += "\n\n" + mentions
 	}
-	return summarizeWithLLMCLIPromptContext(ctx, eodSummaryPrompt(), ledgerText)
+	return summarizeWithLLMCLIPromptContext(ctx, eodSummaryPrompt(date), ledgerText)
 }
 
-func eodSummaryPrompt() string {
+func eodSummaryPrompt(date time.Time) string {
+	title := "# End-of-Day Recap — " + date.Format("Mon Jan 2, 2006")
 	return "Create a detailed but compact Markdown end-of-day recap from this ledger. " +
+		"The first line must be exactly " + fmt.Sprintf("%q", title) + "; do not add another title. " +
 		"Treat the ledger as the source of truth and account for every meaningful entry. " +
 		"Make the first section a grouped ledger summary with separate headings for " +
 		"categories such as DONE, DOING, TODO, and GOAL; do not scatter entries from " +
@@ -64,7 +67,7 @@ func eodSummaryPrompt() string {
 		"means a larger objective; MEETING means agenda or discussion notes. " +
 		"Include several concrete bullets and retain useful people, topics, learnings, " +
 		"and follow-up details. Be informative rather than ultra-concise, do not " +
-		"invent facts, and do not include a title or a separate statistics section." +
+		"invent facts, and do not include a separate statistics section." +
 		reportMentionPromptGuidance()
 }
 

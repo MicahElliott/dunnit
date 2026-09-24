@@ -131,6 +131,16 @@ func TestDaybookCoreDisplayTruncatesAndRetainsPrimaryTag(t *testing.T) {
 	}
 }
 
+func TestDaybookCoreDisplayElidesOnlyHiddenText(t *testing.T) {
+	display := daybookCoreDisplay("one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen")
+	if display.ellipsisIndex < 0 || display.elidedText == "" {
+		t.Fatalf("daybookCoreDisplay did not retain elided text: %+v", display)
+	}
+	if strings.Contains(display.elidedText, "one two") {
+		t.Fatalf("elided text repeated visible prefix: %q", display.elidedText)
+	}
+}
+
 func TestSplitCategoryIconPrefixKeepsSeparator(t *testing.T) {
 	icon, rest, ok := splitCategoryIconPrefix(categoryIconPrefix("TODO") + "write the update")
 	if !ok {

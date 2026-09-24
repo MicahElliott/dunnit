@@ -10,7 +10,7 @@ import (
 const timeInputHint = "use HH:MM, 6a, 6am, 6:30p, 630p, noon, or midnight"
 
 var (
-	clock24Pattern        = regexp.MustCompile(`^([0-9]{1,2}):([0-5][0-9])$`)
+	clock24Pattern        = regexp.MustCompile(`^([0-9]{1,2}):([0-5][0-9])(?::[0-5][0-9])?$`)
 	clock12Pattern        = regexp.MustCompile(`^([0-9]{1,2})(?::([0-5][0-9]))?[[:space:]]*(a|am|p|pm)$`)
 	compactClock12Pattern = regexp.MustCompile(`^([0-9]{1,2})([0-5][0-9])[[:space:]]*(a|am|p|pm)$`)
 )
