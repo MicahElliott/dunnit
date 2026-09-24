@@ -97,9 +97,10 @@ func GroupLabel(group string) string {
 // dropped in favor of `MEETING` only (FR-05); `BLOCKER`/`BLOCKED` was
 // replaced by `WAITING` (FR-03).
 //
-// "Endpoints" (2026-09-02 regroup, further narrowed later): "end" now
-// holds ONLY the literal terminal states a "Plan"-group item
-// (TODO/IDEA/GOAL/FIXME/etc.) resolves into -- DONE/HANDLED/FAIL/WASTED.
+// "Endpoints" (2026-09-02 regroup, further narrowed later): "end" holds
+// the terminal states a "Plan"-group item
+// (TODO/IDEA/GOAL/FIXME/etc.) resolves into -- DONE/HANDLED/FAIL/WASTED/
+// DISCARDED.
 // TIL/KUDOS/WIN moved out of "end"
 // and into "hilite" alongside IMPACT/MILESTONE/CAREER/PSA: all of
 // these are freestanding notable-moment callouts that don't resolve
@@ -110,7 +111,7 @@ func GroupLabel(group string) string {
 // written by hand when closing a Plan item into one of these
 // endpoints -- not yet a structured/enforced mechanism).
 var Categories = []Category{
-	// end: literal endpoints only -- DONE/HANDLED/FAIL/WASTED, the terminal
+	// end: literal endpoints only -- DONE/HANDLED/FAIL/WASTED/DISCARDED, the terminal
 	// states Plan-group items resolve into. WASTED is further
 	// gated behind Config.WastedTimeTrackingEnabled (default false,
 	// see config.go) -- an opt-in feature, hidden from the live
@@ -120,6 +121,7 @@ var Categories = []Category{
 	{"🤝", "HANDLED", "Someone else completed a TODO or DOING; add @Name when useful.", "end", "positive", false},
 	{"❌", "FAIL", "Work that did not succeed.", "end", "negative", false},
 	{"🗑️", "WASTED", "Unfocused or pointless work.", "end", "negative", false},
+	{"🚫", "DISCARDED", "An open item deliberately dropped without completing it.", "end", "negative", true},
 
 	// plan: future-facing -- includes the "open item, needs follow-up
 	// or resolution" categories (WAITING/QUESTION/FIXME/RISK moved

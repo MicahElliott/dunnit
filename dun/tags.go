@@ -176,13 +176,15 @@ func gatherTagStatsFromEntries(entries []LedgerEntry, now time.Time) map[string]
 	return stats
 }
 
-// deduplicateCarryForwardEntries collapses daily copies of one TODO/DOING
+// deduplicateCarryForwardEntries collapses copies of one tracked item's
 // lineage into its newest ledger entry. Carry-forward rows retain the
 // original date in an s/YYYY-MM-DD marker, which lets tag and people counts
 // treat a task carried across several days as one logical use while still
-// keeping its latest copy for recency scoring. Repeated unmarked TODO/DOING
-// rows on one day also collapse; unmarked terminal records remain separate
-// completed uses unless they carry lineage metadata.
+// keeping its latest copy for recency scoring. Resolution records such as
+// DONE, SOMEDAY, and DISCARDED use the same identity when they retain that
+// lineage marker. Repeated unmarked TODO/DOING rows on one day also collapse;
+// unmarked terminal records remain separate completed uses unless they carry
+// lineage metadata.
 func deduplicateCarryForwardEntries(entries []LedgerEntry) []LedgerEntry {
 	// Find the earliest source date for each normalized carried item. Older
 	// ledgers can accumulate more than one s/YYYY-MM-DD marker, and a later
@@ -190,22 +192,26 @@ func deduplicateCarryForwardEntries(entries []LedgerEntry) []LedgerEntry {
 	// not sufficient as the complete identity.
 	carriedDates := make(map[string]time.Time)
 	carriedRowDates := make(map[string]map[string]bool)
+	unmarkedResolutionDates := make(map[string]bool)
 	for _, entry := range entries {
-		if _, ok := parseCarryForwardSince(entry.Text); !ok {
-			continue
-		}
-		text, ok := carryForwardEntryText(entry)
+		identity, ok := carryForwardEntryIdentity(entry)
 		if !ok {
 			continue
 		}
-		date, _ := parseCarryForwardSince(entry.Text)
-		if prior, exists := carriedDates[text]; !exists || date.Before(prior) {
-			carriedDates[text] = date
+		date, carried := parseCarryForwardSince(entry.Text)
+		if !carried {
+			if resolutionSourceCategory(entry.Text) != "" {
+				unmarkedResolutionDates[identity+"\x00"+dateOnly(entry.Date).Format("2006-01-02")] = true
+			}
+			continue
 		}
-		dates := carriedRowDates[text]
+		if prior, exists := carriedDates[identity]; !exists || date.Before(prior) {
+			carriedDates[identity] = date
+		}
+		dates := carriedRowDates[identity]
 		if dates == nil {
 			dates = make(map[string]bool)
-			carriedRowDates[text] = dates
+			carriedRowDates[identity] = dates
 		}
 		dates[dateOnly(entry.Date).Format("2006-01-02")] = true
 		dates[dateOnly(date).Format("2006-01-02")] = true
@@ -213,7 +219,7 @@ func deduplicateCarryForwardEntries(entries []LedgerEntry) []LedgerEntry {
 
 	latest := make(map[string]int)
 	for i, entry := range entries {
-		key, ok := carryForwardEntryKey(entry, carriedDates, carriedRowDates)
+		key, ok := carryForwardEntryKey(entry, carriedDates, carriedRowDates, unmarkedResolutionDates)
 		if !ok {
 			continue
 		}
@@ -224,7 +230,7 @@ func deduplicateCarryForwardEntries(entries []LedgerEntry) []LedgerEntry {
 
 	out := make([]LedgerEntry, 0, len(entries))
 	for i, entry := range entries {
-		key, ok := carryForwardEntryKey(entry, carriedDates, carriedRowDates)
+		key, ok := carryForwardEntryKey(entry, carriedDates, carriedRowDates, unmarkedResolutionDates)
 		if ok && latest[key] != i {
 			continue
 		}
@@ -234,15 +240,78 @@ func deduplicateCarryForwardEntries(entries []LedgerEntry) []LedgerEntry {
 }
 
 // carryForwardEntryText is the logical task text used by carry-forward
-// deduplication. Lifecycle rows may differ only because they were copied,
-// timed, resolved, or inflected for a new lifecycle category. All of those
-// pieces are metadata for identity and must be removed before comparing the
-// actual task text.
+// deduplication. Tracked rows may differ only because they were copied,
+// timed, resolved, inflected for a new lifecycle category, or annotated with
+// an optional @person marker. All of those pieces are metadata for identity
+// and must be removed before comparing the actual task text.
 func carryForwardEntryText(entry LedgerEntry) (string, bool) {
-	if !isLifecycleCategory(entry.Category) && !isLifecycleEndpoint(entry.Category) {
+	if !isTagHistoryTrackedCategory(entry.Category) {
 		return "", false
 	}
-	return normalizeLifecycleEntryText(entry.Text), true
+	text := normalizeLifecycleEntryText(entry.Text)
+	if resolutionSourceCategory(entry.Text) != "" {
+		// Resolution rows are sometimes edited from imperative text to
+		// past tense beyond the leading verb ("and reintegrate" /
+		// "and reintegrated"). Normalize those secondary verbs only on
+		// rows carrying an explicit resolution marker; ordinary freeform
+		// task text remains exact after the leading lifecycle verb.
+		text = normalizeConjoinedVerbInflections(text)
+	}
+	return text, true
+}
+
+// isTagHistoryTrackedCategory identifies ledger categories that can
+// participate in one logical open-item lineage. This includes the broader
+// open-item set, its terminal endpoints, and the side-resolution categories
+// SOMEDAY/DISCARDED. Freestanding DONE entries are still kept separate by
+// carryForwardEntryKey unless they contain a carry marker or resolution
+// suffix.
+func isTagHistoryTrackedCategory(category string) bool {
+	return isOpenTrackedCategory(category) || isLifecycleEndpoint(category) ||
+		category == somedayCategory || category == "DISCARDED"
+}
+
+// logicalEntryCategory groups TODO and DOING together while preserving the
+// category identity of other tracked open items. A resolving row inherits
+// the source category named by its rightmost "(via CATEGORY)" suffix, so a
+// GOAL and its DONE/DISCARDED record do not become unrelated history rows.
+func logicalEntryCategory(entry LedgerEntry) string {
+	if source := resolutionSourceCategory(entry.Text); source != "" {
+		if isLifecycleCategory(source) {
+			return "TODO/DOING"
+		}
+		return source
+	}
+	if isLifecycleCategory(entry.Category) {
+		return "TODO/DOING"
+	}
+	return entry.Category
+}
+
+func resolutionSourceCategory(text string) string {
+	var first string
+	for {
+		found := ""
+		for _, source := range append(append([]string{}, openTrackedCategories...), somedayCategory) {
+			if strings.HasSuffix(text, convertedSuffix(source)) {
+				found = source
+				break
+			}
+		}
+		if found == "" {
+			return first
+		}
+		first = found
+		text = strings.TrimSuffix(text, convertedSuffix(found))
+	}
+}
+
+func carryForwardEntryIdentity(entry LedgerEntry) (string, bool) {
+	text, ok := carryForwardEntryText(entry)
+	if !ok {
+		return "", false
+	}
+	return logicalEntryCategory(entry) + "\x00" + text, true
 }
 
 // normalizeLifecycleEntryText removes copy, duration, and resolution
@@ -252,7 +321,7 @@ func carryForwardEntryText(entry LedgerEntry) (string, bool) {
 // while keeping every other part of the task text meaningful.
 func normalizeLifecycleEntryText(text string) string {
 	text = stripFlags(text)
-	text = stripResolutionSuffix(stripAllCarryForwardSince(text))
+	text = stripAllResolutionSuffixes(stripAllCarryForwardSince(text))
 	for {
 		start, end, _, ok := entryMinsMatch(text)
 		if !ok {
@@ -260,24 +329,32 @@ func normalizeLifecycleEntryText(text string) string {
 		}
 		text = text[:start] + text[end:]
 	}
+	text = stripPersonMarkers(text)
 	return strings.ToLower(strings.Join(strings.Fields(BaseTenseLeadingWord(text)), " "))
 }
 
-func carryForwardEntryKey(entry LedgerEntry, carriedDates map[string]time.Time, carriedRowDates map[string]map[string]bool) (string, bool) {
-	text, ok := carryForwardEntryText(entry)
+func carryForwardEntryKey(entry LedgerEntry, carriedDates map[string]time.Time, carriedRowDates map[string]map[string]bool, unmarkedResolutionDates map[string]bool) (string, bool) {
+	identity, ok := carryForwardEntryIdentity(entry)
 	if !ok {
 		return "", false
 	}
 	if since, carried := parseCarryForwardSince(entry.Text); carried {
 		// Use the earliest marker seen for this normalized task. This links
 		// older rows whose marker was refreshed by a later carry-forward.
-		if earliest, exists := carriedDates[text]; exists {
+		if earliest, exists := carriedDates[identity]; exists {
 			since = earliest
 		}
-		return "carried\x00" + since.Format("2006-01-02") + "\x00" + text, true
+		return "carried\x00" + since.Format("2006-01-02") + "\x00" + identity, true
 	}
-	if since, exists := carriedDates[text]; exists && isLifecycleCategory(entry.Category) && carriedRowDates[text][dateOnly(entry.Date).Format("2006-01-02")] {
-		return "carried\x00" + since.Format("2006-01-02") + "\x00" + text, true
+	dateKey := identity + "\x00" + dateOnly(entry.Date).Format("2006-01-02")
+	if resolutionSourceCategory(entry.Text) != "" || unmarkedResolutionDates[dateKey] {
+		// An explicit same-day resolution suffix links an unmarked source
+		// row to its DONE/SOMEDAY/DISCARDED record even when no carry
+		// marker was ever written.
+		return "resolved-unmarked\x00" + dateKey, true
+	}
+	if since, exists := carriedDates[identity]; exists && isLifecycleCategory(entry.Category) && carriedRowDates[identity][dateOnly(entry.Date).Format("2006-01-02")] {
+		return "carried\x00" + since.Format("2006-01-02") + "\x00" + identity, true
 	}
 	if !isLifecycleCategory(entry.Category) {
 		// An unmarked DONE/HANDLED/etc. is an independent completed use.
@@ -287,7 +364,42 @@ func carryForwardEntryKey(entry LedgerEntry, carriedDates map[string]time.Time, 
 	// Unmarked lifecycle rows are independent uses unless they are an
 	// exact same-day copy of a marked lineage. Same-day duplicates still
 	// collapse, which handles duplicate TODO rows in a single day's data.
-	return "unmarked\x00" + dateOnly(entry.Date).Format("2006-01-02") + "\x00" + text, true
+	return "unmarked\x00" + dateOnly(entry.Date).Format("2006-01-02") + "\x00" + identity, true
+}
+
+func stripAllResolutionSuffixes(text string) string {
+	for {
+		stripped := stripResolutionSuffix(text)
+		if stripped == text {
+			return strings.TrimSpace(text)
+		}
+		text = stripped
+	}
+}
+
+// stripPersonMarkers removes the @ decoration while preserving the person's
+// name. Adding a marker to an existing task should not split its tag history,
+// but different names remain different task text.
+func stripPersonMarkers(text string) string {
+	matches := personPattern.FindAllStringIndex(text, -1)
+	for i := len(matches) - 1; i >= 0; i-- {
+		match := matches[i]
+		if !isPersonMatchBoundary(text, match[0]) {
+			continue
+		}
+		text = text[:match[0]] + text[match[0]+1:]
+	}
+	return text
+}
+
+func normalizeConjoinedVerbInflections(text string) string {
+	words := strings.Fields(text)
+	for i := 1; i < len(words); i++ {
+		if strings.EqualFold(words[i-1], "and") {
+			words[i] = BaseTense(words[i])
+		}
+	}
+	return strings.Join(words, " ")
 }
 
 func ledgerEntryAfter(a, b LedgerEntry) bool {

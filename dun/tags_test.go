@@ -79,6 +79,60 @@ func TestDeduplicateCarryForwardEntriesNormalizesMetadataAndInflections(t *testi
 	}
 }
 
+func TestDeduplicateCarryForwardEntriesCollapsesPeopleAndDiscardResolutionVariants(t *testing.T) {
+	first := time.Date(2026, 9, 19, 0, 0, 0, 0, time.Local)
+	entries := []LedgerEntry{
+		{Date: first, Time: first.Add(6 * time.Hour), Category: "TODO", Text: "Read Aryan's feedback on #74750 and reintegrate with his changes s/2026-09-18", Tags: []string{"#74750"}},
+		{Date: first.AddDate(0, 0, 1), Time: first.AddDate(0, 0, 1).Add(6 * time.Hour), Category: "TODO", Text: "Read Aryan's feedback on #74750 and reintegrate with his changes s/2026-09-18", Tags: []string{"#74750"}},
+		{Date: first.AddDate(0, 0, 1), Time: first.AddDate(0, 0, 1).Add(6 * time.Hour), Category: "TODO", Text: "Read @Aryan's feedback on #74750 and reintegrate with his changes s/2026-09-18", Tags: []string{"#74750"}},
+		{Date: first.AddDate(0, 0, 2), Time: first.AddDate(0, 0, 2).Add(6 * time.Hour), Category: "DONE", Text: "Read @Aryan's feedback on #74750 and reintegrated with his changes s/2026-09-18 (via DOING)", Tags: []string{"#74750"}},
+		{Date: first.AddDate(0, 0, 2), Time: first.AddDate(0, 0, 2).Add(6*time.Hour + time.Minute), Category: "DISCARDED", Text: "Read Aryan's feedback on #74750 and reintegrate with his changes s/2026-09-18 (via TODO)", Tags: []string{"#74750"}},
+	}
+
+	got := deduplicateCarryForwardEntries(entries)
+	if len(got) != 1 || got[0].Category != "DISCARDED" {
+		t.Fatalf("deduplicated entries = %+v, want one newest DISCARDED row", got)
+	}
+}
+
+func TestDeduplicateCarryForwardEntriesCoversGoalAndRepeatedResolutionSuffixes(t *testing.T) {
+	first := time.Date(2026, 9, 7, 0, 0, 0, 0, time.Local)
+	entries := []LedgerEntry{
+		{Date: first, Category: "GOAL", Text: "Finish the launch plan #goal s/2026-09-07", Tags: []string{"#goal"}},
+		{Date: first.AddDate(0, 0, 1), Category: "GOAL", Text: "Finish the launch plan #goal s/2026-09-07", Tags: []string{"#goal"}},
+		{Date: first.AddDate(0, 0, 2), Category: "DISCARDED", Text: "Finish the launch plan #goal s/2026-09-07 (via GOAL)", Tags: []string{"#goal"}},
+		{Date: first.AddDate(0, 0, 3), Category: "SOMEDAY", Text: "Park the launch plan #goal s/2026-09-07", Tags: []string{"#goal"}},
+		{Date: first.AddDate(0, 0, 4), Category: "DISCARDED", Text: "Park the launch plan #goal s/2026-09-07 (via SOMEDAY)", Tags: []string{"#goal"}},
+		{Date: first, Category: "SOMEDAY", Text: "Finish the floor #home s/2026-09-07 (via TODO)", Tags: []string{"#home"}},
+		{Date: first.AddDate(0, 0, 1), Category: "DISCARDED", Text: "Finish the floor #home s/2026-09-07 (via TODO) (via SOMEDAY)", Tags: []string{"#home"}},
+	}
+
+	got := deduplicateCarryForwardEntries(entries)
+	if len(got) != 3 {
+		t.Fatalf("deduplicated entries = %+v, want one GOAL lineage, one SOMEDAY lineage, and one chained lineage", got)
+	}
+	for _, entry := range got {
+		if entry.Category != "DISCARDED" {
+			t.Fatalf("deduplicated entries = %+v, want newest resolution row for each lineage", got)
+		}
+	}
+}
+
+func TestDeduplicateCarryForwardEntriesLinksSameDayUnmarkedResolution(t *testing.T) {
+	day := time.Date(2026, 9, 21, 0, 0, 0, 0, time.Local)
+	entries := []LedgerEntry{
+		{Date: day, Time: day.Add(6 * time.Hour), Category: "TODO", Text: "Go for a run #fit", Tags: []string{"#fit"}},
+		{Date: day, Time: day.Add(6*time.Hour + time.Minute), Category: "DISCARDED", Text: "Go for a run #fit (via TODO)", Tags: []string{"#fit"}},
+		{Date: day, Time: day.Add(7 * time.Hour), Category: "GOAL", Text: "Check PROD #splunk", Tags: []string{"#splunk"}},
+		{Date: day, Time: day.Add(8 * time.Hour), Category: "DISCARDED", Text: "Check PROD #splunk (via GOAL)", Tags: []string{"#splunk"}},
+	}
+
+	got := deduplicateCarryForwardEntries(entries)
+	if len(got) != 2 || got[0].Category != "DISCARDED" || got[1].Category != "DISCARDED" {
+		t.Fatalf("deduplicated entries = %+v, want one newest resolution row per same-day item", got)
+	}
+}
+
 func TestTagUsageTooltipUsesSingularForOneUse(t *testing.T) {
 	stat := &tagStat{count: 1, recentCount: 1}
 	if got := tagUsageTooltip("#foo", stat); got != "Used 1 time in the last 30 days; 1 total" {

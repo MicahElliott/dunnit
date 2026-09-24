@@ -75,9 +75,9 @@ func isOpenTrackedCategory(cat string) bool {
 // (deliberately dropped, not done and not deferred -- just no longer
 // relevant). All three leave the original line untouched (append-only
 // ledger design) and are recognized by parseOpenItems as removing the
-// item from the open/Upcoming list. DISCARDED isn't a selectable
-// Daybook category (see categories.go) -- it only ever gets written
-// via recordDiscarded, never picked by hand.
+// item from the open/Upcoming list. DISCARDED is a historical/dedicated-flow
+// category (see categories.go) -- it only ever gets written via
+// recordDiscarded, never picked by hand.
 var resolvingCategories = []string{"DONE", "HANDLED", "FAIL", "WASTED", "SOMEDAY", "DISCARDED"}
 
 // convertedSuffix marks a resolving line (DONE, HANDLED, or SOMEDAY) as having
@@ -500,7 +500,7 @@ func lastDoneItem() (item OpenItem, ok bool) {
 }
 
 func stripResolutionSuffix(text string) string {
-	for _, srcCat := range openTrackedCategories {
+	for _, srcCat := range append(append([]string{}, openTrackedCategories...), somedayCategory) {
 		text = strings.TrimSuffix(text, convertedSuffix(srcCat))
 	}
 	return text

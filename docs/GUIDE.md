@@ -245,6 +245,7 @@ authoritative source; update this section whenever categories change._
 - 🤝 `HANDLED` — Someone else completed a TODO or DOING item. Add `@Name` when useful.
 - ❌ `FAIL` — Something that didn't go as hoped — an endpoint a "Plan" item can resolve into, same as DONE, just the unsuccessful outcome.
 - 🗑️ `WASTED` — Unfocused, pointless work or distraction. Opt-in: hidden from the live picker unless enabled in Settings.
+- 🚫 `DISCARDED` — An open item deliberately dropped without completing it. Written by the discard action rather than picked directly.
 
 **Plan** — future-facing, open items tracked toward a resolution to DONE in "End"
 

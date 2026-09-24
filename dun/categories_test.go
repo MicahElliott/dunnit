@@ -70,3 +70,17 @@ func TestHandledIsALifecycleEndpoint(t *testing.T) {
 		t.Fatalf("HANDLED help = %q, want @Name guidance", HelpForCode("HANDLED"))
 	}
 }
+
+func TestDiscardedHasIconButStaysOutOfPicker(t *testing.T) {
+	if got := EmojiForCode("DISCARDED"); got != "🚫" {
+		t.Fatalf("EmojiForCode(DISCARDED) = %q, want no-entry icon", got)
+	}
+	if !CategoryExists("DISCARDED") {
+		t.Fatal("DISCARDED should be known for historical display and CLI validation")
+	}
+	for _, label := range CategoryLabelsForGroup(Config{}, "end") {
+		if strings.Contains(label, "DISCARDED") {
+			t.Fatalf("DISCARDED should remain out of the live picker: %v", label)
+		}
+	}
+}

@@ -252,7 +252,7 @@ var silentEInflectionBases = map[string]string{
 	"clos": "close", "com": "come", "creat": "create", "danc": "dance",
 	"hat": "hate", "lov": "love", "mak": "make", "mov": "move",
 	"not": "note", "prov": "prove", "tak": "take", "us": "use",
-	"writ": "write",
+	"writ": "write", "reintegrat": "reintegrate",
 }
 
 // PastTenseLeadingWord converts only the first whitespace-delimited
