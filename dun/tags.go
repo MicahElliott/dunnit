@@ -180,32 +180,52 @@ func gatherTagStatsFromEntries(entries []LedgerEntry, now time.Time) map[string]
 // lineage into its newest ledger entry. Carry-forward rows retain the
 // original date in an s/YYYY-MM-DD marker, which lets tag and people counts
 // treat a task carried across several days as one logical use while still
-// keeping its latest copy for recency scoring. Unmarked entries remain
-// independent unless a matching carried lineage exists.
+// keeping its latest copy for recency scoring. Repeated unmarked TODO/DOING
+// rows on one day also collapse; unmarked terminal records remain separate
+// completed uses unless they carry lineage metadata.
 func deduplicateCarryForwardEntries(entries []LedgerEntry) []LedgerEntry {
-	carriedKeys := make(map[string]bool)
+	// Find the earliest source date for each normalized carried item. Older
+	// ledgers can accumulate more than one s/YYYY-MM-DD marker, and a later
+	// carry-forward can refresh that marker, so the marker on any one row is
+	// not sufficient as the complete identity.
+	carriedDates := make(map[string]time.Time)
+	carriedRowDates := make(map[string]map[string]bool)
 	for _, entry := range entries {
 		if _, ok := parseCarryForwardSince(entry.Text); !ok {
 			continue
 		}
-		if key, ok := carryForwardEntryKey(entry); ok {
-			carriedKeys[key] = true
+		text, ok := carryForwardEntryText(entry)
+		if !ok {
+			continue
 		}
+		date, _ := parseCarryForwardSince(entry.Text)
+		if prior, exists := carriedDates[text]; !exists || date.Before(prior) {
+			carriedDates[text] = date
+		}
+		dates := carriedRowDates[text]
+		if dates == nil {
+			dates = make(map[string]bool)
+			carriedRowDates[text] = dates
+		}
+		dates[dateOnly(entry.Date).Format("2006-01-02")] = true
+		dates[dateOnly(date).Format("2006-01-02")] = true
 	}
 
 	latest := make(map[string]int)
 	for i, entry := range entries {
-		key, ok := carryForwardEntryKey(entry)
-		if !ok || !carriedKeys[key] {
+		key, ok := carryForwardEntryKey(entry, carriedDates, carriedRowDates)
+		if !ok {
 			continue
 		}
-		latest[key] = i
+		if prior, exists := latest[key]; !exists || ledgerEntryAfter(entry, entries[prior]) {
+			latest[key] = i
+		}
 	}
 
 	out := make([]LedgerEntry, 0, len(entries))
 	for i, entry := range entries {
-		key, ok := carryForwardEntryKey(entry)
-		if ok && carriedKeys[key] && latest[key] != i {
+		key, ok := carryForwardEntryKey(entry, carriedDates, carriedRowDates)
+		if ok && latest[key] != i {
 			continue
 		}
 		out = append(out, entry)
@@ -213,21 +233,73 @@ func deduplicateCarryForwardEntries(entries []LedgerEntry) []LedgerEntry {
 	return out
 }
 
-func carryForwardEntryKey(entry LedgerEntry) (string, bool) {
+// carryForwardEntryText is the logical task text used by carry-forward
+// deduplication. Lifecycle rows may differ only because they were copied,
+// timed, resolved, or inflected for a new lifecycle category. All of those
+// pieces are metadata for identity and must be removed before comparing the
+// actual task text.
+func carryForwardEntryText(entry LedgerEntry) (string, bool) {
 	if !isLifecycleCategory(entry.Category) && !isLifecycleEndpoint(entry.Category) {
 		return "", false
 	}
-	date, carried := parseCarryForwardSince(entry.Text)
-	if !carried {
-		date = entry.Date
+	return normalizeLifecycleEntryText(entry.Text), true
+}
+
+// normalizeLifecycleEntryText removes copy, duration, and resolution
+// metadata, then compares lifecycle rows by their complete task text after
+// normalizing the leading verb to its base form. This makes TODO/DOING/DONE
+// variants such as "Wrap", "Wrapping", and "Wrapped" share an identity
+// while keeping every other part of the task text meaningful.
+func normalizeLifecycleEntryText(text string) string {
+	text = stripResolutionSuffix(stripAllCarryForwardSince(text))
+	for {
+		start, end, _, ok := entryMinsMatch(text)
+		if !ok {
+			break
+		}
+		text = text[:start] + text[end:]
 	}
-	text := stripResolutionSuffix(stripCarryForwardSince(entry.Text))
-	category := entry.Category
-	if isLifecycleCategory(category) || isLifecycleEndpoint(category) {
-		category = "TODO/DOING"
-		text = BaseTenseLeadingWord(text)
+	return strings.ToLower(strings.Join(strings.Fields(BaseTenseLeadingWord(text)), " "))
+}
+
+func carryForwardEntryKey(entry LedgerEntry, carriedDates map[string]time.Time, carriedRowDates map[string]map[string]bool) (string, bool) {
+	text, ok := carryForwardEntryText(entry)
+	if !ok {
+		return "", false
 	}
-	return date.Format("2006-01-02") + "\x00" + category + "\x00" + text, true
+	if since, carried := parseCarryForwardSince(entry.Text); carried {
+		// Use the earliest marker seen for this normalized task. This links
+		// older rows whose marker was refreshed by a later carry-forward.
+		if earliest, exists := carriedDates[text]; exists {
+			since = earliest
+		}
+		return "carried\x00" + since.Format("2006-01-02") + "\x00" + text, true
+	}
+	if since, exists := carriedDates[text]; exists && isLifecycleCategory(entry.Category) && carriedRowDates[text][dateOnly(entry.Date).Format("2006-01-02")] {
+		return "carried\x00" + since.Format("2006-01-02") + "\x00" + text, true
+	}
+	if !isLifecycleCategory(entry.Category) {
+		// An unmarked DONE/HANDLED/etc. is an independent completed use.
+		// Repeated completions on the same day must remain countable.
+		return "", false
+	}
+	// Unmarked lifecycle rows are independent uses unless they are an
+	// exact same-day copy of a marked lineage. Same-day duplicates still
+	// collapse, which handles duplicate TODO rows in a single day's data.
+	return "unmarked\x00" + dateOnly(entry.Date).Format("2006-01-02") + "\x00" + text, true
+}
+
+func ledgerEntryAfter(a, b LedgerEntry) bool {
+	if !a.Date.Equal(b.Date) {
+		return a.Date.After(b.Date)
+	}
+	if !a.Time.IsZero() && !b.Time.IsZero() && !a.Time.Equal(b.Time) {
+		return a.Time.After(b.Time)
+	}
+	if a.Time.IsZero() != b.Time.IsZero() {
+		return !a.Time.IsZero()
+	}
+	return false
 }
 
 // finalizeTagStats combines a log-scaled frequency signal with the
@@ -449,17 +521,15 @@ func showAllTagsWindow(a fyne.App) {
 	w.Show()
 }
 
-// tagEntriesLast30Days returns every ledger entry carrying tag in the
-// inclusive calendar window ending today. Carry-forward rows are retained:
-// this view is an entry history, while frecent counts use deduplicated
-// logical lineage counts.
+// tagEntriesLast30Days returns one newest ledger entry per logical item
+// carrying tag in the inclusive calendar window ending today. It uses the
+// same carry-forward deduplication as frecent counts so the browser and its
+// displayed count describe the same uses.
 func tagEntriesLast30Days(tag string, now time.Time) []LedgerEntry {
 	today := dateOnly(now)
 	from := today.AddDate(0, 0, -(tagRecentWindowDays - 1))
-	entries := FilterLedgerEntries(LedgerQuery{Tags: []string{tag}, From: from, To: today})
-	for i, j := 0, len(entries)-1; i < j; i, j = i+1, j-1 {
-		entries[i], entries[j] = entries[j], entries[i]
-	}
+	entries := deduplicateCarryForwardEntries(FilterLedgerEntries(LedgerQuery{Tags: []string{tag}, From: from, To: today}))
+	sort.SliceStable(entries, func(i, j int) bool { return ledgerEntryAfter(entries[i], entries[j]) })
 	return entries
 }
 

@@ -91,6 +91,13 @@ func TestParseOpenItems_CollapsesInflectedLifecycleStates(t *testing.T) {
 	}
 }
 
+func TestOpenItemKeyNormalizesLifecycleMetadata(t *testing.T) {
+	want := openItemKey("TODO", "Wrap up #foo")
+	if got := openItemKey("DOING", "Wrapping up #foo ~1h s/2026-09-11"); got != want {
+		t.Errorf("openItemKey(DOING) = %q, want %q", got, want)
+	}
+}
+
 func TestLifecycleInflectionCycle(t *testing.T) {
 	cases := []struct {
 		category string

@@ -56,6 +56,29 @@ func TestTagStatsCollapseCarryForwardCopies(t *testing.T) {
 	}
 }
 
+func TestDeduplicateCarryForwardEntriesNormalizesMetadataAndInflections(t *testing.T) {
+	first := time.Date(2026, 9, 11, 0, 0, 0, 0, time.Local)
+	entries := []LedgerEntry{
+		{Date: first, Time: first.Add(6 * time.Hour), Category: "TODO", Text: "Wrap up #foo", Tags: []string{"#foo"}},
+		{Date: first.AddDate(0, 0, 1), Time: first.AddDate(0, 0, 1).Add(6 * time.Hour), Category: "TODO", Text: "Wrap up #foo s/2026-09-11", Tags: []string{"#foo"}},
+		{Date: first.AddDate(0, 0, 2), Time: first.AddDate(0, 0, 2).Add(6 * time.Hour), Category: "DOING", Text: "Wrapping up #foo ~1h s/2026-09-11", Tags: []string{"#foo"}},
+		{Date: first.AddDate(0, 0, 3), Time: first.AddDate(0, 0, 3).Add(6 * time.Hour), Category: "DONE", Text: "Wrapped up #foo ~2h s/2026-09-11 (via DOING)", Tags: []string{"#foo"}},
+		{Date: first.AddDate(0, 0, 3), Time: first.AddDate(0, 0, 3).Add(5 * time.Hour), Category: "TODO", Text: "Wrap up #foo", Tags: []string{"#foo"}},
+		{Date: first.AddDate(0, 0, 4), Time: first.AddDate(0, 0, 4).Add(6 * time.Hour), Category: "DONE", Text: "Wrap up #foo", Tags: []string{"#foo"}},
+	}
+
+	got := deduplicateCarryForwardEntries(entries)
+	if len(got) != 2 {
+		t.Fatalf("deduplicated entries = %d, want one carried lineage plus one independent use: %+v", len(got), got)
+	}
+	if got[0].Category != "DONE" || got[0].Text != "Wrapped up #foo ~2h s/2026-09-11 (via DOING)" {
+		t.Fatalf("deduplicated carried entry = %+v, want newest inflected row", got[0])
+	}
+	if got[1].Category != "DONE" || got[1].Text != "Wrap up #foo" {
+		t.Fatalf("independent entry = %+v, want unmarked later use", got[1])
+	}
+}
+
 func TestTagUsageTooltipUsesSingularForOneUse(t *testing.T) {
 	stat := &tagStat{count: 1, recentCount: 1}
 	if got := tagUsageTooltip("#foo", stat); got != "Used 1 time in the last 30 days; 1 total" {
@@ -94,6 +117,25 @@ func TestTagEntriesLast30DaysUsesCalendarWindow(t *testing.T) {
 	entries := tagEntriesLast30Days("#foo", now)
 	if len(entries) != 2 || !strings.Contains(entries[0].Text, "latest") || !strings.Contains(entries[1].Text, "first") {
 		t.Fatalf("tagEntriesLast30Days() = %+v, want newest first with two entries", entries)
+	}
+}
+
+func TestTagEntriesLast30DaysDeduplicatesLogicalEntries(t *testing.T) {
+	withTempDunnitDir(t)
+	now := time.Date(2026, time.September, 23, 12, 0, 0, 0, time.Local)
+	writeLedgerLinesForDate(t, now.AddDate(0, 0, -2), []string{
+		"[09:00] TODO Wrap up #foo",
+		"[09:01] TODO Wrap up #foo s/2026-09-21",
+	})
+	writeLedgerLinesForDate(t, now.AddDate(0, 0, -1), []string{
+		"[09:02] DOING Wrapping up #foo ~1h s/2026-09-21",
+		"[09:03] DONE Wrapped up #foo ~2h s/2026-09-21 (via DOING)",
+	})
+	InvalidateLedgerCaches()
+
+	entries := tagEntriesLast30Days("#foo", now)
+	if len(entries) != 1 || entries[0].Category != "DONE" {
+		t.Fatalf("tagEntriesLast30Days() = %+v, want one newest DONE entry", entries)
 	}
 }
 

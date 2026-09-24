@@ -65,6 +65,21 @@ func stripCarryForwardSince(text string) string {
 	}
 }
 
+// stripAllCarryForwardSince removes every current and legacy carry-forward
+// marker, including markers that are followed by a duration or another
+// marker. Deduplication needs the task text without any accumulated copy
+// metadata, whereas stripCarryForwardSince intentionally only removes a
+// trailing marker for display and carry-forward processing.
+func stripAllCarryForwardSince(text string) string {
+	for _, pattern := range []*regexp.Regexp{
+		carryForwardSincePattern,
+		legacyCarryForwardSincePattern,
+	} {
+		text = pattern.ReplaceAllString(text, "")
+	}
+	return strings.TrimSpace(text)
+}
+
 // staleDateFor returns the date an open item's staleness/carry-
 // forward "since" should be measured from: its own embedded
 // carryForwardSinceSuffix if it already has one (i.e. it was already

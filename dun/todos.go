@@ -53,7 +53,7 @@ func isLifecycleEndpoint(cat string) bool {
 func openItemKey(category, text string) string {
 	if isLifecycleCategory(category) {
 		category = "TODO/DOING"
-		text = BaseTenseLeadingWord(text)
+		text = normalizeLifecycleEntryText(text)
 	}
 	return category + "\x00" + stripCarryForwardSince(text)
 }
