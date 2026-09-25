@@ -650,20 +650,30 @@ func tagEntriesLast30Days(tag string, now time.Time) []LedgerEntry {
 // tag link. It is shared by colored Daybook tags and the All Tags window.
 func showTagEntriesWindow(a fyne.App, tag string) {
 	w := a.NewWindow("Dunnit: " + tag)
-	list := container.NewVBox()
-	entries := tagEntriesLast30Days(tag, time.Now())
-	if len(entries) == 0 {
-		list.Add(widget.NewLabel("No entries for this tag in the last 30 days."))
-	} else {
-		for _, entry := range entries {
-			stamp := entry.Date.Format("Mon Jan 2")
-			if !entry.Time.IsZero() {
-				stamp += " " + entry.Time.Format("15:04")
+	content := container.NewVBox()
+	var refresh func()
+	refresh = func() {
+		content.RemoveAll()
+		content.Add(tagDefinitionSection(w, tag, refresh))
+		content.Add(widget.NewSeparator())
+		content.Add(widget.NewLabel("Recent activity (last 30 days)"))
+
+		entries := tagEntriesLast30Days(tag, time.Now())
+		if len(entries) == 0 {
+			content.Add(widget.NewLabel("No entries for this tag in the last 30 days."))
+		} else {
+			for _, entry := range entries {
+				stamp := entry.Date.Format("Mon Jan 2")
+				if !entry.Time.IsZero() {
+					stamp += " " + entry.Time.Format("15:04")
+				}
+				content.Add(itemTextLabel(stamp + " " + categoryIconPrefix(entry.Category) + entry.Text))
 			}
-			list.Add(itemTextLabel(stamp + " " + categoryIconPrefix(entry.Category) + entry.Text))
 		}
+		content.Refresh()
 	}
-	w.SetContent(windowPad(container.NewVScroll(list)))
+	refresh()
+	w.SetContent(windowPad(container.NewVScroll(content)))
 	w.Resize(fyne.NewSize(620, 500))
 	w.Show()
 }

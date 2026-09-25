@@ -87,7 +87,7 @@ The tag starts the GitHub Actions release workflow.
 
 ## Data Storage
 
-Dunnit keeps everything (ledger files and `config.toml`) under a
+Dunnit keeps everything (ledger files, tag profiles, and `config.toml`) under a
 single root directory, `~/.config/dunnit` by default, overridable
 with the `DUNNIT_DIR` env var (e.g. point it at a private git repo you
 sync across machines).
@@ -131,6 +131,28 @@ Existing ledgers can be converted with
 `$DUNNIT_DIR` is expected to be (or contain) a git repo (e.g. a private
 `mydunnits` repo) so your history syncs across machines, mirroring the
 original dunnit setup.
+
+Optional tag profiles live in `$DUNNIT_DIR/tags.toml`. The profile key is the
+bare tag name without `#`; ledger entries continue to use `#foo` as usual:
+
+```toml
+[tags."foo"]
+title = "Foo"
+summary = "A short description for compact views."
+description = """
+A longer Markdown description of Foo.
+"""
+url = "https://example.com/foo"
+kind = "project"
+status = "active"
+aliases = ["oldfoo"]
+parent = "company"
+```
+
+Tag profiles are optional metadata. Clicking a tag shows its profile above the
+recent activity history, and tags without profiles continue to work normally.
+Profile metadata is current state; activity remains in the append-only ledger,
+so no special `TAG` ledger category is needed.
 
 ## Configuration
 

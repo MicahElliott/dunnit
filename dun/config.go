@@ -12,7 +12,8 @@ import (
 // Config holds user-configurable Dunnit preferences, loaded from a TOML
 // file at DunnitDir()/config.toml. Ported from the original dunnit zsh
 // config-example.zsh (minus dunnits_dir, which is now just DunnitDir()
-// itself -- everything dunnit owns lives under one root directory).
+// itself -- everything dunnit owns lives under one root directory, including
+// optional tag profiles in tags.toml).
 type Config struct {
 	// LLMCLI selects the local CLI used for one-shot reports. "auto" uses
 	// the documented availability order; the other values pin one CLI.
@@ -258,9 +259,9 @@ func nudgeIntervalMinutes(cfg Config) int {
 }
 
 // DunnitDir is the single root directory for everything dunnit owns:
-// ledger files (DunnitDir()/<year>/<month>/w<week>/ledger-*.txt) and
-// config.toml. Overridable via the DUNNIT_DIR env var; defaults to
-// ~/.config/dunnit.
+// ledger files (DunnitDir()/<year>/<month>/w<week>/ledger-*.txt),
+// config.toml, and optional tag profiles in tags.toml. Overridable via the
+// DUNNIT_DIR env var; defaults to ~/.config/dunnit.
 func DunnitDir() string {
 	if dir := os.Getenv("DUNNIT_DIR"); dir != "" {
 		return dir

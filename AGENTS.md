@@ -40,8 +40,8 @@ package that wires the `dun` package into the GUI and CLI.
   editor launching.
 - `dun/sched.go` — the `gocron`-based scheduler.
 - `dun/settings.go` — Settings window and persistence actions.
-- `dun/config.go` — TOML config load/save. Everything dunnit owns (ledgers
-  plus `config.toml`) lives under one root dir, `DunnitDir()` (`~/.config/dunnit`
+- `dun/config.go` — TOML config load/save. Everything dunnit owns (ledgers,
+  tag profiles, plus `config.toml`) lives under one root dir, `DunnitDir()` (`~/.config/dunnit`
   by default, override with `$DUNNIT_DIR`).
 - `dun/streak.go` — Daybook/SOD positive progress callouts.
 - `dun/taskmenu.go` — task-menu behavior.
