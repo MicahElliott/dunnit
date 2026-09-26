@@ -567,7 +567,15 @@ func generateThemedReview(cfg Config, period summaryPeriod, anchor time.Time) (s
 }
 
 func generateThemedReviewContext(ctx context.Context, cfg Config, period summaryPeriod, anchor time.Time) (string, error) {
+	return generateThemedReviewContextWithHilites(ctx, cfg, period, anchor, nil)
+}
+
+// generateThemedReviewContextWithHilites keeps the complete ledger available
+// for context while adding a deduplicated, explicitly selected Hilite slice
+// that the model must treat as the user's reflection focus.
+func generateThemedReviewContextWithHilites(ctx context.Context, cfg Config, period summaryPeriod, anchor time.Time, selectedHilites map[string]bool) (string, error) {
 	from, to := periodDataRange(period, anchor)
+	reportFrom, reportTo := periodNominalRangeForReport(period, anchor)
 	material := gatherReviewSourceMaterial(period, from, to)
 
 	var combined strings.Builder
@@ -582,7 +590,10 @@ func generateThemedReviewContext(ctx context.Context, cfg Config, period summary
 		combined.WriteString("Additional raw entries not yet summarized:\n\n")
 		combined.WriteString(material.RawLedger)
 	}
-	reportFrom, reportTo := periodNominalRangeForReport(period, anchor)
+	if hiliteText := selectedHiliteLedgerText(reportFrom, reportTo, selectedHilites); hiliteText != "" {
+		combined.WriteString("\n\nSelected Hilite focus for reflection:\n\n")
+		combined.WriteString(hiliteText)
+	}
 	if signals := periodReportSignals(reportFrom, reportTo); signals != "" {
 		combined.WriteString("\n\nStructured report context:\n\n")
 		combined.WriteString(signals)
@@ -597,12 +608,32 @@ func generateThemedReviewContext(ctx context.Context, cfg Config, period summary
 
 	theme := themeFor(cfg, period)
 	title := periodSummaryTitle(period, anchor)
-	instructions := themePromptFraming(theme, unitNoun(period), title) + reviewLengthConstraint(period)
+	instructions := themePromptFraming(theme, unitNoun(period), title) + categoryPromptGuidance() + reviewLengthConstraint(period)
+	if selected := selectedHiliteNames(selectedHilites); selected != "" {
+		instructions += " The user selected these Hilite categories for focused reflection: " + selected + ". Give them clear attention without erasing other relevant context."
+	}
 	result, err := summarizeWithLLMCLIPromptContext(ctx, instructions, combined.String())
 	if err != nil {
 		return "", err
 	}
 	return normalizePeriodReport(result, title), nil
+}
+
+func selectedHiliteLedgerText(from, to time.Time, selected map[string]bool) string {
+	if len(selected) == 0 {
+		return ""
+	}
+	return strings.TrimSpace(gatherLedgerTextForRange(from, to, selected))
+}
+
+func selectedHiliteNames(selected map[string]bool) string {
+	var names []string
+	for _, category := range Categories {
+		if category.Group == "hilite" && !category.EODOnly && selected[category.Code] {
+			names = append(names, category.Code)
+		}
+	}
+	return strings.Join(names, ", ")
 }
 
 func periodNominalRangeForReport(period summaryPeriod, anchor time.Time) (time.Time, time.Time) {

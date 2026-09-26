@@ -74,7 +74,7 @@ func periodSummaryPrompt(period summaryPeriod, title string) string {
 		"Create a detailed Markdown %s report titled %q. The first line must be exactly %q; do not add another title or an 'Impact report' heading. Use these sections: "+
 			"## Summary, ## Accomplishments, ## Hilites and Callouts, ## Still To Do, ## Risks and Blockers (omit if there are none), ## Learnings, and ## Conclusion. "+
 			"The Summary should assess sentiment, productivity, pace, meeting load, and overall progress when the input supports it. Preserve concrete details from the ledger, especially every useful hilite and pending item. The Conclusion must be one or two sentences of prose, not bullets, that state the overall result and the most useful next focus. Do not invent facts. Use a little more detail than a standup update, with concise bullets inside sections. "+
-			reportUnitName(period), title, "# "+title) + reportMentionPromptGuidance()
+			reportUnitName(period), title, "# "+title) + reportMentionPromptGuidance() + categoryPromptGuidance()
 }
 
 func reportUnitName(period summaryPeriod) string {

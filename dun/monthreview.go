@@ -9,100 +9,187 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
 // ideaSomedayCategories are the categories reviewed in Month Review's
-// IDEA/SOMEDAY triage step.
+// possibility-triage step. Other open categories remain visible in the
+// preparation/Daybook flow and are not repeated here.
 var ideaSomedayCategories = map[string]bool{"IDEA": true, "SOMEDAY": true}
 
-// ideaSomedayItem is one IDEA/SOMEDAY line found in the month being
-// reviewed, pending a promote/drop decision.
 type ideaSomedayItem struct {
 	Category string
 	Text     string
 }
 
-// gatherIdeaSomedayItems scans ledger files dated within [from, to]
-// for IDEA/SOMEDAY lines, in first-seen order. No resolved/dropped
-// tracking beyond this run -- triage is a one-time pass per
-// invocation (append-only design: promoting/dropping never touches
-// the original lines).
-func gatherIdeaSomedayItems(from, to time.Time) []ideaSomedayItem {
-	var out []ideaSomedayItem
-	for _, path := range allLedgerFiles() {
-		date := ledgerFileDate(path)
-		if date == nil || date.Before(from) || date.After(to) {
+// monthReviewEntries returns one report-safe, deduplicated view of the
+// month's ledger. Carry-forward copies are one logical item, and configured
+// exclusion tags are applied before any Month Review section sees the data.
+func monthReviewEntries(from, to time.Time) []LedgerEntry {
+	cfg := LoadConfig()
+	var entries []LedgerEntry
+	for _, entry := range AllLedgerEntries() {
+		if entry.Date.Before(from) || entry.Date.After(to) || !eodEntryIncluded(entry, cfg) {
 			continue
 		}
-		for _, line := range readLedgerLinesFrom(path) {
-			cat, text, ok := parseLedgerLine(line)
-			if !ok || !ideaSomedayCategories[cat] {
-				continue
-			}
-			out = append(out, ideaSomedayItem{Category: cat, Text: text})
+		entries = append(entries, entry)
+	}
+	return deduplicateCarryForwardEntries(entries)
+}
+
+// gatherIdeaSomedayItems scans the month's effective ledger state rather than
+// rendering every repeated carry-forward line. The category icon is added at
+// render time from the shared Categories registry.
+func gatherIdeaSomedayItems(from, to time.Time) []ideaSomedayItem {
+	var out []ideaSomedayItem
+	for _, entry := range monthReviewEntries(from, to) {
+		if ideaSomedayCategories[entry.Category] {
+			out = append(out, ideaSomedayItem{Category: entry.Category, Text: entry.Text})
 		}
 	}
 	return out
 }
 
-// showMonthReviewWindow shows Month's Review dialog for the month
-// containing anchor -- entirely backward-looking (docs/kickoff-
-// review-design.md's Kickoff/Review split, replacing the old
-// showSOMWindow which conflated this with Month's Kickoff), though
-// "backward" also covers a still-in-progress month if anchor is the
-// current month (periodProgressSuffix frames that case explicitly
-// rather than implying the month already ended):
-//  1. AI-generated digest, behind an explicit Generate button (no
-//     eager call) -- same pattern as showPeriodReviewWindow, saved
-//     via reviewReportPath's theme-aware naming so multiple themed
-//     reports can coexist for the same month; existing saved reports
-//     for this exact month are listed up front (view/reopen).
-//  2. Triage the month's open IDEA/SOMEDAY lines: promote each to
-//     TODO or GOAL, or drop (append-only).
-//  3. Explicit IMPACT/MILESTONE prompts for the month (backward-
-//     looking reflections, not forward planning -- moved here from
-//     the old SOM step 3).
-//
-// Forward-looking content (GOALs for the new month, monthly recurring
-// items) lives in showMonthKickoffWindow instead.
+func monthReviewHiliteCategories() []Category {
+	var out []Category
+	for _, category := range Categories {
+		if category.Group == "hilite" && !category.EODOnly {
+			out = append(out, category)
+		}
+	}
+	return out
+}
+
+func monthReviewHiliteOptions() []string {
+	categories := monthReviewHiliteCategories()
+	options := make([]string, len(categories))
+	for i, category := range categories {
+		options[i] = category.Label()
+	}
+	return options
+}
+
+func selectedMonthReviewHilites(selected []string) map[string]bool {
+	wanted := make(map[string]bool, len(selected))
+	for _, label := range selected {
+		for _, category := range monthReviewHiliteCategories() {
+			if category.Label() == label {
+				wanted[category.Code] = true
+				break
+			}
+		}
+	}
+	return wanted
+}
+
+func monthReviewHiliteEvidence(entries []LedgerEntry, selected map[string]bool) *fyne.Container {
+	box := container.NewVBox()
+	if len(selected) == 0 {
+		box.Add(newExplanatoryLabel("Select at least one Hilite type to see its entries here."))
+		return box
+	}
+	found := 0
+	for _, entry := range entries {
+		if !selected[entry.Category] {
+			continue
+		}
+		found++
+		box.Add(container.NewHBox(
+			widget.NewLabel(entry.Date.Format("Jan 2")),
+			itemTextLabel(categoryIconPrefix(entry.Category)+entry.Text),
+		))
+	}
+	if found == 0 {
+		box.Add(newExplanatoryLabel("No selected Hilites were logged in this month."))
+	}
+	return box
+}
+
+// showMonthReviewWindow shows the guided backward-looking Month Review after
+// the shared quick tidy-up handoff. The report window is created only after
+// the user explicitly finishes or skips that preparation step.
 func showMonthReviewWindow(a fyne.App, anchor time.Time) {
+	cfg := LoadConfig()
+	label := periodLabel(cfg, periodMonth, anchor) + periodProgressSuffix(periodMonth, anchor)
+	showReportPreparation(a, "Month Review ("+label+")", func() {
+		showMonthReviewWindowReady(a, anchor)
+	})
+}
+
+func showMonthReviewWindowReady(a fyne.App, anchor time.Time) {
 	from, to := periodNominalRange(periodMonth, anchor)
 	cfg := LoadConfig()
 	label := periodLabel(cfg, periodMonth, from) + periodProgressSuffix(periodMonth, from)
-	w := a.NewWindow("Dunnit: Month Review \u2014 Looking Back at " + label)
+	w := a.NewWindow("Dunnit: Month Review — " + label)
 
-	// Step 1: digest, behind a Generate button.
-	digestBody := newReportRichText("*Pick a theme, then tap Generate.*")
-	digestBody.Wrapping = fyne.TextWrapWord
-	themeSelect := widget.NewSelect(themeOptions(), nil)
-	themeSelect.SetSelected(themeDisplayNames[themeFor(cfg, periodMonth)])
-	statusLabel := widget.NewLabel("")
+	entries := monthReviewEntries(from, to)
+	hiliteOptions := monthReviewHiliteOptions()
+	var refreshHiliteEvidence func()
+	hiliteSelect := widget.NewCheckGroup(hiliteOptions, func([]string) {
+		if refreshHiliteEvidence != nil {
+			refreshHiliteEvidence()
+		}
+	})
+	// Preserve the broad existing behavior; the user can narrow the focus.
+	hiliteSelect.SetSelected(append([]string{}, hiliteOptions...))
+	hiliteEvidence := container.NewVBox()
+	refreshHiliteEvidence = func() {
+		hiliteEvidence.RemoveAll()
+		for _, object := range monthReviewHiliteEvidence(entries, selectedMonthReviewHilites(hiliteSelect.Selected)).Objects {
+			hiliteEvidence.Add(object)
+		}
+		hiliteEvidence.Refresh()
+	}
+	refreshHiliteEvidence()
+	selectAllHilitesBtn := widget.NewButton("Select all", func() {
+		hiliteSelect.SetSelected(append([]string{}, hiliteOptions...))
+		refreshHiliteEvidence()
+	})
+	clearHilitesBtn := widget.NewButton("Clear", func() {
+		hiliteSelect.SetSelected(nil)
+		refreshHiliteEvidence()
+	})
 
-	existingBox := container.NewVBox()
-	existingPaths, existingThemes := listReviewReportsForPeriod(periodMonth, from)
-	if len(existingPaths) > 0 {
-		existingBox.Add(widget.NewLabelWithStyle("Already Saved for "+label, fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
-		for i, path := range existingPaths {
-			path, th := path, existingThemes[i]
-			display := themeDisplayNames[th]
-			if display == "" {
-				display = "(untitled)"
-			}
-			existingBox.Add(widget.NewButton("View: "+display, func() {
-				body, err := os.ReadFile(path)
-				if err != nil {
+	// The optional capture row lets the user add a missing Hilite while this
+	// review is open. It uses the same emoji-backed category registry as the
+	// selector and writes through the normal append-only Daybook path.
+	hiliteCaptureSelect := widget.NewSelect(hiliteOptions, nil)
+	if len(hiliteOptions) > 0 {
+		hiliteCaptureSelect.SetSelected(hiliteOptions[0])
+	}
+	hiliteCapture := widget.NewMultiLineEntry()
+	hiliteCapture.SetPlaceHolder("Add one or more missing Hilites, one per line…")
+	hiliteCapture.SetMinRowsVisible(2)
+	addHiliteBtn := widget.NewButton("Add Hilite", func() {
+		category := categoryCodeFromLabel(hiliteCaptureSelect.Selected)
+		if category == "" {
+			return
+		}
+		for _, line := range strings.Split(hiliteCapture.Text, "\n") {
+			if line = strings.TrimSpace(line); line != "" {
+				if err := recordActivity(line, category); err != nil {
 					dialog.ShowError(err, w)
 					return
 				}
-				showEditableReportWindow(a, "Dunnit: Month Review Report ("+label+")", path, string(body))
-			}))
+			}
 		}
-	}
+		hiliteCapture.SetText("")
+		entries = monthReviewEntries(from, to)
+		refreshHiliteEvidence()
+	})
 
-	generateBtn := widget.NewButton("Generate", nil)
+	// Generate a themed digest only after the focus and source controls are
+	// visible. The selected Hilites are passed into the prompt as an explicit
+	// focus section as well as controlling the evidence shown here.
+	digestBody := newReportRichText("*Choose Hilites and a report style, then generate.*")
+	digestBody.Wrapping = fyne.TextWrapWord
+	themeSelect := widget.NewSelect(themeOptions(), nil)
+	themeSelect.SetSelected(themeDisplayNames[themeFor(cfg, periodMonth)])
+	statusLabel := newExplanatoryLabel("")
+	generateBtn := widget.NewButton("Generate report", nil)
 	var request *llmCLIRequest
-	stopBtn := widget.NewButton("Stop", nil)
+	stopBtn := widget.NewButton("Stop generating", nil)
 	stopBtn.Hide()
 	w.SetOnClosed(func() {
 		if request != nil {
@@ -114,6 +201,7 @@ func showMonthReviewWindow(a fyne.App, anchor time.Time) {
 		if selectedTheme == "" {
 			return
 		}
+		selectedHilites := selectedMonthReviewHilites(hiliteSelect.Selected)
 		generateBtn.Disable()
 		request = newLLMCLIRequest()
 		stopBtn.OnTapped = func() {
@@ -122,12 +210,12 @@ func showMonthReviewWindow(a fyne.App, anchor time.Time) {
 		}
 		stopBtn.Enable()
 		stopBtn.Show()
-		statusLabel.SetText("Generating, please wait\u2026")
-		setReportRichTextMarkdown(digestBody, "*Generating, please wait\u2026*")
+		statusLabel.SetText("Generating, please wait…")
+		setReportRichTextMarkdown(digestBody, "*Generating, please wait…*")
 		go func() {
-			overrideCfg := cfg
+			overrideCfg := LoadConfig()
 			setTheme(&overrideCfg, periodMonth, selectedTheme)
-			summary, err := generateThemedReviewContext(request.ctx, overrideCfg, periodMonth, from)
+			summary, err := generateThemedReviewContextWithHilites(request.ctx, overrideCfg, periodMonth, from, selectedHilites)
 			request.finish()
 			fyne.Do(func() {
 				generateBtn.Enable()
@@ -138,7 +226,7 @@ func showMonthReviewWindow(a fyne.App, anchor time.Time) {
 				}
 				if err != nil {
 					log.Println("Error generating Month Review:", err)
-					statusLabel.SetText("Error generating report \u2014 see logs.")
+					statusLabel.SetText("Error generating report — see logs.")
 					dialog.ShowError(err, w)
 					return
 				}
@@ -151,74 +239,100 @@ func showMonthReviewWindow(a fyne.App, anchor time.Time) {
 		}()
 	}
 
-	// Step 2: IDEA/SOMEDAY triage
+	existingBox := container.NewVBox()
+	existingPaths, existingThemes := listReviewReportsForPeriod(periodMonth, from)
+	if len(existingPaths) > 0 {
+		existingBox.Add(newWindowHeading("Saved reports for " + label))
+		for i, path := range existingPaths {
+			path, th := path, existingThemes[i]
+			display := themeDisplayNames[th]
+			if display == "" {
+				display = "Saved report"
+			}
+			existingBox.Add(widget.NewButton("Open "+display, func() {
+				body, err := os.ReadFile(path)
+				if err != nil {
+					dialog.ShowError(err, w)
+					return
+				}
+				showEditableReportWindow(a, "Dunnit: Month Review Report ("+label+")", path, string(body))
+			}))
+		}
+	}
+
 	items := gatherIdeaSomedayItems(from, to)
 	triageBox := container.NewVBox()
 	if len(items) == 0 {
-		triageBox.Add(widget.NewLabel("No open IDEA/SOMEDAY items from this month."))
+		triageBox.Add(newExplanatoryLabel("No IDEA or SOMEDAY items were found in this month after deduplication and exclusions."))
 	}
-	handled := make([]bool, len(items))
-	for i, item := range items {
-		i, item := i, item // capture
-		row := widget.NewLabel(item.Category + ": " + item.Text)
-		promoteTodoBtn := widget.NewButton("→ TODO", func() {
-			recordActivity(item.Text, "TODO")
-			handled[i] = true
-			row.SetText("Promoted to TODO — " + item.Text)
+	for _, item := range items {
+		item := item
+		row := widget.NewLabel(categoryIconPrefix(item.Category) + stripCarryForwardSince(item.Text))
+		row.Wrapping = fyne.TextWrapWord
+		var promoteTodoBtn, promoteGoalBtn, dropBtn *hoverButton
+		promoteTodoBtn = newHoverIconButton(theme.Icon(theme.IconNameConfirm), "Make TODO", func() {
+			if err := recordActivity(stripCarryForwardSince(item.Text), "TODO"); err != nil {
+				dialog.ShowError(err, w)
+				return
+			}
+			promoteTodoBtn.Disable()
+			promoteGoalBtn.Disable()
+			dropBtn.Disable()
+			row.SetText("✅ Made TODO: " + stripCarryForwardSince(item.Text))
 		})
-		promoteGoalBtn := widget.NewButton("→ GOAL", func() {
-			recordActivity(item.Text, "GOAL")
-			handled[i] = true
-			row.SetText("Promoted to GOAL — " + item.Text)
+		promoteGoalBtn = newHoverIconButton(theme.Icon(theme.IconNameDocumentCreate), "Make GOAL", func() {
+			if err := recordActivity(stripCarryForwardSince(item.Text), "GOAL"); err != nil {
+				dialog.ShowError(err, w)
+				return
+			}
+			promoteTodoBtn.Disable()
+			promoteGoalBtn.Disable()
+			dropBtn.Disable()
+			row.SetText("🎯 Made GOAL: " + stripCarryForwardSince(item.Text))
 		})
-		dropBtn := widget.NewButton("Drop", func() {
-			handled[i] = true
-			row.SetText("Dropped — " + item.Text)
+		dropBtn = newHoverIconButton(theme.Icon(theme.IconNameDelete), "Discard", func() {
+			if err := recordActivity(stripCarryForwardSince(item.Text), "DISCARDED"); err != nil {
+				dialog.ShowError(err, w)
+				return
+			}
+			promoteTodoBtn.Disable()
+			promoteGoalBtn.Disable()
+			dropBtn.Disable()
+			row.SetText("🚫 Discarded: " + stripCarryForwardSince(item.Text))
 		})
 		triageBox.Add(container.NewBorder(nil, nil, nil,
 			container.NewHBox(promoteTodoBtn, promoteGoalBtn, dropBtn), row))
 	}
 
-	// Step 3: IMPACT/MILESTONE prompts (backward-looking -- reflecting
-	// on the month just ending, not planning ahead).
-	impactEntry := widget.NewMultiLineEntry()
-	impactEntry.SetPlaceHolder("Any IMPACT items this month? One per line\u2026")
-	impactEntry.SetMinRowsVisible(2)
-	milestoneEntry := widget.NewMultiLineEntry()
-	milestoneEntry.SetPlaceHolder("Any MILESTONE items this month? One per line\u2026")
-	milestoneEntry.SetMinRowsVisible(2)
-
-	doneBtn := widget.NewButton("Done", func() {
-		for _, line := range strings.Split(impactEntry.Text, "\n") {
-			line = strings.TrimSpace(line)
-			if line != "" {
-				recordActivity(line, "IMPACT")
-			}
-		}
-		for _, line := range strings.Split(milestoneEntry.Text, "\n") {
-			line = strings.TrimSpace(line)
-			if line != "" {
-				recordActivity(line, "MILESTONE")
-			}
-		}
-		w.Close()
-	})
+	doneBtn := widget.NewButton("Finish review", func() { w.Close() })
+	excluded := strings.Join(cfg.ReportExcludeTags, ", ")
+	if excluded == "" {
+		excluded = "none"
+	}
 
 	content := container.NewVBox(
-		widget.NewLabelWithStyle("Looking Back: "+label+" Digest", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
-		container.NewBorder(nil, nil, widget.NewLabel("Theme:"), generateBtn, themeSelect),
+		newWindowHeading("🗓️ Month Review — "+label),
+		newExplanatoryLabel("Review the month’s evidence, focus on the Hilites that matter, and then create an editable report."),
+		newWindowHeading("Choose reflection evidence"),
+		newExplanatoryLabel("Selected Hilite types shape both the evidence shown here and the generated report. Excluded tags: "+excluded+"."),
+		hiliteSelect,
+		container.NewHBox(selectAllHilitesBtn, clearHilitesBtn),
+		hiliteEvidence,
+		container.NewHBox(hiliteCaptureSelect, addHiliteBtn),
+		hiliteCapture,
+		newWindowHeading("Generate report"),
+		newExplanatoryLabel("Choose a style, then generate. The result opens in an editable report window."),
+		container.NewHBox(widget.NewLabel("Style:"), themeSelect, generateBtn),
 		container.NewHBox(statusLabel, stopBtn),
 		existingBox,
 		digestBody,
-		widget.NewLabelWithStyle("Looking Back: Review IDEA/SOMEDAY Items", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		newWindowHeading("Triage ideas and someday items"),
+		newExplanatoryLabel("These two categories are possibilities rather than active daily work. Use Daybook during tidy-up for TODOs, DOING, and other open work."),
 		triageBox,
-		widget.NewLabelWithStyle("Looking Back: IMPACT / MILESTONE This Month", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
-		impactEntry,
-		milestoneEntry,
 		doneBtn,
 	)
 
 	w.SetContent(windowPad(container.NewVScroll(content)))
-	w.Resize(fyne.NewSize(520, 600))
+	w.Resize(fyne.NewSize(620, 760))
 	w.Show()
 }

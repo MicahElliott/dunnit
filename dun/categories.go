@@ -1,5 +1,10 @@
 package dun
 
+import (
+	"fmt"
+	"strings"
+)
+
 // Category defines one selectable Daybook category: its short code
 // (written verbatim into ledger lines) and the emoji-prefixed label
 // shown in the picker UI. This is the single source of truth for the
@@ -304,4 +309,26 @@ func CategoryLabelsForFaves(cfg Config) []string {
 		labels = append(labels, c.Label())
 	}
 	return labels
+}
+
+// categoryPromptGuidance gives every report prompt the same interpretation of
+// ledger categories. The wording comes from Categories so prompt semantics do
+// not drift from the Daybook picker and Help legend.
+func categoryPromptGuidance() string {
+	var b strings.Builder
+	b.WriteString("\n\nDunnit ledger semantics — treat category codes as meaningful labels, not ordinary prose:\n")
+	for _, category := range Categories {
+		fmt.Fprintf(&b, "- %s %s (%s): %s", category.Emoji, category.Code, category.Group, category.Help)
+		if category.EODOnly {
+			b.WriteString(" This is written by a dedicated end-of-day flow.")
+		}
+		b.WriteByte('\n')
+	}
+	b.WriteString("- SENTIMENT (metadata): the user's end-of-day sentiment rating.\n")
+	b.WriteString("- FOCUS (metadata): the theme chosen for a period.\n")
+	b.WriteString("- OBJECTIVE (OKR): a period-level objective.\n")
+	b.WriteString("- KEYRESULT (OKR): a measurable result attached to the nearest matching objective.\n")
+	b.WriteString("- KEYRESULT-STATUS (OKR): the latest recorded status or note for a key result.\n")
+	b.WriteString("Plan entries are open or future-facing; End entries are outcomes; Hilites are notable evidence and do not by themselves resolve a Plan item. Preserve the distinction between completed work, work in progress, possibilities, blockers, meetings, and reflections. Do not count carry-forward copies or overlapping prior summaries as additional work, and do not invent facts.")
+	return b.String()
 }

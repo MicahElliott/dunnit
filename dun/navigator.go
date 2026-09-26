@@ -219,7 +219,7 @@ func showNavigatorAskAIDialog(a fyne.App, parent fyne.Window, entries []LedgerEn
 				"Answer the following question using only the ledger "+
 					"entries provided below as source material — be concise, "+
 					"and if the entries don’t contain enough information to "+
-					"answer, say so rather than guessing. Question: %q", q)
+					"answer, say so rather than guessing. Question: %q", q) + categoryPromptGuidance()
 			answer, err := summarizeWithLLMCLIPromptContext(request.ctx, instructions, ledgerEntriesToText(entries))
 			request.finish()
 			fyne.Do(func() {

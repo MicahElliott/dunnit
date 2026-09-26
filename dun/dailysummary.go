@@ -68,7 +68,7 @@ func eodSummaryPrompt(date time.Time) string {
 		"Include several concrete bullets and retain useful people, topics, learnings, " +
 		"and follow-up details. Be informative rather than ultra-concise, do not " +
 		"invent facts, and do not include a separate statistics section." +
-		reportMentionPromptGuidance()
+		reportMentionPromptGuidance() + categoryPromptGuidance()
 }
 
 // hasRealLedgerContent reports whether ledgerText (as produced by

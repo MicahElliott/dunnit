@@ -432,7 +432,7 @@ func showEODWindow(a fyne.App) {
 	skipBtn := widget.NewButton("Skip", func() { finalizeDay(false) })
 	skipBtn.Hide()
 	generateBtn := widget.NewButton("Generate", nil)
-	generateBtn.OnTapped = func() {
+	startGeneration := func() {
 		if generating {
 			return
 		}
@@ -476,6 +476,9 @@ func showEODWindow(a fyne.App) {
 				}
 			})
 		}()
+	}
+	generateBtn.OnTapped = func() {
+		showReportPreparation(a, "End-of-Day Summary", startGeneration)
 	}
 	w.SetOnClosed(func() {
 		if draftRequest != nil {

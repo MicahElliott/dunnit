@@ -96,6 +96,11 @@ var trayRefreshAll func()
 // Daybook window is already open.
 var refreshStartOfDayNotice func()
 
+// reportPrepNotice is a temporary Daybook banner shown while a report's
+// preparation handoff is active. It gives the user a clear return action
+// after making quick ledger corrections before generation.
+var reportPrepNotice *fyne.Container
+
 // FocusMainInput requests keyboard focus on Daybook's main entry box,
 // if it's been built yet. Safe to call even before BuildMainWindow
 // has run (no-op).
@@ -607,6 +612,21 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 		startOfDayNotice.Refresh()
 	}
 	refreshStartOfDayNotice()
+
+	reportPrepNotice = container.NewVBox()
+	setDaybookReportPrepNotice = func(subject string, finish func()) {
+		reportPrepNotice.RemoveAll()
+		reportPrepNotice.Add(container.NewVBox(
+			newWindowHeading("🧹 Quick tidy-up before "+subject),
+			newExplanatoryLabel("Add or correct entries in Daybook, then use the button below to return to the report."),
+			widget.NewButton("Finish tidy-up & continue", finish),
+		))
+		reportPrepNotice.Refresh()
+	}
+	clearDaybookReportPrepNotice = func() {
+		reportPrepNotice.RemoveAll()
+		reportPrepNotice.Refresh()
+	}
 
 	// minsInput is an optional free-text "minutes spent" field (very
 	// informal time tracking). When non-empty and numeric, its value
@@ -1281,6 +1301,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	))
 
 	contentObjects := []fyne.CanvasObject{
+		reportPrepNotice,
 		startOfDayNotice,
 		widget.NewLabelWithStyle("Time to record what’s just been DONE/DOING.", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		doneWrapper,
@@ -1366,7 +1387,6 @@ func buildTrayMenu(a fyne.App, w4 fyne.Window) *fyne.Menu {
 	meetingsMenu := fyne.NewMenu("Meetings",
 		fyne.NewMenuItem("Meeting Prep…", func() { showMeetingPrepDialog(a) }),
 		fyne.NewMenuItem("Post-Meeting Capture…", func() { showPostMeetingCapture(a, "") }),
-		fyne.NewMenuItem("Standup Summary…", func() { showStandupExport(a) }),
 		fyne.NewMenuItem("Recurring Meetings…", func() {
 			showMiniCalendarDialog(a, w4)
 		}),
@@ -1483,18 +1503,6 @@ func buildTrayMenu(a fyne.App, w4 fyne.Window) *fyne.Menu {
 		fyne.NewMenuItem("Recurring Items…", func() {
 			showRecurringItemsDialog(a, w4)
 		}),
-		fyne.NewMenuItem("EOD Report…", func() {
-			go func() {
-				path, _, err := ensureEODReport(time.Now())
-				if err != nil {
-					log.Println("Error drafting EOD report:", err)
-					return
-				}
-				if path != "" {
-					openInEditor(path)
-				}
-			}()
-		}),
 	)
 	ledgerItem := fyne.NewMenuItem("Ledger", nil)
 	ledgerItem.ChildMenu = ledgerMenu
@@ -1538,10 +1546,11 @@ func buildTrayMenu(a fyne.App, w4 fyne.Window) *fyne.Menu {
 			ShowDaybook(w4, false)
 		}),
 		fyne.NewMenuItemSeparator(),
-		kickoffItem,
-		reviewItem,
 		snoozeItem,
 		dndItem,
+		fyne.NewMenuItemSeparator(),
+		kickoffItem,
+		reviewItem,
 		fyne.NewMenuItemSeparator(),
 		meetingsItem,
 		reportsItem,

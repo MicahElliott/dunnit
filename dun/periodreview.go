@@ -91,6 +91,14 @@ func okrReviewSection(period summaryPeriod, anchor time.Time) (box fyne.CanvasOb
 func showPeriodReviewWindow(a fyne.App, period summaryPeriod, anchor time.Time) {
 	cfg := LoadConfig()
 	label := periodLabel(cfg, period, anchor) + periodProgressSuffix(period, anchor)
+	showReportPreparation(a, string(period)+" Review ("+label+")", func() {
+		showPeriodReviewWindowReady(a, period, anchor)
+	})
+}
+
+func showPeriodReviewWindowReady(a fyne.App, period summaryPeriod, anchor time.Time) {
+	cfg := LoadConfig()
+	label := periodLabel(cfg, period, anchor) + periodProgressSuffix(period, anchor)
 	w := a.NewWindow("Dunnit: " + string(period) + " Review (" + label + ")")
 
 	themeSelect := widget.NewSelect(themeOptions(), nil)

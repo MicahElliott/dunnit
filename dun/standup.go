@@ -351,7 +351,7 @@ func summarizeStandupWithLLCLIAt(ctx context.Context, lines []string, now time.T
 			"person might need help with, as its own short line under "+
 			"Risks/blockers if applicable. Focus on concrete results "+
 			"and outcomes rather than a busy-sounding activity log. Be "+
-			"concise — bullet points, not prose."+reportMentionPromptGuidance(), input)
+			"concise — bullet points, not prose."+reportMentionPromptGuidance()+categoryPromptGuidance(), input)
 }
 
 // showGeneratedStandupSummary displays an AI-generated standup
@@ -397,7 +397,7 @@ func showStandupExport(a fyne.App) {
 	itemsEntry.SetMinRowsVisible(10)
 	itemsEntry.SetText(formatStandupEditableInput(lines, openItems))
 
-	generateBtn := widget.NewButton("Generate Standup Summary", func() {
+	generateNow := func() {
 		visible, visibleOpenItems := parseStandupEditableInput(itemsEntry.Text)
 		if len(visible) == 0 && len(visibleOpenItems) == 0 {
 			dialog.ShowInformation("Nothing to Summarize", "The seed is empty and there are no open TODO, DOING, or GOAL items.", w)
@@ -423,6 +423,9 @@ func showStandupExport(a fyne.App) {
 				showGeneratedStandupSummary(a, summary)
 			})
 		}()
+	}
+	generateBtn := widget.NewButton("Generate Standup Summary", func() {
+		showReportPreparation(a, "Standup Summary", generateNow)
 	})
 
 	content := container.NewBorder(

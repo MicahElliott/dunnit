@@ -53,6 +53,12 @@ func showAnnualReviewDialog(a fyne.App) {
 }
 
 func runAnnualReview(a fyne.App, year int) {
+	showReportPreparation(a, "Annual Review", func() {
+		runAnnualReviewReady(a, year)
+	})
+}
+
+func runAnnualReviewReady(a fyne.App, year int) {
 	cfg := LoadConfig()
 	anchor := fiscalYearAnchorForLabel(year, cfg, time.Local)
 	from, to := periodNominalRangeWithConfig(periodYear, anchor, cfg)

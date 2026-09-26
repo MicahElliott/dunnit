@@ -103,6 +103,12 @@ func showStatusReportDialog(a fyne.App) {
 }
 
 func runStatusReport(a fyne.App, anchor time.Time, audience string) {
+	showReportPreparation(a, audience+" Status Report", func() {
+		runStatusReportReady(a, anchor, audience)
+	})
+}
+
+func runStatusReportReady(a fyne.App, anchor time.Time, audience string) {
 	from, to := periodNominalRange(periodWeek, anchor)
 	if to.After(time.Now()) {
 		to = time.Now()
@@ -123,6 +129,7 @@ func runStatusReport(a fyne.App, anchor time.Time, audience string) {
 			}
 		}
 	}
+	prompt += categoryPromptGuidance()
 
 	ledgerText := gatherLedgerTextForRange(from, to, categories)
 	if mentions := reportMentionContextForRange(from, to, categories); mentions != "" {

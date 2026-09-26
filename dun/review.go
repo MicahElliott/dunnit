@@ -3,6 +3,7 @@ package dun
 import (
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -242,6 +243,46 @@ func listReviewReportsOverlapping(subPeriod summaryPeriod, from, to time.Time) [
 	return out
 }
 
+// deduplicateReviewSourceReports chooses one saved report for each covered
+// sub-period. Multiple themes are useful in the Reports Library, but feeding
+// all of them into a larger Review repeats the same underlying work and
+// inflates the generated report.
+func deduplicateReviewSourceReports(subPeriod summaryPeriod, reports []struct {
+	Path     string
+	From, To time.Time
+}) []struct {
+	Path     string
+	From, To time.Time
+} {
+	preferredTheme := themeFor(LoadConfig(), subPeriod)
+	chosen := make(map[string]int)
+	out := make([]struct {
+		Path     string
+		From, To time.Time
+	}, 0, len(reports))
+	for _, report := range reports {
+		key := report.From.Format("20060102") + "-" + report.To.Format("20060102")
+		current, exists := chosen[key]
+		if !exists {
+			chosen[key] = len(out)
+			out = append(out, report)
+			continue
+		}
+		_, currentTheme, _ := reviewReportFilenameParts(subPeriod, out[current].Path)
+		_, candidateTheme, _ := reviewReportFilenameParts(subPeriod, report.Path)
+		if currentTheme != preferredTheme && candidateTheme == preferredTheme {
+			out[current] = report
+		}
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].From.Equal(out[j].From) {
+			return out[i].Path < out[j].Path
+		}
+		return out[i].From.Before(out[j].From)
+	})
+	return out
+}
+
 // reviewSourceMaterial is what gets fed to the LLM CLI prompt for a
 // Review: already-generated sub-tier reports (their saved, possibly
 // hand-edited markdown bodies) found to overlap the requested range,
@@ -281,6 +322,7 @@ func gatherReviewSourceMaterial(period summaryPeriod, from, to time.Time) review
 	}
 
 	found := listReviewReportsOverlapping(subPeriod, from, to)
+	found = deduplicateReviewSourceReports(subPeriod, found)
 
 	covered := make(map[string]bool) // "20060102" -> true, for each day covered by a found sub-report
 	var subReports []string

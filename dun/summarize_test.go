@@ -50,6 +50,35 @@ func TestGatherLedgerTextForDateExcludesConfiguredTags(t *testing.T) {
 	}
 }
 
+func TestGatherLedgerTextForRangeDeduplicatesCarryForwardRows(t *testing.T) {
+	withTempDunnitDir(t)
+	first := time.Date(2026, time.September, 21, 0, 0, 0, 0, time.Local)
+	second := first.AddDate(0, 0, 1)
+	writeLedgerLinesForDate(t, first, []string{
+		"[09:00] TODO finish the report",
+	})
+	writeLedgerLinesForDate(t, second, []string{
+		"[09:00] TODO finish the report s/2026-09-21",
+	})
+
+	got := gatherLedgerTextForRange(first, second, nil)
+	if strings.Contains(got, "[09:00] TODO finish the report\n") {
+		t.Fatalf("older carry-forward row remained in report input: %q", got)
+	}
+	if strings.Count(got, "finish the report") != 1 {
+		t.Fatalf("deduplicated report input contains %d copies, want one: %q", strings.Count(got, "finish the report"), got)
+	}
+}
+
+func TestCategoryPromptGuidanceUsesCategoryRegistry(t *testing.T) {
+	guidance := categoryPromptGuidance()
+	for _, category := range Categories {
+		if !strings.Contains(guidance, category.Code) || !strings.Contains(guidance, category.Help) {
+			t.Errorf("category prompt guidance missing %s metadata: %q", category.Code, guidance)
+		}
+	}
+}
+
 func TestFilterExcludedTagLinesRemovesTaggedReportLines(t *testing.T) {
 	text := "# Report\nKeep this\nDrop this #home\n"
 	got := filterExcludedTagLines(text, []string{"#home"})

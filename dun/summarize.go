@@ -138,33 +138,7 @@ func gatherLedgerTextForRange(from, to time.Time, categories map[string]bool) st
 // etc) gets the exclusion applied uniformly without each caller
 // needing its own filtering logic.
 func concatLedgerFiles(files []string) string {
-	excludeTags := LoadConfig().ReportExcludeTags
-	var sb strings.Builder
-	for _, path := range files {
-		f, err := os.Open(path)
-		if err != nil {
-			continue
-		}
-		var lines []string
-		scanner := bufio.NewScanner(f)
-		for scanner.Scan() {
-			line := scanner.Text()
-			if lineHasExcludedTag(line, excludeTags) {
-				continue
-			}
-			lines = append(lines, line)
-		}
-		f.Close()
-		if len(lines) == 0 {
-			continue
-		}
-		sb.WriteString("# " + filepath.Base(path) + "\n")
-		for _, line := range lines {
-			sb.WriteString(line)
-			sb.WriteString("\n")
-		}
-	}
-	return sb.String()
+	return concatLedgerFilesWithCategories(files, nil)
 }
 
 // lineHasExcludedTag reports whether line contains any of
@@ -204,32 +178,81 @@ func lineHasExcludedTag(line string, excludeTags []string) bool {
 // concatLedgerFiles, still skips any line matching a
 // Config.ReportExcludeTags tag).
 func concatLedgerFilesFiltered(files []string, categories map[string]bool) string {
+	return concatLedgerFilesWithCategories(files, categories)
+}
+
+type reportLedgerLine struct {
+	path   string
+	lineNo int
+	text   string
+	entry  LedgerEntry
+	parsed bool
+}
+
+// concatLedgerFilesWithCategories is the shared report-input reader. It
+// retains malformed lines for unrestricted reports for backward compatibility
+// while applying category filtering, configured tag exclusions, and logical
+// carry-forward deduplication to parsed ledger entries.
+func concatLedgerFilesWithCategories(files []string, categories map[string]bool) string {
 	excludeTags := LoadConfig().ReportExcludeTags
-	var sb strings.Builder
+	var rows []reportLedgerLine
 	for _, path := range files {
 		f, err := os.Open(path)
 		if err != nil {
 			continue
 		}
-		var wroteHeader bool
+		date := ledgerFileDate(path)
 		scanner := bufio.NewScanner(f)
-		for scanner.Scan() {
+		for lineNo := 0; scanner.Scan(); lineNo++ {
 			line := scanner.Text()
-			cat, _, ok := parseLedgerLine(line)
-			if !ok || !categories[cat] {
-				continue
-			}
 			if lineHasExcludedTag(line, excludeTags) {
 				continue
 			}
-			if !wroteHeader {
-				sb.WriteString("# " + filepath.Base(path) + "\n")
-				wroteHeader = true
+			cat, _, parsed := parseLedgerLine(line)
+			if len(categories) > 0 && (!parsed || !categories[cat]) {
+				continue
 			}
-			sb.WriteString(line)
-			sb.WriteString("\n")
+			row := reportLedgerLine{path: path, lineNo: lineNo, text: line, parsed: parsed}
+			if parsed && date != nil {
+				row.entry, row.parsed = parseLedgerEntry(line, *date, path, lineNo)
+			}
+			rows = append(rows, row)
 		}
 		f.Close()
+	}
+
+	type sourceLine struct {
+		path   string
+		lineNo int
+	}
+	kept := make(map[sourceLine]bool)
+	var parsedEntries []LedgerEntry
+	for _, row := range rows {
+		if row.parsed {
+			parsedEntries = append(parsedEntries, row.entry)
+		}
+	}
+	for _, entry := range deduplicateCarryForwardEntries(parsedEntries) {
+		kept[sourceLine{entry.Source, entry.Line}] = true
+	}
+
+	var sb strings.Builder
+	currentPath := ""
+	wroteHeader := false
+	for _, row := range rows {
+		if row.path != currentPath {
+			currentPath = row.path
+			wroteHeader = false
+		}
+		if row.parsed && !kept[sourceLine{row.path, row.lineNo}] {
+			continue
+		}
+		if !wroteHeader {
+			sb.WriteString("# " + filepath.Base(row.path) + "\n")
+			wroteHeader = true
+		}
+		sb.WriteString(row.text)
+		sb.WriteString("\n")
 	}
 	return sb.String()
 }
@@ -287,6 +310,12 @@ func showSummarizeDialog(a fyne.App) {
 }
 
 func runSummarize(a fyne.App, period summaryPeriod) {
+	showReportPreparation(a, string(period)+" Summary", func() {
+		runSummarizeReady(a, period)
+	})
+}
+
+func runSummarizeReady(a fyne.App, period summaryPeriod) {
 	now := time.Now()
 	from, to := currentPeriodRange(period, now, now)
 	ledgerText := gatherLedgerTextForRange(from, to, nil)
