@@ -102,6 +102,15 @@ The week's month is fixed by its Monday. Daily reports live beside their
 ledger; weekly reports live in the week directory; monthly reports live in
 the month directory; and quarterly/yearly reports live under their year.
 
+Generated report filenames identify the covered period and do not append the
+generation date. Period tokens are `Fri-20260925` for a day,
+`W39-2026` for a week, `Sep-2026` for a month, `Q3-2026` for a quarter,
+and `FY2026` for a fiscal year. Standalone summaries therefore look like
+`summary-W39-2026.md`; EOD reports use the day token, and themed Reviews
+append compact theme slugs such as `personalnotes` or `formalreport`.
+The Year Start Month and Year End Month settings define the 12-month fiscal
+year; `FY2026` means the period ending in calendar year 2026.
+
 Each line looks like:
 
 ```

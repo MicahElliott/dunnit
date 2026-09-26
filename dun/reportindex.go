@@ -43,8 +43,7 @@ type ReportFile struct {
 // specific prefix (e.g. "review-month") is matched before a shorter
 // one that could otherwise falsely match part of it. Sourced from
 // reviewReportKind (review.go, one per summaryPeriod) plus the other
-// ad hoc kinds seen in weeklyReportPathForKind call sites (standup.go's
-// "standup", statusreport.go's "status") and dailysummary.go's "eod".
+// report kinds used by the app: standup, status, summary, and eod.
 func reportFileKinds() []string {
 	kinds := []string{
 		reviewReportKind(periodQuarter), // "review-quarter" before "review-*" ambiguity
@@ -54,6 +53,7 @@ func reportFileKinds() []string {
 		reviewReportKind(periodDay),
 		"standup",
 		"status",
+		"summary",
 		"eod",
 	}
 	return kinds
@@ -75,7 +75,8 @@ func parseReportFileName(base string) (kind, theme string, ok bool) {
 		rest := strings.TrimPrefix(nameNoExt, k+"-")
 		theme = ""
 		for _, th := range themeDisplayOrder {
-			if suffix := "-" + th; strings.HasSuffix(rest, suffix) || rest == th {
+			slug := themeFilenameSlug(th)
+			if suffix := "-" + slug; strings.HasSuffix(rest, suffix) || rest == slug {
 				theme = th
 				break
 			}

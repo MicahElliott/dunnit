@@ -24,6 +24,15 @@ func ledgerHasEntries(date time.Time) bool {
 	return false
 }
 
+func ledgerHasAnyEntries(date time.Time) bool {
+	for _, entry := range AllLedgerEntries() {
+		if dateOnly(entry.Date).Equal(dateOnly(date)) {
+			return true
+		}
+	}
+	return false
+}
+
 func isExcludedStreakEntry(entry LedgerEntry) bool {
 	return lineHasExcludedTag(entry.Text, LoadConfig().ReportExcludeTags)
 }
@@ -54,9 +63,10 @@ func filterExcludedStreakEntries(entries []LedgerEntry) []LedgerEntry {
 func CurrentStreak() int {
 	streak := 0
 	day := time.Now()
-	// Skip forward-in-time-sense: start at today, walk backward one
-	// day at a time, skipping weekends, until we hit a workday with no
-	// entry.
+	// Start at today, walk backward one day at a time, skipping weekends.
+	// An untouched current day is still in progress and may be skipped;
+	// an excluded-only day was handled but does not qualify for the streak,
+	// so it breaks the streak.
 	first := true
 	for {
 		if day.Weekday() == time.Saturday || day.Weekday() == time.Sunday {
@@ -69,7 +79,7 @@ func CurrentStreak() int {
 			first = false
 			continue
 		}
-		if first {
+		if first && !ledgerHasAnyEntries(day) {
 			// Today (or the most recent workday checked) has no
 			// entry yet -- don't count it, but don't treat it as a
 			// broken streak either; just move on to check the prior

@@ -54,33 +54,39 @@ func ledgerPathFor(date time.Time) (dir, path string) {
 
 // weeklyReportPath returns the save path for a weekly Review report for
 // the week containing anchor, themed for theme. Now nested inside the
-// week's directory: <year>/<month>/w<week>/review-week-<period>-<date>[-<theme>].md
+// week's directory: <year>/<month>/w<week>/review-week-<period>[-<theme>].md
 func weeklyReportPath(anchor time.Time, theme string) string {
 	yr, moname, wk := weekMonthInfo(anchor)
 	dir := ledgerDirFor(yr, wk, moname)
-	filename := reportFilename("review-week", reviewReportDateToken(periodWeek, anchor), theme, time.Now())
+	filename := reportFilename("review-week", reviewReportDateToken(periodWeek, anchor), theme)
 	return filepath.Join(dir, filename)
 }
 
 // weeklyReportPathForKind returns the save path for a non-Review report
-// covering the week containing anchor, such as a Standup or Status report.
-func weeklyReportPathForKind(kind string, anchor, generated time.Time) string {
+// covering the week containing anchor, such as a Status report.
+func weeklyReportPathForKind(kind string, anchor time.Time) string {
 	yr, moname, wk := weekMonthInfo(anchor)
 	dir := ledgerDirFor(yr, wk, moname)
-	filename := reportFilename(kind, "w"+strconv.Itoa(wk), "", generated)
+	filename := reportFilename(kind, reportPeriodToken(periodWeek, anchor, LoadConfig()), "")
 	return filepath.Join(dir, filename)
+}
+
+// dailyReportPathForKind returns a report beside the ledger for a particular
+// date, such as the daily Standup report.
+func dailyReportPathForKind(kind string, date time.Time) string {
+	dir, _ := ledgerPathFor(date)
+	return filepath.Join(dir, reportFilename(kind, reportPeriodToken(periodDay, date, LoadConfig()), ""))
 }
 
 // monthlyReportPath returns the save path for a monthly Review report for
 // the month containing anchor, themed for theme. Moved to:
-// <year>/<month>/review-month-<token>-<theme>.md
+// <year>/<month>/review-month-<token>[-<theme>].md
 func monthlyReportPath(anchor time.Time, theme string) string {
 	yr := anchor.Year()
 	moname := anchor.Format("Jan")
-	token := anchor.Format("200601") // YYYYMM format
 	dir := filepath.Join(DunnitDir(), strconv.Itoa(yr), moname)
 
-	filename := reportFilename("review-month", token, theme, time.Now())
+	filename := reportFilename("review-month", reportPeriodToken(periodMonth, anchor, LoadConfig()), theme)
 	return filepath.Join(dir, filename)
 }
 
@@ -88,19 +94,17 @@ func monthlyReportPath(anchor time.Time, theme string) string {
 // These stay flat under the year directory: <year>/review-quarter-<token>-<theme>.md
 func quarterlyReportPath(anchor time.Time, theme string) string {
 	yr := anchor.Year()
-	q := quarterOf(anchor)
-	token := strconv.Itoa(yr) + "Q" + strconv.Itoa(q)
 
-	filename := reportFilename("review-quarter", token, theme, time.Now())
+	filename := reportFilename("review-quarter", reportPeriodToken(periodQuarter, anchor, LoadConfig()), theme)
 	return filepath.Join(DunnitDir(), strconv.Itoa(yr), filename)
 }
 
 // yearlyReportPath returns the save path for a yearly Review report.
 // These stay flat under the year directory: <year>/review-year-<token>-<theme>.md
 func yearlyReportPath(anchor time.Time, theme string) string {
-	yr := anchor.Year()
-	token := strconv.Itoa(yr)
+	cfg := LoadConfig()
+	yr := fiscalYearLabel(anchor, cfg)
 
-	filename := reportFilename("review-year", token, theme, time.Now())
+	filename := reportFilename("review-year", reportPeriodToken(periodYear, anchor, cfg), theme)
 	return filepath.Join(DunnitDir(), strconv.Itoa(yr), filename)
 }

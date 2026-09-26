@@ -21,9 +21,9 @@ type periodConfig struct {
 }
 
 // periodConfigs is the static table of the 5 units' shape, keyed by
-// summaryPeriod. Quarters are traditional calendar quarters
-// (Jan-Mar/Apr-Jun/Jul-Sep/Oct-Dec); years are Jan 1 - Dec 31 -- no
-// fiscal-year config, at least for now.
+// summaryPeriod. Quarters remain traditional calendar quarters
+// (Jan-Mar/Apr-Jun/Jul-Sep/Oct-Dec); the Year unit uses the configured
+// fiscal-year boundaries.
 var periodConfigs = map[summaryPeriod]periodConfig{
 	periodDay:     {Period: periodDay, DefaultTheme: ThemePersonalNotes},
 	periodWeek:    {Period: periodWeek, DefaultTheme: ThemePersonalNotes},
@@ -78,6 +78,22 @@ func themeFromDisplayName(display string) string {
 	return ""
 }
 
+// themeFilenameSlug is the compact, filesystem-facing form of a Review
+// theme. Config values retain their readable internal names, while filenames
+// use concatenated lowercase words such as "personalnotes".
+func themeFilenameSlug(theme string) string {
+	return strings.ToLower(strings.ReplaceAll(strings.TrimSpace(theme), "_", ""))
+}
+
+func themeFromFilenameSlug(slug string) string {
+	for _, theme := range themeDisplayOrder {
+		if themeFilenameSlug(theme) == slug {
+			return theme
+		}
+	}
+	return ""
+}
+
 // quarterOf returns 1-4 for the traditional calendar quarter
 // containing t (Jan-Mar=1, Apr-Jun=2, Jul-Sep=3, Oct-Dec=4).
 func quarterOf(t time.Time) int {
@@ -100,7 +116,7 @@ func quarterOf(t time.Time) int {
 // time.Time.ISOWeek's convention used elsewhere in this codebase;
 // periodLabel(cfg, periodMonth, t) -> "Sep 2026";
 // periodLabel(cfg, periodQuarter, t) -> "Q3 2026 (Jul-Sep)";
-// periodLabel(cfg, periodYear, t) -> "2026".
+// periodLabel(cfg, periodYear, t) -> "FY2026".
 func periodLabel(cfg Config, period summaryPeriod, anchor time.Time) string {
 	switch period {
 	case periodDay:
@@ -114,7 +130,7 @@ func periodLabel(cfg Config, period summaryPeriod, anchor time.Time) string {
 		monthNames := [4]string{"Jan\u2013Mar", "Apr\u2013Jun", "Jul\u2013Sep", "Oct\u2013Dec"}
 		return fmt.Sprintf("Q%d %d (%s)", q, anchor.Year(), monthNames[q-1])
 	case periodYear:
-		return fmt.Sprintf("%d", anchor.Year())
+		return fiscalYearToken(anchor, cfg)
 	default:
 		return string(period)
 	}
@@ -183,12 +199,77 @@ func periodOffsetAnchor(period summaryPeriod, anchor time.Time, offset int) time
 	}
 }
 
+// configuredYearMonths returns the configured fiscal-year boundaries. An
+// invalid pair falls back to the calendar year so a hand-edited config can
+// never make annual reports cover an ill-defined period.
+func configuredYearMonths(cfg Config) (start, end time.Month) {
+	start = time.Month(cfg.YearStartMonth)
+	end = time.Month(cfg.YearEndMonth)
+	if start < time.January || start > time.December || end < time.January || end > time.December {
+		return time.January, time.December
+	}
+	expectedEnd := start - 1
+	if expectedEnd == 0 {
+		expectedEnd = time.December
+	}
+	if end != expectedEnd {
+		return time.January, time.December
+	}
+	return start, end
+}
+
+// fiscalYearLabel returns the ending calendar year used by an FY token.
+// For example, July 2025 through June 2026 is FY2026.
+func fiscalYearLabel(anchor time.Time, cfg Config) int {
+	start, end := configuredYearMonths(cfg)
+	if start <= end || anchor.Month() < start {
+		return anchor.Year()
+	}
+	return anchor.Year() + 1
+}
+
+func fiscalYearAnchorForLabel(year int, cfg Config, loc *time.Location) time.Time {
+	start, end := configuredYearMonths(cfg)
+	if start > end {
+		return time.Date(year-1, start, 1, 0, 0, 0, 0, loc)
+	}
+	return time.Date(year, start, 1, 0, 0, 0, 0, loc)
+}
+
+func fiscalYearToken(anchor time.Time, cfg Config) string {
+	return fmt.Sprintf("FY%d", fiscalYearLabel(anchor, cfg))
+}
+
+// reportPeriodToken is the shared covered-period vocabulary used in every
+// generated report filename.
+func reportPeriodToken(period summaryPeriod, anchor time.Time, cfg Config) string {
+	switch period {
+	case periodDay:
+		return anchor.Format("Mon-20060102")
+	case periodWeek:
+		year, week := weekStart(anchor).ISOWeek()
+		return fmt.Sprintf("W%d-%d", week, year)
+	case periodMonth:
+		return anchor.Format("Jan-2006")
+	case periodQuarter:
+		return fmt.Sprintf("Q%d-%d", quarterOf(anchor), anchor.Year())
+	case periodYear:
+		return fiscalYearToken(anchor, cfg)
+	default:
+		return strings.ToLower(string(period))
+	}
+}
+
 // periodNominalRange returns the exact calendar boundaries [from, to]
 // of the unit containing anchor -- e.g. for periodQuarter, the first
 // instant of the quarter through the last instant of its last day.
 // Used both for periodLabel-adjacent bookkeeping and as the basis
 // periodDataRange pads outward from.
 func periodNominalRange(period summaryPeriod, anchor time.Time) (from, to time.Time) {
+	return periodNominalRangeWithConfig(period, anchor, LoadConfig())
+}
+
+func periodNominalRangeWithConfig(period summaryPeriod, anchor time.Time, cfg Config) (from, to time.Time) {
 	loc := anchor.Location()
 	switch period {
 	case periodDay:
@@ -206,8 +287,14 @@ func periodNominalRange(period summaryPeriod, anchor time.Time) (from, to time.T
 		from = time.Date(anchor.Year(), startMonth, 1, 0, 0, 0, 0, loc)
 		to = from.AddDate(0, 3, 0).Add(-time.Second)
 	case periodYear:
-		from = time.Date(anchor.Year(), time.January, 1, 0, 0, 0, 0, loc)
-		to = from.AddDate(1, 0, 0).Add(-time.Second)
+		start, end := configuredYearMonths(cfg)
+		labelYear := fiscalYearLabel(anchor, cfg)
+		fromYear := labelYear
+		if start > end {
+			fromYear--
+		}
+		from = time.Date(fromYear, start, 1, 0, 0, 0, 0, loc)
+		to = time.Date(labelYear, end, 1, 0, 0, 0, 0, loc).AddDate(0, 1, 0).Add(-time.Second)
 	default:
 		from, to = anchor, anchor
 	}

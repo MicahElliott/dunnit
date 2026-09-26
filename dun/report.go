@@ -23,13 +23,14 @@ import (
 	"github.com/yuin/goldmark"
 )
 
-// reportFilename returns a descriptor-first report filename. The covered
-// period comes before the generation date so filenames remain useful when
-// sorted lexically while still distinguishing regenerated reports.
-func reportFilename(kind, covered, theme string, generated time.Time) string {
-	name := kind + "-" + covered + "-" + generated.Format("20060102")
+// reportFilename returns the canonical descriptor-first report filename.
+// The covered-period token identifies the report; saving another version of
+// the same report updates that canonical file instead of creating a
+// generation-date variant.
+func reportFilename(kind, covered, theme string) string {
+	name := kind + "-" + covered
 	if theme != "" {
-		name += "-" + theme
+		name += "-" + themeFilenameSlug(theme)
 	}
 	return name + ".md"
 }

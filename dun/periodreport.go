@@ -29,7 +29,7 @@ func periodSummaryTitle(period summaryPeriod, anchor time.Time) string {
 		return fmt.Sprintf("Quarter Summary (Q%d %d — %s)", q,
 			anchor.Year(), months[q-1])
 	case periodYear:
-		return fmt.Sprintf("Year Summary (%d)", anchor.Year())
+		return fmt.Sprintf("Year Summary (%s)", fiscalYearToken(anchor, LoadConfig()))
 	case periodDay:
 		return "Day Summary (" + anchor.Format("Mon Jan 2, 2006") + ")"
 	default:
@@ -56,14 +56,17 @@ func currentPeriodRange(period summaryPeriod, anchor, now time.Time) (from, to t
 	return from, to
 }
 
-// summaryReportPath returns the save path for the older standalone Summary
-// command, using the same period directories and date-token convention as
-// themed Review reports while keeping Summary files distinguishable.
+// summaryReportPath returns the canonical save path for the standalone
+// Summary command. Summary filenames use the shared covered-period tokens,
+// such as summary-W39-2026.md and summary-FY2026.md.
 func summaryReportPath(period summaryPeriod, anchor time.Time) string {
 	reviewPath := reviewReportPath(period, anchor, "")
-	filename := reportFilename("summary-"+strings.ToLower(string(period)),
-		reviewReportDateToken(period, anchor), "", time.Now())
+	filename := reportFilename("summary", summaryReportToken(period, anchor), "")
 	return filepath.Join(filepath.Dir(reviewPath), filename)
+}
+
+func summaryReportToken(period summaryPeriod, anchor time.Time) string {
+	return reportPeriodToken(period, anchor, LoadConfig())
 }
 
 func periodSummaryPrompt(period summaryPeriod, title string) string {

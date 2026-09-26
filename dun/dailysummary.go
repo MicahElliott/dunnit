@@ -15,7 +15,7 @@ import (
 // "eod-" instead of "ledger-" and ".md" instead of ".txt").
 func eodReportPath(date time.Time) (dir, path string) {
 	dir, _ = ledgerPathFor(date)
-	path = filepath.Join(dir, "eod-"+date.Format("Mon-20060102")+".md")
+	path = filepath.Join(dir, reportFilename("eod", date.Format("Mon-20060102"), ""))
 	return dir, path
 }
 

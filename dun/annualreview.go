@@ -24,7 +24,8 @@ var annualReviewCategories = buildStandupCategories()
 func showAnnualReviewDialog(a fyne.App) {
 	w := a.NewWindow("Dunnit: Annual Review")
 
-	currentYear := time.Now().Year()
+	cfg := LoadConfig()
+	currentYear := fiscalYearLabel(time.Now(), cfg)
 	yearEntry := widget.NewEntry()
 	yearEntry.SetText(strconv.Itoa(currentYear))
 
@@ -38,7 +39,7 @@ func showAnnualReviewDialog(a fyne.App) {
 	}
 
 	content := container.NewVBox(
-		widget.NewLabel("Gather accomplishments and Hilites for year:"),
+		widget.NewLabel("Gather accomplishments and Hilites for fiscal year label:"),
 		yearEntry,
 		container.NewHBox(
 			widget.NewButton("Generate", generate),
@@ -52,9 +53,9 @@ func showAnnualReviewDialog(a fyne.App) {
 }
 
 func runAnnualReview(a fyne.App, year int) {
-	anchor := time.Date(year, time.January, 1, 0, 0, 0, 0, time.Local)
-	from := time.Date(year, time.January, 1, 0, 0, 0, 0, time.Local)
-	to := time.Date(year, time.December, 31, 23, 59, 59, 0, time.Local)
+	cfg := LoadConfig()
+	anchor := fiscalYearAnchorForLabel(year, cfg, time.Local)
+	from, to := periodNominalRangeWithConfig(periodYear, anchor, cfg)
 	ledgerText := gatherLedgerTextForRange(from, to, annualReviewCategories)
 	if ledgerText == "" {
 		w := a.NewWindow("Dunnit: Annual Review")

@@ -8,8 +8,9 @@ Start/End-of-period question). Implementation in progress -- see
 ## The 5 units
 
 Day, Week, Month, Quarter, Year. Quarters are traditional calendar
-quarters (Jan-Mar, Apr-Jun, Jul-Sep, Oct-Dec); years are Jan 1 - Dec
-31 (no fiscal-year config, at least for now).
+quarters remain traditional calendar quarters (Jan-Mar, Apr-Jun, Jul-Sep,
+Oct-Dec); years use the configurable 12-month fiscal-year boundaries in
+Settings and are labeled by their ending calendar year, such as FY2026.
 
 ## Two kinds of thing, not "Start vs End"
 

@@ -1,7 +1,6 @@
 package dun
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -17,7 +16,7 @@ func reviewReportKind(period summaryPeriod) string {
 
 // reviewReportPath returns the save path for period's Review report
 // covering the nominal unit containing anchor, themed for theme. The
-// filename includes both the covered-period token and generation date.
+// filename includes the covered-period token and optional theme.
 func reviewReportPath(period summaryPeriod, anchor time.Time, theme string) string {
 	switch period {
 	case periodWeek:
@@ -29,14 +28,14 @@ func reviewReportPath(period summaryPeriod, anchor time.Time, theme string) stri
 	case periodYear:
 		return yearlyReportPath(anchor, theme)
 	case periodDay:
-		filename := reportFilename("review-day", reviewReportDateToken(periodDay, anchor), theme, time.Now())
+		filename := reportFilename("review-day", reviewReportDateToken(periodDay, anchor), theme)
 		dir, _ := ledgerPathFor(anchor)
 		return filepath.Join(dir, filename)
 	default:
 		// Fallback (shouldn't happen in practice)
 		token := reviewReportDateToken(period, anchor)
 		kind := reviewReportKind(period)
-		return filepath.Join(DunnitDir(), reportFilename(kind, token, theme, time.Now()))
+		return filepath.Join(DunnitDir(), reportFilename(kind, token, theme))
 	}
 }
 
@@ -69,7 +68,8 @@ func listReviewReportsForPeriod(period summaryPeriod, anchor time.Time) (paths [
 	case periodQuarter:
 		pattern = filepath.Join(DunnitDir(), strconv.Itoa(anchor.Year()), "review-quarter-*.md")
 	case periodYear:
-		pattern = filepath.Join(DunnitDir(), strconv.Itoa(anchor.Year()), "review-year-*.md")
+		cfg := LoadConfig()
+		pattern = filepath.Join(DunnitDir(), strconv.Itoa(fiscalYearLabel(anchor, cfg)), "review-year-*.md")
 	default:
 		return
 	}
@@ -97,31 +97,15 @@ func listReviewReportsForPeriod(period summaryPeriod, anchor time.Time) (paths [
 }
 
 // reviewReportDateToken encodes anchor's nominal unit as the filename
-// date component for period's Review report, and reviewReportAnchorFromToken
-// reverses it. Day/Week/Month/Year use plain time-parseable formats;
-// Quarter doesn't have a time.Parse token so it's encoded/decoded
-// manually as e.g. "2026Q3".
+// period token for period's Review report. It uses the shared filename
+// vocabulary, including weekday/date, ISO week/year, month/year,
+// quarter/year, and fiscal-year tokens.
 func reviewReportDateToken(period summaryPeriod, anchor time.Time) string {
-	switch period {
-	case periodDay:
-		return anchor.Format("20060102")
-	case periodWeek:
-		return weekStart(anchor).Format("20060102")
-	case periodMonth:
-		return anchor.Format("200601")
-	case periodQuarter:
-		return fmt.Sprintf("%dQ%d", anchor.Year(), quarterOf(anchor))
-	case periodYear:
-		return anchor.Format("2006")
-	default:
-		return anchor.Format("20060102")
-	}
+	return reportPeriodToken(period, anchor, LoadConfig())
 }
 
 // reviewReportFilenameParts extracts the covered-period token and theme
-// from a canonical Review filename. The final date token is the report's
-// generation date and is deliberately ignored by callers that only need
-// the covered period.
+// from a canonical Review filename.
 func reviewReportFilenameParts(period summaryPeriod, path string) (token, theme string, ok bool) {
 	name := strings.TrimSuffix(filepath.Base(path), ".md")
 	prefix := reviewReportKind(period) + "-"
@@ -130,20 +114,13 @@ func reviewReportFilenameParts(period summaryPeriod, path string) (token, theme 
 	}
 	rest := strings.TrimPrefix(name, prefix)
 	for _, th := range themeDisplayOrder {
-		if suffix := "-" + th; strings.HasSuffix(rest, suffix) {
+		if suffix := "-" + themeFilenameSlug(th); strings.HasSuffix(rest, suffix) {
 			theme = th
 			rest = strings.TrimSuffix(rest, suffix)
 			break
 		}
 	}
-	idx := strings.LastIndexByte(rest, '-')
-	if idx <= 0 {
-		return "", "", false
-	}
-	if _, err := time.ParseInLocation("20060102", rest[idx+1:], time.Local); err != nil {
-		return "", "", false
-	}
-	token = rest[:idx]
+	token = rest
 	if _, valid := reviewReportAnchorFromToken(period, token); !valid {
 		return "", "", false
 	}
@@ -158,32 +135,54 @@ func reviewReportFilenameParts(period summaryPeriod, path string) (token, theme 
 func reviewReportAnchorFromToken(period summaryPeriod, token string) (t time.Time, ok bool) {
 	switch period {
 	case periodDay:
-		t, err := time.ParseInLocation("20060102", token, time.Local)
-		return t, err == nil
+		t, err := time.ParseInLocation("Mon-20060102", token, time.Local)
+		return t, err == nil && t.Format("Mon-20060102") == token
 	case periodWeek:
-		t, err := time.ParseInLocation("20060102", token, time.Local)
-		return t, err == nil
-	case periodMonth:
-		t, err := time.ParseInLocation("200601", token, time.Local)
-		return t, err == nil
-	case periodQuarter:
-		parts := strings.SplitN(token, "Q", 2)
-		if len(parts) != 2 {
+		parts := strings.Split(token, "-")
+		if len(parts) != 2 || !strings.HasPrefix(parts[0], "W") {
 			return time.Time{}, false
 		}
-		year, err1 := strconv.Atoi(parts[0])
-		q, err2 := strconv.Atoi(parts[1])
+		week, err1 := strconv.Atoi(strings.TrimPrefix(parts[0], "W"))
+		year, err2 := strconv.Atoi(parts[1])
+		if err1 != nil || err2 != nil || week < 1 || week > 53 {
+			return time.Time{}, false
+		}
+		start := isoWeekStart(year, week)
+		gotYear, gotWeek := start.ISOWeek()
+		return start, gotYear == year && gotWeek == week
+	case periodMonth:
+		t, err := time.ParseInLocation("Jan-2006", token, time.Local)
+		return t, err == nil
+	case periodQuarter:
+		parts := strings.Split(token, "-")
+		if len(parts) != 2 || !strings.HasPrefix(parts[0], "Q") {
+			return time.Time{}, false
+		}
+		q, err1 := strconv.Atoi(strings.TrimPrefix(parts[0], "Q"))
+		year, err2 := strconv.Atoi(parts[1])
 		if err1 != nil || err2 != nil || q < 1 || q > 4 {
 			return time.Time{}, false
 		}
 		startMonth := time.Month((q-1)*3 + 1)
 		return time.Date(year, startMonth, 1, 0, 0, 0, 0, time.Local), true
 	case periodYear:
-		t, err := time.ParseInLocation("2006", token, time.Local)
-		return t, err == nil
+		if !strings.HasPrefix(token, "FY") {
+			return time.Time{}, false
+		}
+		year, err := strconv.Atoi(strings.TrimPrefix(token, "FY"))
+		if err != nil {
+			return time.Time{}, false
+		}
+		cfg := LoadConfig()
+		return fiscalYearAnchorForLabel(year, cfg, time.Local), true
 	default:
 		return time.Time{}, false
 	}
+}
+
+func isoWeekStart(year, week int) time.Time {
+	jan4 := time.Date(year, time.January, 4, 0, 0, 0, 0, time.Local)
+	return weekStart(jan4).AddDate(0, 0, (week-1)*7)
 }
 
 // listReviewReportsOverlapping returns the saved Review report file

@@ -2,7 +2,9 @@ package dun
 
 import (
 	"fmt"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -17,8 +19,14 @@ var shareUnsafeCategories = map[string]bool{
 	"SENTIMENT": true, "PRODUCTIVITY": true, "WASTED": true, "FAIL": true,
 }
 
-func statusReportPath(anchor, generated time.Time) string {
-	return weeklyReportPathForKind("status", anchor, generated)
+func statusReportPath(anchor time.Time, audience string) string {
+	return reportPathWithAudience(weeklyReportPathForKind("status", anchor), audience)
+}
+
+func reportPathWithAudience(path, audience string) string {
+	ext := filepath.Ext(path)
+	base := strings.TrimSuffix(filepath.Base(path), ext)
+	return filepath.Join(filepath.Dir(path), base+"-"+themeFilenameSlug(audience)+ext)
 }
 
 func statusReportTitle(anchor time.Time, audience string) string {
@@ -151,7 +159,7 @@ func runStatusReport(a fyne.App, anchor time.Time, audience string) {
 			} else {
 				title := statusReportTitle(anchor, audience)
 				showGeneratedReport(a, "Dunnit: "+title,
-					statusReportPath(anchor, time.Now()), normalizeReport(summary, title))
+					statusReportPath(anchor, audience), normalizeReport(summary, title))
 			}
 		})
 	}()

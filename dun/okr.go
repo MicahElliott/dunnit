@@ -45,7 +45,7 @@ var okrStatusOptions = []string{"Not Started", "On Track", "At Risk", "Done"}
 
 // periodTag returns the #tag token used to associate an OKR ledger
 // line with the quarter or year containing anchor -- "#Q3-2026" for
-// periodQuarter, "#2026" for periodYear. Other periods aren't
+// periodQuarter, "#FY2026" for periodYear. Other periods aren't
 // meaningful for OKRs (see docs/kickoff-review-design.md) and return
 // "".
 func periodTag(period summaryPeriod, anchor time.Time) string {
@@ -53,7 +53,7 @@ func periodTag(period summaryPeriod, anchor time.Time) string {
 	case periodQuarter:
 		return "#Q" + itoa(quarterOf(anchor)) + "-" + itoa(anchor.Year())
 	case periodYear:
-		return "#" + itoa(anchor.Year())
+		return "#" + fiscalYearToken(anchor, LoadConfig())
 	default:
 		return ""
 	}

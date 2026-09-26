@@ -142,6 +142,13 @@ type Config struct {
 	ThemeQuarter string `toml:"theme_quarter"`
 	ThemeYear    string `toml:"theme_year"`
 
+	// YearStartMonth and YearEndMonth define the 12-month fiscal year used
+	// by annual reports. The end month must be the month immediately before
+	// the start month, wrapping December to January. Defaults to January
+	// through December, which is the ordinary calendar year.
+	YearStartMonth int `toml:"year_start_month"`
+	YearEndMonth   int `toml:"year_end_month"`
+
 	// ExtendWorkWeekTo7Days, when true, shows the full Mon-Sun 7-day
 	// span in Week Kickoff/Review labels instead of the default
 	// Mon-Fri 5-day work week. Default false (5-day), toggled via
@@ -240,6 +247,9 @@ func defaultConfig() Config {
 		ThemeMonth:   ThemeStatusReport,
 		ThemeQuarter: ThemeFormalReport,
 		ThemeYear:    ThemeFormalReport,
+
+		YearStartMonth: 1,
+		YearEndMonth:   12,
 
 		FavoriteCategories: []string{"DONE", "TODO", "IDEA", "FIXME", "MEETING"},
 		ReportExcludeTags:  []string{"#home", "#personal", "#buy", "#shop"},

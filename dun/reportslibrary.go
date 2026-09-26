@@ -21,6 +21,7 @@ var reportKindDisplayNames = map[string]string{
 	"review-year":    "Review: Year",
 	"standup":        "Standup",
 	"status":         "Status Report",
+	"summary":        "Summary",
 	"eod":            "End of Day",
 }
 

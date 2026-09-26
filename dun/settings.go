@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -69,6 +70,21 @@ func showSettings(a fyne.App) {
 	digestTime.SetText(cfg.WeeklyDigestTime)
 	digestTime.SetPlaceHolder("HH:MM, 6am, or 4p")
 
+	monthOptions := make([]string, 12)
+	for month := time.January; month <= time.December; month++ {
+		monthOptions[int(month)-1] = month.String()
+	}
+	selectedMonth := func(month int) string {
+		if month < int(time.January) || month > int(time.December) {
+			month = int(time.January)
+		}
+		return monthOptions[month-1]
+	}
+	yearStartMonth := widget.NewSelect(monthOptions, nil)
+	yearStartMonth.SetSelected(selectedMonth(cfg.YearStartMonth))
+	yearEndMonth := widget.NewSelect(monthOptions, nil)
+	yearEndMonth.SetSelected(selectedMonth(cfg.YearEndMonth))
+
 	snoozeMinutes := widget.NewEntry()
 	snoozeMinutes.SetText(strconv.Itoa(cfg.SnoozeMinutes))
 
@@ -122,6 +138,8 @@ func showSettings(a fyne.App) {
 		widget.NewFormItem("Lunch Time (HH:MM or noon)", lunchTime),
 		widget.NewFormItem("Weekly Digest Day", digestDay),
 		widget.NewFormItem("Weekly Digest Time (HH:MM or 4p)", digestTime),
+		widget.NewFormItem("Year Start Month", yearStartMonth),
+		widget.NewFormItem("Year End Month", yearEndMonth),
 		widget.NewFormItem("Default Snooze (minutes)", snoozeMinutes),
 		widget.NewFormItem("Skip US Federal Holidays", skipHolidays),
 		widget.NewFormItem("Extend Work Week to 7 Days", extendWorkWeek),
@@ -192,6 +210,20 @@ func showSettings(a fyne.App) {
 			dialog.ShowError(err, w)
 			return
 		}
+		startMonth := monthNumber(yearStartMonth.Selected)
+		endMonth := monthNumber(yearEndMonth.Selected)
+		if startMonth == 0 || endMonth == 0 {
+			dialog.ShowError(fmt.Errorf("Year start and end months are required"), w)
+			return
+		}
+		expectedEndMonth := startMonth - 1
+		if expectedEndMonth == 0 {
+			expectedEndMonth = 12
+		}
+		if endMonth != expectedEndMonth {
+			dialog.ShowError(fmt.Errorf("Year End Month must be %s for a 12-month year starting in %s", monthOptions[expectedEndMonth-1], monthOptions[startMonth-1]), w)
+			return
+		}
 		// Start from the loaded config rather than a blank Config{}
 		// so fields not represented in this form (e.g.
 		// RecurringMeetings, FR-15) aren't silently wiped out on save.
@@ -207,6 +239,8 @@ func showSettings(a fyne.App) {
 		newCfg.LunchTime = lunchTimeValue
 		newCfg.WeeklyDigestDay = digestDay.Selected
 		newCfg.WeeklyDigestTime = digestTimeValue
+		newCfg.YearStartMonth = startMonth
+		newCfg.YearEndMonth = endMonth
 		newCfg.SnoozeMinutes = snooze
 		newCfg.SkipUSFederalHolidays = skipHolidays.Checked
 		newCfg.ExtendWorkWeekTo7Days = extendWorkWeek.Checked
@@ -263,4 +297,13 @@ func showSettings(a fyne.App) {
 	w.SetContent(container.NewBorder(nil, container.NewPadded(saveButton), nil, nil, windowPad(content)))
 	w.Resize(fyne.NewSize(420, 620))
 	w.Show()
+}
+
+func monthNumber(name string) int {
+	for month := time.January; month <= time.December; month++ {
+		if month.String() == name {
+			return int(month)
+		}
+	}
+	return 0
 }

@@ -207,14 +207,12 @@ ledgers) -- **reportindex.go**/**reportsearch.go**/**reportslibrary.go**:
   every other report-producing feature already uses, rather than
   building a new one-off viewer.
 
-**Note on Status Report/Annual Review/Kickoff**: these are NOT
-included in `AllReportFiles()` -- confirmed during this work that
-Status Report and Annual Review are clipboard-only (no `WriteFile`
-call anywhere in `statusreport.go`/`annualreview.go`), and Kickoff
-windows don't appear to save to disk either. Only Review
-(`review-*`), Standup (`standup-*`), Status (`status-*`), and EOD
-(`eod-*`) persist as files today -- Reports Library only browses what
-genuinely exists on disk.
+**Note on Status Report/Annual Review/Kickoff**: Status Report,
+Annual Review, and standalone Summary all save Markdown files now, so
+the Reports Library includes their `status-*` and `summary-*` files
+alongside Review (`review-*`), Standup (`standup-*`), and EOD (`eod-*`).
+Kickoff windows remain forward-looking ledger workflows and do not save
+separate report files.
 
 This closes out the "Saved-reports library/browser" and "Cross-report
 search" bullets from the original navigator brainstorm.

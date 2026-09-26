@@ -356,12 +356,12 @@ func summarizeStandupWithLLCLIAt(ctx context.Context, lines []string, now time.T
 
 // showGeneratedStandupSummary displays an AI-generated standup
 // summary via the shared showGeneratedReport window (Copy/Save/
-// Close), saving to standup-w<week>-<generation-date>.md.
+// Close), saving to the date-specific standup-<YYYYMMDD>.md file.
 func showGeneratedStandupSummary(a fyne.App, summary string) {
 	now := time.Now()
 	title := standupReportTitle(now)
 	showGeneratedReport(a, "Dunnit: "+title,
-		weeklyReportPathForKind("standup", now, now), normalizeReport(summary, title))
+		dailyReportPathForKind("standup", now), normalizeReport(summary, title))
 }
 
 // showStandupExport builds the deterministic standup summary (FR-17
