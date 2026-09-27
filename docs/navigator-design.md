@@ -176,13 +176,13 @@ matching `trend.go`'s existing house style (no charting library).
 Opens in its own window, same rationale as the Ask-AI answer window
 (stays open alongside the filtered browse view).
 
-### Reports Library (2026-09-02, same session)
+### Saved Reports (2026-09-27)
 
 New, separate corpus/window from Navigator (which only covers raw
 ledgers) -- **reportindex.go**/**reportsearch.go**/**reportslibrary.go**:
 
 - `ReportFile` (reportindex.go): lightweight per-report-file metadata
-  (Path, Kind, Theme, Date=file mtime) -- deliberately much lighter
+  (Path, Kind, Theme, Audience, covered period, and SavedAt) -- deliberately much lighter
   than `LedgerEntry`, since reports are large markdown documents, not
   per-line structured data. `AllReportFiles()` walks the entire
   `DunnitDir()` tree, including year-level and ledger-adjacent reports,
@@ -199,20 +199,15 @@ ledgers) -- **reportindex.go**/**reportsearch.go**/**reportslibrary.go**:
   (`excerptAround`) rather than dumping the whole body -- "which
   reports mention X", not an every-occurrence full-text index.
 - `showReportsLibraryWindow(a)` (reportslibrary.go, tray: Reports ->
-  Reports Library...): combines a Kind filter (dropdown, chronological
-  browse of one report family by file mtime) with the free-text search
-  above in one window -- selecting a result line and clicking "Open
-  Selected Line..." opens the full report in `showGeneratedReport`
-  (report.go), reusing the same read-only viewer (with Copy/Save)
-  every other report-producing feature already uses, rather than
-  building a new one-off viewer.
+  Saved Reports...): filters by report type, audience, and covered
+  period; groups style and audience variants for one logical period;
+  and uses a proper selectable list. Preview is read-only, while Edit
+  explicitly opens the Markdown editor.
 
-**Note on Status Report/Annual Review/Kickoff**: Status Report,
-Annual Review, and standalone Summary all save Markdown files now, so
-the Reports Library includes their `status-*` and `summary-*` files
-alongside Review (`review-*`), Standup (`standup-*`), and EOD (`eod-*`).
-Kickoff windows remain forward-looking ledger workflows and do not save
-separate report files.
+**Note on legacy report files**: older `status-*` and `summary-*` files
+remain readable and are grouped with their matching weekly/yearly Review
+periods. Kickoff windows remain forward-looking ledger workflows and do
+not save separate report files.
 
 This closes out the "Saved-reports library/browser" and "Cross-report
 search" bullets from the original navigator brainstorm.
@@ -225,11 +220,8 @@ search" bullets from the original navigator brainstorm.
   "FIXME + RISK together" turns out to be a common need.
 - Saved/pinned queries, once real usage shows which filter
   combinations get reused often.
-- Reports Library's Kind dropdown is single-select and its results
-  view is a plain click-a-line-number affordance (`CursorRow`-based),
-  not a proper clickable list widget -- fine for a first pass, but
-  worth a real `widget.List`-based results view if this gets used a
-  lot.
-- Ask-AI-about-these for Reports Library (parallel to Navigator's),
+- Saved Reports now has period-aware filters, grouped variants, a proper
+  list, and explicit Preview/Edit actions.
+- Ask-AI-about-these for Saved Reports (parallel to Navigator's),
   if a use case for it shows up (e.g. "what changed between these two
   Quarter reviews").

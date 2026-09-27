@@ -1,6 +1,7 @@
 package dun
 
 import (
+	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -39,7 +40,7 @@ func showPeriodPicker(a fyne.App, cfg Config, period summaryPeriod, onChosen fun
 		anchor := periodOffsetAnchor(period, now, offset)
 		label := periodLabel(cfg, period, anchor) + periodProgressSuffix(period, anchor)
 		if paths, themes := listReviewReportsForPeriod(period, anchor); len(paths) > 0 {
-			label += "  [" + reportExistsSummary(themes) + "]"
+			label += "  [" + reportExistsSummaryForPaths(period, paths, themes) + "]"
 		}
 		list.Add(widget.NewButton(label, func() {
 			w.Close()
@@ -77,4 +78,22 @@ func reportExistsSummary(themes []string) string {
 		}
 	}
 	return out
+}
+
+func reportExistsSummaryForPaths(period summaryPeriod, paths, themes []string) string {
+	var labels []string
+	for i, theme := range themes {
+		label := "untitled"
+		if display, ok := themeDisplayNames[theme]; ok {
+			label = display
+		}
+		if _, _, audience, ok := reviewReportFilenamePartsForAudience(period, paths[i]); ok && audience != "" {
+			label += " · " + audience
+		}
+		labels = append(labels, label)
+	}
+	if len(labels) == 0 {
+		return reportExistsSummary(themes)
+	}
+	return "saved: " + strings.Join(labels, ", ")
 }

@@ -117,8 +117,9 @@ type Config struct {
 	// units is a lot to ask": a unit's toggle off means it's never
 	// shown, automatically or via the Kickoff.../Review... tray
 	// submenus. Day/Week/Month default on (they cover today's
-	// existing SOD/EOD/SOM); Quarter/Year default off since they're
-	// new, no-prior-art surfaces a user should opt into.
+	// existing SOD/EOD/SOM); Year Review is also on because it now
+	// replaces the former standalone Annual Review. Quarter remains
+	// opt-in as a newer planning/reporting surface.
 	KickoffDayEnabled     bool `toml:"kickoff_day_enabled"`
 	KickoffWeekEnabled    bool `toml:"kickoff_week_enabled"`
 	KickoffMonthEnabled   bool `toml:"kickoff_month_enabled"`
@@ -130,6 +131,11 @@ type Config struct {
 	ReviewMonthEnabled   bool `toml:"review_month_enabled"`
 	ReviewQuarterEnabled bool `toml:"review_quarter_enabled"`
 	ReviewYearEnabled    bool `toml:"review_year_enabled"`
+	// ReviewYearMigrationDone records that the former standalone Annual
+	// Review has been folded into Review -> Year. It lets older config files
+	// receive the new Year Review default once without overriding a later
+	// user choice to disable it.
+	ReviewYearMigrationDone bool `toml:"review_year_migration_done"`
 
 	// ThemeDay/Week/Month/Quarter/Year hold each unit's standing
 	// default Review theme (one of the Theme* constants in
@@ -181,7 +187,7 @@ type Config struct {
 	// ReportExcludeTags is a list of "#tag" strings; any ledger line
 	// containing one of these tags is excluded from every report/
 	// summary generation pipeline (Kickoff/Review digests, Standup,
-	// Status Report, Annual Review, Trend View, etc) -- the goal is
+	// Status Report, Annual Review, Metrics, etc) -- the goal is
 	// keeping non-work items (personal errands, etc) out of work-
 	// facing reports without needing to keep them out of the ledger
 	// itself. Default seed: #home/#personal/#buy/#shop (Micah's
@@ -227,20 +233,20 @@ func defaultConfig() Config {
 		SnoozeMinutes:        15,
 
 		// Day/Week/Month default on (they cover today's existing
-		// SOD/EOD/SOM); Quarter/Year default off, opt-in, since
-		// they're new surfaces with no prior art (see
-		// docs/kickoff-review-design.md).
+		// SOD/EOD/SOM); Year Review replaces the former Annual Review,
+		// so it defaults on. Quarter remains opt-in as a newer surface.
 		KickoffDayEnabled:     true,
 		KickoffWeekEnabled:    true,
 		KickoffMonthEnabled:   true,
 		KickoffQuarterEnabled: false,
 		KickoffYearEnabled:    false,
 
-		ReviewDayEnabled:     true,
-		ReviewWeekEnabled:    true,
-		ReviewMonthEnabled:   true,
-		ReviewQuarterEnabled: false,
-		ReviewYearEnabled:    false,
+		ReviewDayEnabled:        true,
+		ReviewWeekEnabled:       true,
+		ReviewMonthEnabled:      true,
+		ReviewQuarterEnabled:    false,
+		ReviewYearEnabled:       true,
+		ReviewYearMigrationDone: true,
 
 		ThemeDay:     ThemePersonalNotes,
 		ThemeWeek:    ThemePersonalNotes,
@@ -323,6 +329,13 @@ func loadConfig() (Config, error) {
 	}
 	cfg.LLMCLI = normalizeLLMCLI(cfg.LLMCLI)
 	cfg.LLMModel = normalizeLLMModel(cfg.LLMModel)
+	if !cfg.ReviewYearMigrationDone {
+		cfg.ReviewYearEnabled = true
+		cfg.ReviewYearMigrationDone = true
+		if err := writeConfig(cfg); err != nil {
+			log.Println("Error recording Year Review migration:", err)
+		}
+	}
 	if os.Getenv("DUNNIT_DIR") == "" && cfg.DunnitDir != "" {
 		configuredDunnitDir = cfg.DunnitDir
 	}

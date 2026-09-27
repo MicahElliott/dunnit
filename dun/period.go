@@ -574,9 +574,16 @@ func generateThemedReviewContext(ctx context.Context, cfg Config, period summary
 // for context while adding a deduplicated, explicitly selected Hilite slice
 // that the model must treat as the user's reflection focus.
 func generateThemedReviewContextWithHilites(ctx context.Context, cfg Config, period summaryPeriod, anchor time.Time, selectedHilites map[string]bool) (string, error) {
+	return generateThemedReviewContextWithOptions(ctx, cfg, period, anchor, selectedHilites, nil, "")
+}
+
+// generateThemedReviewContextWithOptions adds the optional audience/category
+// constraints used by the unified Week Review. Other periods retain the
+// ordinary full-context Review behavior.
+func generateThemedReviewContextWithOptions(ctx context.Context, cfg Config, period summaryPeriod, anchor time.Time, selectedHilites, categories map[string]bool, audience string) (string, error) {
 	from, to := periodDataRange(period, anchor)
 	reportFrom, reportTo := periodNominalRangeForReport(period, anchor)
-	material := gatherReviewSourceMaterial(period, from, to)
+	material := gatherReviewSourceMaterialWithCategories(period, from, to, categories)
 
 	var combined strings.Builder
 	if len(material.SubReports) > 0 {
@@ -590,11 +597,11 @@ func generateThemedReviewContextWithHilites(ctx context.Context, cfg Config, per
 		combined.WriteString("Additional raw entries not yet summarized:\n\n")
 		combined.WriteString(material.RawLedger)
 	}
-	if hiliteText := selectedHiliteLedgerText(reportFrom, reportTo, selectedHilites); hiliteText != "" {
+	if hiliteText := selectedHiliteLedgerText(reportFrom, reportTo, selectedHilites, categories); hiliteText != "" {
 		combined.WriteString("\n\nSelected Hilite focus for reflection:\n\n")
 		combined.WriteString(hiliteText)
 	}
-	if signals := periodReportSignals(reportFrom, reportTo); signals != "" {
+	if signals := periodReportSignalsForCategories(reportFrom, reportTo, categories); signals != "" {
 		combined.WriteString("\n\nStructured report context:\n\n")
 		combined.WriteString(signals)
 	}
@@ -609,6 +616,9 @@ func generateThemedReviewContextWithHilites(ctx context.Context, cfg Config, per
 	theme := themeFor(cfg, period)
 	title := periodSummaryTitle(period, anchor)
 	instructions := themePromptFraming(theme, unitNoun(period), title) + categoryPromptGuidance() + reviewLengthConstraint(period)
+	if strings.EqualFold(strings.TrimSpace(audience), "shareable") {
+		instructions += " This is a shareable report. Exclude personal-only details and frame the result for a manager or colleague; include accomplishments, progress, risks, and upcoming plans with a professional tone."
+	}
 	if selected := selectedHiliteNames(selectedHilites); selected != "" {
 		instructions += " The user selected these Hilite categories for focused reflection: " + selected + ". Give them clear attention without erasing other relevant context."
 	}
@@ -619,11 +629,20 @@ func generateThemedReviewContextWithHilites(ctx context.Context, cfg Config, per
 	return normalizePeriodReport(result, title), nil
 }
 
-func selectedHiliteLedgerText(from, to time.Time, selected map[string]bool) string {
+func selectedHiliteLedgerText(from, to time.Time, selected, categories map[string]bool) string {
 	if len(selected) == 0 {
 		return ""
 	}
-	return strings.TrimSpace(gatherLedgerTextForRange(from, to, selected))
+	if len(categories) == 0 {
+		return strings.TrimSpace(gatherLedgerTextForRange(from, to, selected))
+	}
+	filtered := make(map[string]bool)
+	for category := range selected {
+		if categories[category] {
+			filtered[category] = true
+		}
+	}
+	return strings.TrimSpace(gatherLedgerTextForRange(from, to, filtered))
 }
 
 func selectedHiliteNames(selected map[string]bool) string {

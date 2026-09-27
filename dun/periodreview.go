@@ -103,8 +103,14 @@ func showPeriodReviewWindowReady(a fyne.App, period summaryPeriod, anchor time.T
 
 	themeSelect := widget.NewSelect(themeOptions(), nil)
 	themeSelect.SetSelected(themeDisplayNames[themeFor(cfg, period)])
+	audienceSelect := widget.NewSelect([]string{"Private", "Shareable"}, nil)
+	audienceSelect.SetSelected("Private")
+	audienceRow := container.NewHBox(widget.NewLabel("Audience:"), audienceSelect)
+	if period != periodWeek {
+		audienceRow.Hide()
+	}
 
-	statusLabel := newExplanatoryLabel("Pick a theme, then tap Generate.")
+	statusLabel := newExplanatoryLabel("Pick a style, then tap Generate.")
 
 	// Existing reports for this exact period, listed up front so
 	// Generate is never the only option -- a user can reopen/view a
@@ -118,6 +124,9 @@ func showPeriodReviewWindowReady(a fyne.App, period summaryPeriod, anchor time.T
 			display := themeDisplayNames[th]
 			if display == "" {
 				display = "(untitled)"
+			}
+			if _, _, audience, ok := reviewReportFilenamePartsForAudience(period, path); ok && audience != "" {
+				display += " · " + audience
 			}
 			existingBox.Add(widget.NewButton("View: "+display, func() {
 				body, err := os.ReadFile(path)
@@ -146,6 +155,11 @@ func showPeriodReviewWindowReady(a fyne.App, period summaryPeriod, anchor time.T
 		if selectedTheme == "" {
 			return
 		}
+		selectedAudience := "Private"
+		if period == periodWeek {
+			selectedAudience = audienceSelect.Selected
+		}
+		categories := reportCategoriesForAudience(selectedAudience)
 		generateBtn.Disable()
 		request = newLLMCLIRequest()
 		stopBtn.OnTapped = func() {
@@ -158,7 +172,7 @@ func showPeriodReviewWindowReady(a fyne.App, period summaryPeriod, anchor time.T
 		go func() {
 			overrideCfg := cfg
 			setTheme(&overrideCfg, period, selectedTheme)
-			summary, err := generateThemedReviewContext(request.ctx, overrideCfg, period, anchor)
+			summary, err := generateThemedReviewContextWithOptions(request.ctx, overrideCfg, period, anchor, nil, categories, selectedAudience)
 			request.finish()
 			fyne.Do(func() {
 				generateBtn.Enable()
@@ -176,7 +190,7 @@ func showPeriodReviewWindowReady(a fyne.App, period summaryPeriod, anchor time.T
 				statusLabel.SetText("Generated.")
 				showEditableReportWindow(a,
 					"Dunnit: "+periodSummaryTitle(period, anchor),
-					reviewReportPath(period, anchor, selectedTheme), summary)
+					reviewReportPathForAudience(period, anchor, selectedTheme, selectedAudience), summary)
 			})
 		}()
 	}
@@ -231,7 +245,8 @@ func showPeriodReviewWindowReady(a fyne.App, period summaryPeriod, anchor time.T
 
 	content := container.NewVBox(
 		widget.NewLabel(string(period)+" Review: "+label),
-		container.NewBorder(nil, nil, widget.NewLabel("Theme:"), generateBtn, themeSelect),
+		container.NewBorder(nil, nil, widget.NewLabel("Style:"), generateBtn, themeSelect),
+		audienceRow,
 		container.NewHBox(statusLabel, stopBtn),
 		existingBox,
 		carryForwardBox,

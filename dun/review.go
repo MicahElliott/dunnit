@@ -40,6 +40,17 @@ func reviewReportPath(period summaryPeriod, anchor time.Time, theme string) stri
 	}
 }
 
+// reviewReportPathForAudience gives the unified Week Review a distinct
+// shareable variant while keeping the existing private/theme filename
+// canonical. Older standalone status files remain readable in Saved Reports.
+func reviewReportPathForAudience(period summaryPeriod, anchor time.Time, theme, audience string) string {
+	path := reviewReportPath(period, anchor, theme)
+	if strings.EqualFold(strings.TrimSpace(audience), "shareable") {
+		return reportPathWithAudience(path, "Shareable")
+	}
+	return path
+}
+
 // listReviewReportsForPeriod returns the saved Review report paths
 // (with their theme, parsed back out of the filename) whose nominal
 // range exactly matches the unit containing anchor -- used by the
@@ -108,12 +119,21 @@ func reviewReportDateToken(period summaryPeriod, anchor time.Time) string {
 // reviewReportFilenameParts extracts the covered-period token and theme
 // from a canonical Review filename.
 func reviewReportFilenameParts(period summaryPeriod, path string) (token, theme string, ok bool) {
+	token, theme, _, ok = reviewReportFilenamePartsForAudience(period, path)
+	return token, theme, ok
+}
+
+func reviewReportFilenamePartsForAudience(period summaryPeriod, path string) (token, theme, audience string, ok bool) {
 	name := strings.TrimSuffix(filepath.Base(path), ".md")
 	prefix := reviewReportKind(period) + "-"
 	if !strings.HasPrefix(name, prefix) {
-		return "", "", false
+		return "", "", "", false
 	}
 	rest := strings.TrimPrefix(name, prefix)
+	if strings.HasSuffix(rest, "-shareable") {
+		audience = "Shareable"
+		rest = strings.TrimSuffix(rest, "-shareable")
+	}
 	for _, th := range themeDisplayOrder {
 		if suffix := "-" + themeFilenameSlug(th); strings.HasSuffix(rest, suffix) {
 			theme = th
@@ -123,9 +143,9 @@ func reviewReportFilenameParts(period summaryPeriod, path string) (token, theme 
 	}
 	token = rest
 	if _, valid := reviewReportAnchorFromToken(period, token); !valid {
-		return "", "", false
+		return "", "", "", false
 	}
-	return token, theme, true
+	return token, theme, audience, true
 }
 
 // reviewReportAnchorFromToken parses a filename date token (as
@@ -316,9 +336,13 @@ type reviewSourceMaterial struct {
 // coverage gap is the failure mode this guards against, not
 // duplication.
 func gatherReviewSourceMaterial(period summaryPeriod, from, to time.Time) reviewSourceMaterial {
+	return gatherReviewSourceMaterialWithCategories(period, from, to, nil)
+}
+
+func gatherReviewSourceMaterialWithCategories(period summaryPeriod, from, to time.Time, categories map[string]bool) reviewSourceMaterial {
 	subPeriod := periodConfigs[period].SubPeriod
 	if subPeriod == "" {
-		return reviewSourceMaterial{RawLedger: gatherLedgerTextForRange(from, to, nil)}
+		return reviewSourceMaterial{RawLedger: gatherLedgerTextForRange(from, to, categories)}
 	}
 
 	found := listReviewReportsOverlapping(subPeriod, from, to)
@@ -367,7 +391,7 @@ func gatherReviewSourceMaterial(period summaryPeriod, from, to time.Time) review
 			if err != nil {
 				continue
 			}
-			text := gatherLedgerTextForDate(d)
+			text := gatherLedgerTextForRange(d, d, categories)
 			if strings.TrimSpace(text) != "" {
 				parts = append(parts, text)
 			}

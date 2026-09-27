@@ -312,8 +312,8 @@ rollup lookups).
       `dunnit/periodreview.go`) -- first tier with no prior art
 - [x] Quarter Kickoff + Review (generic `showPeriodKickoffWindow`/
       `showPeriodReviewWindow`, gated off by default)
-- [x] Year Kickoff + Review (same generic dialogs, gated off by
-      default)
+- [x] Year Kickoff + Review (same generic dialogs; Year Review now
+      replaces the former standalone Annual Review)
 - [ ] **Quarter/Year-specific Kickoff *content*** -- important
       distinction: Quarter/Year currently reuse the exact same generic
       dialog as Week (open-items readback + quick-add; themed AI
@@ -323,8 +323,8 @@ rollup lookups).
       idea but never actually scoped. Still open.
 - [ ] Split SOM into Month Review + Month Kickoff
 - [x] Menu regroup: `Kickoff.../Review...` submenus in `ui.go`, now
-      listing all 5 units (Quarter/Year hidden until their Config
-      toggles are enabled)
+      listing all 5 units (Quarter hidden until its Config toggle is
+      enabled; Year Review is enabled by default)
 - [x] Settings-window UI for the 10 toggles + 5 theme defaults
       (`showSettings` in `settings.go`), with `RebuildTrayMenu()`
       applying toggle changes to the tray menu immediately, no
@@ -341,16 +341,9 @@ rollup lookups).
    theme (persisted, standing preference); the Review dialog itself
    also shows a quick theme dropdown that can override just that one
    generated instance without changing the standing default.
-3. **Annual Review reconciliation**: the existing Reports-menu
-   "Annual Review" report and the new automatic Year Review are the
-   same concept and should be reconciled into one -- Year's Review
-   (boundary-triggered or manually invoked via the Review submenu)
-   *is* the Annual Review going forward, rather than keeping two
-   parallel implementations. The Reports menu's standalone "Annual
-   Review..." entry should be retired/folded into `Review... -> Year`
-   once Year Review is implemented (ad hoc/arbitrary-date-range
-   invocation, per last session's point 6, still available -- just
-   through the unified Review flow, not a second separate feature).
+3. **Annual Review reconciliation**: Year Review is now the annual review
+   workflow. Existing standalone annual summary files remain readable in
+   Saved Reports as variants of the corresponding fiscal-year period.
 
 ## Week label format and app-wide typography -- decided 2026-09-02
 

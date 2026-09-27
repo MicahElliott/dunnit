@@ -81,8 +81,6 @@ func showMonthKickoffWindow(a fyne.App, anchor time.Time) {
 		newExplanatoryLabel("Looking ahead to "+label+" \u2014 review the goals already in motion and choose what deserves attention."),
 		container.NewHBox(
 			widget.NewButton("Dismiss", func() { w.Close() }),
-			widget.NewButton("Trend View\u2026", func() { showTrendView(a) }),
-			widget.NewButton("Reports Library\u2026", func() { showReportsLibraryWindow(a) }),
 		),
 		priorReviewReferenceBox(a, w, periodMonth, anchor),
 		sodHeading("GOALs in motion"),

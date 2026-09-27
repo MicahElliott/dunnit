@@ -94,6 +94,74 @@ func TestParseReportFileNameUsesCanonicalKinds(t *testing.T) {
 	}
 }
 
+func TestReportFilePartsAndCoverage(t *testing.T) {
+	cases := []struct {
+		name, filename, wantKind, wantToken, wantTheme, wantAudience string
+		period                                                       summaryPeriod
+		wantFrom, wantTo                                             string
+	}{
+		{
+			name: "shareable unified week review", filename: "review-week-W38-2026-statusreport-shareable.md",
+			wantKind: "review-week", wantToken: "W38-2026", wantTheme: ThemeStatusReport, wantAudience: "Shareable",
+			period: periodWeek, wantFrom: "2026-09-14", wantTo: "2026-09-20",
+		},
+		{
+			name: "legacy status", filename: "status-W38-2026-shareable.md",
+			wantKind: "status", wantToken: "W38-2026", wantAudience: "Shareable",
+			period: periodWeek, wantFrom: "2026-09-14", wantTo: "2026-09-20",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			kind, token, theme, audience, ok := parseReportFileParts(tc.filename)
+			if !ok || kind != tc.wantKind || token != tc.wantToken || theme != tc.wantTheme || audience != tc.wantAudience {
+				t.Fatalf("parseReportFileParts(%q) = %q, %q, %q, %q, %v", tc.filename, kind, token, theme, audience, ok)
+			}
+			period, from, to, ok := reportFileCoverage(kind, token)
+			if !ok || period != tc.period || from.Format("2006-01-02") != tc.wantFrom || to.Format("2006-01-02") != tc.wantTo {
+				t.Fatalf("reportFileCoverage(%q, %q) = %q, %s, %s, %v", kind, token, period, from.Format("2006-01-02"), to.Format("2006-01-02"), ok)
+			}
+		})
+	}
+}
+
+func TestGroupReportFilesKeepsVariantsTogether(t *testing.T) {
+	from := time.Date(2026, time.September, 14, 0, 0, 0, 0, time.Local)
+	to := time.Date(2026, time.September, 20, 23, 59, 59, 0, time.Local)
+	groups := groupReportFiles([]ReportFile{
+		{Path: "personal.md", Kind: "review-week", Theme: ThemePersonalNotes, From: from, To: to, SavedAt: from},
+		{Path: "status.md", Kind: "review-week", Theme: ThemeStatusReport, From: from, To: to, SavedAt: to},
+		{Path: "other.md", Kind: "review-week", Theme: ThemePersonalNotes, From: from.AddDate(0, 0, -7), To: from.AddDate(0, 0, -1), SavedAt: from},
+	})
+	if len(groups) != 2 {
+		t.Fatalf("groupReportFiles returned %d groups, want 2", len(groups))
+	}
+	if len(groups[0].Reports) != 2 {
+		t.Fatalf("current-period group has %d variants, want 2", len(groups[0].Reports))
+	}
+}
+
+func TestGroupReportFilesFoldsLegacyWeeklyAndAnnualKinds(t *testing.T) {
+	weekFrom := time.Date(2026, time.September, 14, 0, 0, 0, 0, time.Local)
+	weekTo := weekFrom.AddDate(0, 0, 7).Add(-time.Second)
+	yearFrom := time.Date(2026, time.January, 1, 0, 0, 0, 0, time.Local)
+	yearTo := time.Date(2026, time.December, 31, 23, 59, 59, 0, time.Local)
+	groups := groupReportFiles([]ReportFile{
+		{Kind: "review-week", Period: periodWeek, From: weekFrom, To: weekTo, SavedAt: weekFrom},
+		{Kind: "status", Period: periodWeek, From: weekFrom, To: weekTo, SavedAt: weekTo},
+		{Kind: "review-year", Period: periodYear, From: yearFrom, To: yearTo, SavedAt: yearFrom},
+		{Kind: "summary", Period: periodYear, From: yearFrom, To: yearTo, SavedAt: yearTo},
+	})
+	if len(groups) != 2 {
+		t.Fatalf("legacy report grouping returned %d groups, want 2", len(groups))
+	}
+	for _, group := range groups {
+		if len(group.Reports) != 2 {
+			t.Fatalf("legacy group %q has %d files, want 2", group.Kind, len(group.Reports))
+		}
+	}
+}
+
 func TestSummaryReportPathsUsePeriodTokens(t *testing.T) {
 	anchor := time.Date(2026, time.September, 25, 0, 0, 0, 0, time.Local)
 	cases := []struct {

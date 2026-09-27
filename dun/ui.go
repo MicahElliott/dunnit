@@ -1395,12 +1395,10 @@ func buildTrayMenu(a fyne.App, w4 fyne.Window) *fyne.Menu {
 	meetingsItem.ChildMenu = meetingsMenu
 
 	reportsMenu := fyne.NewMenu("Reports",
-		fyne.NewMenuItem("Summarize…", func() { showSummarizeDialog(a) }),
-		fyne.NewMenuItem("Standup Summary…", func() { showStandupExport(a) }),
-		fyne.NewMenuItem("Status Report…", func() { showStatusReportDialog(a) }),
-		fyne.NewMenuItem("Annual Review…", func() { showAnnualReviewDialog(a) }),
-		fyne.NewMenuItem("Trend View…", func() { showTrendView(a) }),
-		fyne.NewMenuItem("Reports Library…", func() { showReportsLibraryWindow(a) }),
+		fyne.NewMenuItem("Saved Reports…", func() { showReportsLibraryWindow(a) }),
+		fyne.NewMenuItem("Quick Standup…", func() { showStandupExport(a) }),
+		fyne.NewMenuItem("Custom Summary…", func() { showSummarizeDialog(a) }),
+		fyne.NewMenuItem("Metrics…", func() { showTrendView(a) }),
 	)
 	reportsItem := fyne.NewMenuItem("Reports", nil)
 	reportsItem.ChildMenu = reportsMenu

@@ -19,6 +19,19 @@ var shareUnsafeCategories = map[string]bool{
 	"SENTIMENT": true, "PRODUCTIVITY": true, "WASTED": true, "FAIL": true,
 }
 
+func reportCategoriesForAudience(audience string) map[string]bool {
+	if !strings.EqualFold(strings.TrimSpace(audience), "shareable") {
+		return nil
+	}
+	categories := map[string]bool{}
+	for _, category := range Categories {
+		if !shareUnsafeCategories[category.Code] {
+			categories[category.Code] = true
+		}
+	}
+	return categories
+}
+
 func statusReportPath(anchor time.Time, audience string) string {
 	return reportPathWithAudience(weeklyReportPathForKind("status", anchor), audience)
 }
@@ -122,12 +135,7 @@ func runStatusReportReady(a fyne.App, anchor time.Time, audience string) {
 		// share-unsafe ones" -- gatherLedgerTextForRange treats a nil/
 		// empty categories set as "match everything", so build the
 		// full allowed set explicitly by excluding shareUnsafeCategories.
-		categories = map[string]bool{}
-		for _, c := range Categories {
-			if !shareUnsafeCategories[c.Code] {
-				categories[c.Code] = true
-			}
-		}
+		categories = reportCategoriesForAudience(audience)
 	}
 	prompt += categoryPromptGuidance()
 

@@ -134,7 +134,7 @@ func gatherLedgerTextForRange(from, to time.Time, categories map[string]bool) st
 // skipping any line matching one of Config.ReportExcludeTags (see
 // lineHasExcludedTag) -- applied here, the lowest-level shared
 // concatenation helper, so every report/summary pipeline (Standup,
-// Status Report, Annual Review, Trend View, Kickoff/Review digests,
+// Status Report, Annual Review, Metrics, Kickoff/Review digests,
 // etc) gets the exclusion applied uniformly without each caller
 // needing its own filtering logic.
 func concatLedgerFiles(files []string) string {

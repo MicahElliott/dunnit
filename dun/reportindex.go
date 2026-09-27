@@ -1,8 +1,10 @@
 package dun
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -28,13 +30,21 @@ type ReportFile struct {
 	// (see review.go's reviewReportPath), "" if not applicable/not
 	// present.
 	Theme string
-	// Date is the file's modification time -- used as a stand-in for
-	// "when was this generated/last saved", since each report kind
-	// encodes its own covered period differently in its filename
-	// (reviewReportDateToken vs the covered-period token used by ad hoc reports)
-	// and ReportFile only needs a
-	// reasonably-ordered "when" for browsing/sorting, not the exact
-	// covered range.
+	// Audience is the intended audience when the filename records one,
+	// currently Private or Shareable. Ordinary Review files are private.
+	Audience string
+	// Period is the period unit recovered from the covered-period token.
+	// It is empty for an unrecognized legacy filename.
+	Period summaryPeriod
+	// Token is the filename's covered-period token, such as W39-2026.
+	Token string
+	// From and To are the nominal dates covered by the report. They are
+	// separate from SavedAt because browsing needs the period being discussed,
+	// not the last time someone edited the Markdown file.
+	From, To time.Time
+	// SavedAt is the file modification time.
+	SavedAt time.Time
+	// Date is retained as a compatibility alias for SavedAt.
 	Date time.Time
 }
 
@@ -64,8 +74,16 @@ func reportFileKinds() []string {
 // ok=false for filenames that don't start with one of
 // reportFileKinds' known prefixes.
 func parseReportFileName(base string) (kind, theme string, ok bool) {
+	parsedKind, _, parsedTheme, _, parsedOK := parseReportFileParts(base)
+	return parsedKind, parsedTheme, parsedOK
+}
+
+// parseReportFileParts decodes the filename vocabulary shared by every saved
+// report. It deliberately accepts older day and summary tokens so the Saved
+// Reports browser can present existing data alongside newer files.
+func parseReportFileParts(base string) (kind, token, theme, audience string, ok bool) {
 	if !strings.HasSuffix(base, ".md") {
-		return "", "", false
+		return "", "", "", "", false
 	}
 	nameNoExt := strings.TrimSuffix(base, ".md")
 	for _, k := range reportFileKinds() {
@@ -73,17 +91,173 @@ func parseReportFileName(base string) (kind, theme string, ok bool) {
 			continue
 		}
 		rest := strings.TrimPrefix(nameNoExt, k+"-")
-		theme = ""
+		if k == "status" {
+			for _, candidate := range []string{"private", "shareable"} {
+				if strings.HasSuffix(rest, "-"+candidate) {
+					audience = strings.Title(candidate)
+					rest = strings.TrimSuffix(rest, "-"+candidate)
+					break
+				}
+			}
+		} else if strings.HasPrefix(k, "review-") && strings.HasSuffix(rest, "-shareable") {
+			audience = "Shareable"
+			rest = strings.TrimSuffix(rest, "-shareable")
+		}
 		for _, th := range themeDisplayOrder {
 			slug := themeFilenameSlug(th)
-			if suffix := "-" + slug; strings.HasSuffix(rest, suffix) || rest == slug {
+			if suffix := "-" + slug; strings.HasSuffix(rest, suffix) {
 				theme = th
+				rest = strings.TrimSuffix(rest, suffix)
 				break
 			}
 		}
-		return k, theme, true
+		return k, rest, theme, audience, true
 	}
-	return "", "", false
+	return "", "", "", "", false
+}
+
+func reportPeriodForKind(kind string) (summaryPeriod, bool) {
+	for _, period := range []summaryPeriod{periodDay, periodWeek, periodMonth, periodQuarter, periodYear} {
+		if reviewReportKind(period) == kind {
+			return period, true
+		}
+	}
+	switch kind {
+	case "standup", "eod":
+		return periodDay, true
+	case "status":
+		return periodWeek, true
+	case "summary":
+		return "", false
+	default:
+		return "", false
+	}
+}
+
+func reportAnchorFromToken(period summaryPeriod, token string) (time.Time, bool) {
+	if anchor, ok := reviewReportAnchorFromToken(period, token); ok {
+		return anchor, true
+	}
+	if period == periodDay {
+		anchor, err := time.ParseInLocation("20060102", token, time.Local)
+		return anchor, err == nil
+	}
+	return time.Time{}, false
+}
+
+// summaryPeriodAndAnchorFromToken recognizes the shared report token format
+// without relying on the report's directory. This makes fiscal-year and
+// cross-month reports filterable from one browser.
+func summaryPeriodAndAnchorFromToken(token string) (summaryPeriod, time.Time, bool) {
+	for _, period := range []summaryPeriod{periodDay, periodWeek, periodMonth, periodQuarter, periodYear} {
+		if anchor, ok := reportAnchorFromToken(period, token); ok {
+			return period, anchor, true
+		}
+	}
+	return "", time.Time{}, false
+}
+
+func reportFileCoverage(kind, token string) (summaryPeriod, time.Time, time.Time, bool) {
+	period, ok := reportPeriodForKind(kind)
+	if !ok {
+		period, anchor, parsed := summaryPeriodAndAnchorFromToken(token)
+		if !parsed {
+			return "", time.Time{}, time.Time{}, false
+		}
+		from, to := periodNominalRange(period, anchor)
+		return period, from, to, true
+	}
+	anchor, ok := reportAnchorFromToken(period, token)
+	if !ok {
+		return "", time.Time{}, time.Time{}, false
+	}
+	from, to := periodNominalRange(period, anchor)
+	return period, from, to, true
+}
+
+func reportStyle(r ReportFile) string {
+	if r.Theme != "" {
+		return themeDisplayNames[r.Theme]
+	}
+	if r.Kind == "status" {
+		return "Legacy Status Report"
+	}
+	return reportKindLabel(r.Kind)
+}
+
+func reportCoverageLabel(r ReportFile) string {
+	if r.From.IsZero() || r.To.IsZero() {
+		return "Period unavailable"
+	}
+	if r.Period == periodDay {
+		return r.From.Format("Mon Jan 2, 2006")
+	}
+	return periodLabel(LoadConfig(), r.Period, r.From) + " (" + shortDateRange(r.From, r.To) + ")"
+}
+
+func reportGroupKey(r ReportFile) string {
+	from := r.From.Format("20060102")
+	to := r.To.Format("20060102")
+	if from == "00010101" || to == "00010101" {
+		from = r.SavedAt.Format("20060102")
+		to = from
+	}
+	return fmt.Sprintf("%s|%s|%s", logicalReportKind(r), from, to)
+}
+
+// logicalReportKind folds legacy standalone weekly status and period summary
+// files into the corresponding Review family for browsing. The files remain
+// separate variants and are never deleted; the grouping simply stops the
+// browser from presenting two rows for one covered period.
+func logicalReportKind(r ReportFile) string {
+	if r.Kind == "status" && r.Period == periodWeek {
+		return reviewReportKind(periodWeek)
+	}
+	if r.Kind == "summary" && r.Period != "" {
+		return reviewReportKind(r.Period)
+	}
+	return r.Kind
+}
+
+// ReportGroup is one logical report period with its saved style/audience
+// variants. Grouping keeps the browser deduplicated without deleting or
+// hiding deliberately different versions.
+type ReportGroup struct {
+	Kind    string
+	From    time.Time
+	To      time.Time
+	Reports []ReportFile
+}
+
+func groupReportFiles(files []ReportFile) []ReportGroup {
+	groupsByKey := make(map[string]*ReportGroup)
+	var groups []*ReportGroup
+	for _, report := range files {
+		key := reportGroupKey(report)
+		group := groupsByKey[key]
+		if group == nil {
+			group = &ReportGroup{Kind: logicalReportKind(report), From: report.From, To: report.To}
+			groupsByKey[key] = group
+			groups = append(groups, group)
+		}
+		group.Reports = append(group.Reports, report)
+	}
+	for _, group := range groups {
+		sort.SliceStable(group.Reports, func(i, j int) bool {
+			return group.Reports[i].SavedAt.After(group.Reports[j].SavedAt)
+		})
+	}
+	sort.SliceStable(groups, func(i, j int) bool {
+		if groups[i].From.IsZero() || groups[j].From.IsZero() {
+			return groups[i].Reports[0].SavedAt.After(groups[j].Reports[0].SavedAt)
+		}
+		return groups[i].From.After(groups[j].From)
+	})
+	out := make([]ReportGroup, len(groups))
+	for i, group := range groups {
+		out[i] = *group
+	}
+	return out
 }
 
 // AllReportFiles walks the entire DunnitDir() tree for canonical report
@@ -101,15 +275,22 @@ func AllReportFiles() []ReportFile {
 		if walkErr != nil || info.IsDir() {
 			return nil
 		}
-		kind, theme, ok := parseReportFileName(info.Name())
+		kind, token, theme, audience, ok := parseReportFileParts(info.Name())
 		if !ok {
 			return nil
 		}
+		period, from, to, _ := reportFileCoverage(kind, token)
 		out = append(out, ReportFile{
-			Path:  path,
-			Kind:  kind,
-			Theme: theme,
-			Date:  info.ModTime(),
+			Path:     path,
+			Kind:     kind,
+			Theme:    theme,
+			Audience: audience,
+			Period:   period,
+			Token:    token,
+			From:     from,
+			To:       to,
+			SavedAt:  info.ModTime(),
+			Date:     info.ModTime(),
 		})
 		return nil
 	})

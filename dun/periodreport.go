@@ -94,10 +94,17 @@ func periodReportInput(period summaryPeriod, anchor time.Time, ledgerText string
 }
 
 func periodReportSignals(from, to time.Time) string {
+	return periodReportSignalsForCategories(from, to, nil)
+}
+
+func periodReportSignalsForCategories(from, to time.Time, categories map[string]bool) string {
 	entries := FilterLedgerEntries(LedgerQuery{From: from, To: to})
 	cfg := LoadConfig()
 	var included []LedgerEntry
 	for _, entry := range entries {
+		if len(categories) > 0 && !categories[entry.Category] {
+			continue
+		}
 		if eodEntryIncluded(entry, cfg) {
 			included = append(included, entry)
 		}
@@ -167,9 +174,15 @@ func periodReportSignals(from, to time.Time) string {
 	}
 
 	openItems := reportOpenItemsThrough(to, cfg)
-	if len(openItems) > 0 {
+	var includedOpenItems []OpenItem
+	for _, item := range openItems {
+		if len(categories) == 0 || categories[item.Category] {
+			includedOpenItems = append(includedOpenItems, item)
+		}
+	}
+	if len(includedOpenItems) > 0 {
 		b.WriteString("\nPending plan items as of the end of the period:\n")
-		for _, item := range openItems {
+		for _, item := range includedOpenItems {
 			fmt.Fprintf(&b, "- %s: %s\n", item.Category, item.Text)
 		}
 	}

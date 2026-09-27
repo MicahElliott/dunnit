@@ -252,8 +252,6 @@ func showPeriodKickoffWindow(a fyne.App, period summaryPeriod, anchor time.Time)
 		newExplanatoryLabel("Kicking off "+label+" \u2014 review what is open, keep what matters, and add one goal."),
 		container.NewHBox(
 			widget.NewButton("Dismiss", func() { w.Close() }),
-			widget.NewButton("Trend View\u2026", func() { showTrendView(a) }),
-			widget.NewButton("Reports Library\u2026", func() { showReportsLibraryWindow(a) }),
 		),
 		priorReviewReferenceBox(a, w, period, anchor),
 		sodHeading("Open items to review"),
