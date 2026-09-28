@@ -310,14 +310,17 @@ func loadConfig() (Config, error) {
 	info, err := os.Stat(path)
 	if os.IsNotExist(err) {
 		if err := os.MkdirAll(DunnitDir(), 0755); err != nil {
+			logOperationError("create dunnit directory", err)
 			return cfg, fmt.Errorf("create dunnit dir: %w", err)
 		}
 		if err := writeConfig(cfg); err != nil {
+			logOperationError("write default config", err)
 			return cfg, fmt.Errorf("write default config: %w", err)
 		}
 		return cfg, nil
 	}
 	if err != nil {
+		logOperationError("stat config", err)
 		return cfg, fmt.Errorf("stat config: %w", err)
 	}
 	if info.IsDir() {
@@ -325,6 +328,7 @@ func loadConfig() (Config, error) {
 	}
 
 	if _, err := toml.DecodeFile(path, &cfg); err != nil {
+		logOperationError("decode config", err)
 		return defaultConfig(), fmt.Errorf("decode config: %w", err)
 	}
 	cfg.LLMCLI = normalizeLLMCLI(cfg.LLMCLI)
@@ -356,23 +360,28 @@ func LoadConfig() Config {
 func writeConfig(cfg Config) error {
 	path := configPath()
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		logOperationError("create config directory", err)
 		return err
 	}
 	f, err := os.CreateTemp(filepath.Dir(path), ".config.toml-*")
 	if err != nil {
+		logOperationError("create temporary config", err)
 		return err
 	}
 	tmpPath := f.Name()
-	defer os.Remove(tmpPath)
+	defer func() { logOperationError("remove temporary config", os.Remove(tmpPath)) }()
 
 	if err := toml.NewEncoder(f).Encode(cfg); err != nil {
-		_ = f.Close()
+		logOperationError("encode config", err)
+		logOperationError("close failed config temp file", f.Close())
 		return err
 	}
 	if err := f.Close(); err != nil {
+		logOperationError("close config temp file", err)
 		return err
 	}
 	if err := os.Rename(tmpPath, path); err != nil {
+		logOperationError("replace config", err)
 		return err
 	}
 	return nil

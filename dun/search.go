@@ -77,6 +77,7 @@ func showSearchDialog(a fyne.App) {
 	searchBtn := widget.NewButton("Search", runSearch)
 
 	content := container.NewVBox(
+		newExplanatoryLabel("Search all ledger history by a word, tag, category, or other text."),
 		container.NewBorder(nil, nil, nil, searchBtn, queryEntry),
 		resultsScroll,
 	)

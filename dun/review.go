@@ -86,7 +86,11 @@ func listReviewReportsForPeriod(period summaryPeriod, anchor time.Time) (paths [
 		return
 	}
 
-	matches, _ := filepath.Glob(pattern)
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		logOperationError("find saved review reports", err)
+		return
+	}
 	wantFrom, wantTo := periodNominalRange(period, anchor)
 
 	for _, path := range matches {
@@ -235,7 +239,11 @@ func listReviewReportsOverlapping(subPeriod summaryPeriod, from, to time.Time) [
 		return nil
 	}
 
-	matches, _ := filepath.Glob(pattern)
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		logOperationError("find overlapping review reports", err)
+		return nil
+	}
 	var out []struct {
 		Path     string
 		From, To time.Time
@@ -353,6 +361,7 @@ func gatherReviewSourceMaterialWithCategories(period summaryPeriod, from, to tim
 	for _, f := range found {
 		body, err := os.ReadFile(f.Path)
 		if err != nil {
+			logOperationError("read review source "+f.Path, err)
 			continue
 		}
 		filteredBody := filterExcludedTagLines(string(body), LoadConfig().ReportExcludeTags)

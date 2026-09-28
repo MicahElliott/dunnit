@@ -15,15 +15,24 @@ import (
 func kickoffOpenItemRow(item OpenItem, refresh func()) fyne.CanvasObject {
 	actions := container.NewHBox(
 		newHoverIconButton(theme.Icon(theme.IconNameDelete), "Delete", func() {
-			recordDiscarded(item)
+			if err := recordDiscarded(item); err != nil {
+				logOperationError("discard kickoff item", err)
+				return
+			}
 			refresh()
 		}),
 		newHoverIconButton(theme.Icon(theme.IconNameHistory), "Postpone", func() {
-			recordPostponed(item)
+			if err := recordPostponed(item); err != nil {
+				logOperationError("postpone kickoff item", err)
+				return
+			}
 			refresh()
 		}),
 		newHoverIconButton(theme.Icon(theme.IconNameConfirm), "Done", func() {
-			recordConvertedDone(item)
+			if err := recordConvertedDone(item); err != nil {
+				logOperationError("complete kickoff item", err)
+				return
+			}
 			refresh()
 		}),
 	)
@@ -54,6 +63,7 @@ func priorReviewReferenceBox(a fyne.App, parent fyne.Window, period summaryPerio
 		box.Add(widget.NewButton("View previous "+string(period)+" review — "+displayTheme, func() {
 			body, err := os.ReadFile(path)
 			if err != nil {
+				logOperationError("read previous "+string(period)+" Review", err)
 				dialog.ShowError(err, parent)
 				return
 			}
@@ -238,7 +248,10 @@ func showPeriodKickoffWindow(a fyne.App, period summaryPeriod, anchor time.Time)
 		if text == "" {
 			return
 		}
-		recordActivity(text, newItemCat.Selected)
+		if err := recordActivity(text, newItemCat.Selected); err != nil {
+			logOperationError("record kickoff item", err)
+			return
+		}
 		newItemText.SetText("")
 		refreshList()
 		refreshRecurring()

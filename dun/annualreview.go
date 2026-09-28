@@ -90,6 +90,7 @@ func runAnnualReviewReady(a fyne.App, year int) {
 				return
 			}
 			if err != nil {
+				logOperationError("Annual Review generation", err)
 				w := a.NewWindow("Dunnit: Annual Review " + strconv.Itoa(year))
 				w.SetContent(windowPad(widget.NewLabel("Error running configured LLM CLI:\n" + err.Error())))
 				w.Resize(fyne.NewSize(600, 500))

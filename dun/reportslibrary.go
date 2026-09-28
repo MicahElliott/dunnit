@@ -159,6 +159,7 @@ func savedReportTitle(report ReportFile) string {
 func showSavedReportPreview(a fyne.App, report ReportFile) {
 	body, err := ReportBody(report)
 	if err != nil {
+		logOperationError("read saved report", err)
 		w := a.NewWindow("Dunnit: Saved Report")
 		dialog.ShowError(err, w)
 		return
@@ -361,6 +362,7 @@ func showReportsLibraryWindow(a fyne.App) {
 		if report, ok := selectedReport(); ok {
 			body, err := ReportBody(report)
 			if err != nil {
+				logOperationError("read selected saved report", err)
 				dialog.ShowError(err, w)
 				return
 			}
@@ -370,6 +372,7 @@ func showReportsLibraryWindow(a fyne.App) {
 
 	refresh()
 	filterRow := container.NewVBox(
+		newExplanatoryLabel("Filter saved reports, select a period, then choose a version to preview or edit."),
 		container.NewGridWithColumns(3,
 			container.NewVBox(widget.NewLabel("Type"), kindSelect),
 			container.NewVBox(widget.NewLabel("Audience"), audienceSelect),

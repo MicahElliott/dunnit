@@ -219,6 +219,7 @@ func summarizeWithLLMCLIPromptContext(ctx context.Context, instructions, ledgerT
 	cfg := LoadConfig()
 	inv, err := resolveLLMCLI(normalizeLLMCLI(cfg.LLMCLI))
 	if err != nil {
+		logOperationError("resolve LLM CLI", err)
 		return "", err
 	}
 	inv.model = normalizeLLMModel(cfg.LLMModel)
@@ -232,7 +233,9 @@ func runLLMCLI(inv llmCLIInvocation, instructions, ledgerText string, timeout ti
 func runLLMCLIWithContext(parent context.Context, inv llmCLIInvocation, instructions, ledgerText string, timeout time.Duration) (string, error) {
 	args, stdinText := buildLLMCLICommand(inv, instructions, ledgerText)
 	if len(args) == 0 {
-		return "", fmt.Errorf("unsupported LLM CLI provider %q", inv.provider)
+		err := fmt.Errorf("unsupported LLM CLI provider %q", inv.provider)
+		logOperationError("build LLM CLI command", err)
+		return "", err
 	}
 
 	ctx, cancel := context.WithTimeout(parent, timeout)
@@ -248,24 +251,34 @@ func runLLMCLIWithContext(parent context.Context, inv llmCLIInvocation, instruct
 	out, err := cmd.Output()
 	if err != nil {
 		if errors.Is(ctx.Err(), context.Canceled) {
-			return "", fmt.Errorf("%s CLI canceled: %w", llmCLIProviderLabel(inv.provider), context.Canceled)
+			err := fmt.Errorf("%s CLI canceled: %w", llmCLIProviderLabel(inv.provider), context.Canceled)
+			logOperationError("run LLM CLI", err)
+			return "", err
 		}
 		if ctx.Err() != nil {
-			return "", fmt.Errorf("%s CLI timed out after %s", llmCLIProviderLabel(inv.provider), timeout)
+			err := fmt.Errorf("%s CLI timed out after %s", llmCLIProviderLabel(inv.provider), timeout)
+			logOperationError("run LLM CLI", err)
+			return "", err
 		}
 		detail := strings.TrimSpace(stderr.String())
 		if len(detail) > 4000 {
 			detail = detail[:4000] + "…"
 		}
 		if detail == "" {
-			return "", fmt.Errorf("%s CLI failed: %w", llmCLIProviderLabel(inv.provider), err)
+			err = fmt.Errorf("%s CLI failed: %w", llmCLIProviderLabel(inv.provider), err)
+			logOperationError("run LLM CLI", err)
+			return "", err
 		}
-		return "", fmt.Errorf("%s CLI failed: %w: %s", llmCLIProviderLabel(inv.provider), err, detail)
+		err = fmt.Errorf("%s CLI failed: %w: %s", llmCLIProviderLabel(inv.provider), err, detail)
+		logOperationError("run LLM CLI", err)
+		return "", err
 	}
 
 	result := strings.TrimSpace(string(out))
 	if result == "" {
-		return "", fmt.Errorf("%s CLI returned empty output", llmCLIProviderLabel(inv.provider))
+		err := fmt.Errorf("%s CLI returned empty output", llmCLIProviderLabel(inv.provider))
+		logOperationError("run LLM CLI", err)
+		return "", err
 	}
 	return result, nil
 }

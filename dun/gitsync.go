@@ -13,6 +13,7 @@ import (
 func runGitSyncAction(a fyne.App, action string) {
 	go func() {
 		if err := gitSync(action); err != nil {
+			logOperationError("git "+action, err)
 			if trayWindow != nil {
 				dialog.ShowError(err, trayWindow)
 			}

@@ -167,6 +167,7 @@ func runStatusReportReady(a fyne.App, anchor time.Time, audience string) {
 				return
 			}
 			if err != nil {
+				logOperationError("Status Report generation", err)
 				w := a.NewWindow("Dunnit: " + audience + " Status Report")
 				w.SetContent(windowPad(widget.NewLabel("Error running configured LLM CLI:\n" + err.Error())))
 				w.Resize(fyne.NewSize(600, 500))

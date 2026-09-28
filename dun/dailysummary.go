@@ -128,7 +128,7 @@ func writeReportFileIfAbsent(path, text string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { logOperationError("close EOD report "+path, f.Close()) }()
 	_, err = f.WriteString(text)
 	return err
 }

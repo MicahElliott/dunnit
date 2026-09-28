@@ -302,6 +302,7 @@ func AllReportFiles() []ReportFile {
 func ReportBody(r ReportFile) (string, error) {
 	data, err := os.ReadFile(r.Path)
 	if err != nil {
+		logOperationError("read report "+r.Path, err)
 		return "", err
 	}
 	return string(data), nil

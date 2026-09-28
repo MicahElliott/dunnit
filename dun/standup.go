@@ -416,6 +416,7 @@ func showStandupExport(a fyne.App) {
 				}
 				if err != nil {
 					log.Println("Error generating standup summary:", err)
+					logOperationError("standup summary generation", err)
 					dialog.ShowError(err, w)
 					return
 				}

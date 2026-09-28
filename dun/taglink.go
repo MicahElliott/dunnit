@@ -202,6 +202,7 @@ func (l *urlLink) Tapped(*fyne.PointEvent) {
 	}
 	if l.target != nil && fyne.CurrentApp() != nil {
 		if err := fyne.CurrentApp().OpenURL(l.target); err != nil {
+			logOperationError("open entry URL "+l.target.String(), err)
 			fyne.LogError("Failed to open entry URL", err)
 		}
 	}

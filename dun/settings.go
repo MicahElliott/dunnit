@@ -37,6 +37,7 @@ func showSettings(a fyne.App) {
 	browseDir := widget.NewButtonWithIcon("", theme.FolderOpenIcon(), func() {
 		dialog.ShowFolderOpen(func(uri fyne.ListableURI, err error) {
 			if err != nil {
+				logOperationError("choose Dunnit directory", err)
 				dialog.ShowError(err, w)
 				return
 			}

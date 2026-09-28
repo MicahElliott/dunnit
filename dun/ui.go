@@ -309,7 +309,7 @@ func recordActivity(text, category string) error {
 	if _, err := f.WriteString(outstr); err != nil {
 		err = fmt.Errorf("write ledger %q: %w", fname, err)
 		log.Println("Error writing ledger:", err)
-		_ = f.Close()
+		logOperationError("close ledger after write failure", f.Close())
 		return err
 	}
 	if err := f.Close(); err != nil {
@@ -342,14 +342,18 @@ func readLedgerLines() []string {
 func readLedgerLinesFrom(fname string) []string {
 	f, err := os.Open(fname)
 	if err != nil {
+		if !os.IsNotExist(err) {
+			logOperationError("read ledger "+fname, err)
+		}
 		return nil
 	}
-	defer f.Close()
+	defer func() { logOperationError("close ledger "+fname, f.Close()) }()
 	var lines []string
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 	}
+	logOperationError("scan ledger "+fname, scanner.Err())
 	return lines
 }
 
@@ -905,6 +909,13 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	// "hidden behind a toggle rather than gone" pattern as
 	// showAllPlanned, but for tag-based noise rather than category.
 	showExcludedPlanned := false
+	showDaybookActionError := func(err error) {
+		if err == nil {
+			return
+		}
+		log.Println("Daybook action failed:", err)
+		showToast(w4.Canvas(), "Could not update ledger: "+err.Error())
+	}
 	refreshOpenItems = func() {
 		openItemsBox.RemoveAll()
 		items := getOpenItems()
@@ -921,7 +932,10 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 			// take the first click while the button is unfocused.
 			actions := []fyne.CanvasObject{
 				widget.NewButtonWithIcon("", theme.Icon(theme.IconNameDelete), func() {
-					recordDiscarded(item)
+					if err := recordDiscarded(item); err != nil {
+						showDaybookActionError(err)
+						return
+					}
 					fyne.Do(func() {
 						refreshOpenItems()
 						itemsAccordion.Refresh()
@@ -929,7 +943,10 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 					})
 				}),
 				widget.NewButtonWithIcon("", theme.Icon(theme.IconNameHistory), func() {
-					recordPostponed(item)
+					if err := recordPostponed(item); err != nil {
+						showDaybookActionError(err)
+						return
+					}
 					fyne.Do(func() {
 						refreshOpenItems()
 						itemsAccordion.Refresh()
@@ -947,10 +964,25 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 					})
 				}),
 			}
+			if item.Category == "DOING" {
+				actions = append(actions, widget.NewButtonWithIcon("", theme.Icon(theme.IconNameContentCopy), func() {
+					if err := dittoLifecycleItem(item, nudgeIntervalMinutes(LoadConfig())); err != nil {
+						showDaybookActionError(err)
+						return
+					}
+					minsInput.SetText("")
+					refreshOpenItems()
+					refreshCompleted()
+					refreshLastItem()
+					itemsAccordion.Refresh()
+					showToast(w4.Canvas(), "Ditto added")
+				}))
+			}
 			if item.Category == "TODO" {
 				actions = append(actions, widget.NewButtonWithIcon("", theme.Icon(theme.IconNameMediaPlay), func() {
 					if err := startPlannedItem(item); err != nil {
-						log.Println("Error starting planned item:", err)
+						showDaybookActionError(err)
+						return
 					}
 					minsInput.SetText("")
 					fyne.Do(func() {
@@ -1185,7 +1217,10 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 		if strings.TrimSpace(input.Text) == "" {
 			return
 		}
-		recordActivity(withMins(input.Text), selectedCat) // TODO trim emoji off front, and shorten to 4-char code
+		if err := recordActivity(withMins(input.Text), selectedCat); err != nil { // TODO trim emoji off front, and shorten to 4-char code
+			logOperationError("save Daybook entry", err)
+			return
+		}
 		input.SetText("")
 		minsInput.SetText("")
 		refreshOpenItems()
@@ -1229,7 +1264,8 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 			// first click work accidentally and later clicks become no-ops
 			// after the field was cleared.
 			if err := dittoLifecycleItem(item, nudgeIntervalMinutes(LoadConfig())); err != nil {
-				log.Println("Error applying Ditto:", err)
+				showDaybookActionError(err)
+				return
 			}
 			minsInput.SetText("")
 			refreshOpenItems()

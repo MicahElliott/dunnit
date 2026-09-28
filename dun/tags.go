@@ -629,7 +629,10 @@ func showAllTagsWindow(a fyne.App) {
 		}))
 	}
 
-	w.SetContent(windowPad(container.NewVScroll(list)))
+	w.SetContent(windowPad(container.NewVBox(
+		newExplanatoryLabel("Select a tag to browse its recent activity from the last 30 days."),
+		container.NewVScroll(list),
+	)))
 	w.Resize(fyne.NewSize(300, 500))
 	w.Show()
 }
@@ -654,6 +657,7 @@ func showTagEntriesWindow(a fyne.App, tag string) {
 	var refresh func()
 	refresh = func() {
 		content.RemoveAll()
+		content.Add(newExplanatoryLabel("Recent activity for this tag is shown below; click a tag or link to continue browsing."))
 		content.Add(tagDefinitionSection(w, tag, refresh))
 		content.Add(widget.NewSeparator())
 		content.Add(widget.NewLabel("Recent activity (last 30 days)"))

@@ -206,15 +206,24 @@ func showSODWindow(a fyne.App) {
 			}
 			actions := container.NewHBox(
 				newHoverIconButton(theme.Icon(theme.IconNameDelete), "Delete", func() {
-					recordDiscarded(item)
+					if err := recordDiscarded(item); err != nil {
+						logOperationError("discard SOD item", err)
+						return
+					}
 					refreshPlan()
 				}),
 				newHoverIconButton(theme.Icon(theme.IconNameHistory), "Postpone", func() {
-					recordPostponed(item)
+					if err := recordPostponed(item); err != nil {
+						logOperationError("postpone SOD item", err)
+						return
+					}
 					refreshPlan()
 				}),
 				newHoverIconButton(theme.Icon(theme.IconNameConfirm), "Done", func() {
-					recordConvertedDone(item)
+					if err := recordConvertedDone(item); err != nil {
+						logOperationError("complete SOD item", err)
+						return
+					}
 					refreshPlan()
 				}),
 			)
@@ -343,7 +352,10 @@ func showSODWindow(a fyne.App) {
 		if text == "" {
 			return
 		}
-		recordActivity(text, newItemCat.Selected)
+		if err := recordActivity(text, newItemCat.Selected); err != nil {
+			logOperationError("record Start of Day item", err)
+			return
+		}
 		newItemText.SetText("")
 		refreshPlan()
 		refreshRecurring()

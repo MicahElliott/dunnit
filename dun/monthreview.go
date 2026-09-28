@@ -169,6 +169,7 @@ func showMonthReviewWindowReady(a fyne.App, anchor time.Time) {
 		for _, line := range strings.Split(hiliteCapture.Text, "\n") {
 			if line = strings.TrimSpace(line); line != "" {
 				if err := recordActivity(line, category); err != nil {
+					logOperationError("record Month Review item", err)
 					dialog.ShowError(err, w)
 					return
 				}
@@ -226,6 +227,7 @@ func showMonthReviewWindowReady(a fyne.App, anchor time.Time) {
 				}
 				if err != nil {
 					log.Println("Error generating Month Review:", err)
+					logOperationError("Month Review generation", err)
 					statusLabel.SetText("Error generating report — see logs.")
 					dialog.ShowError(err, w)
 					return
@@ -252,6 +254,7 @@ func showMonthReviewWindowReady(a fyne.App, anchor time.Time) {
 			existingBox.Add(widget.NewButton("Open "+display, func() {
 				body, err := os.ReadFile(path)
 				if err != nil {
+					logOperationError("read saved Month Review", err)
 					dialog.ShowError(err, w)
 					return
 				}
@@ -272,6 +275,7 @@ func showMonthReviewWindowReady(a fyne.App, anchor time.Time) {
 		var promoteTodoBtn, promoteGoalBtn, dropBtn *hoverButton
 		promoteTodoBtn = newHoverIconButton(theme.Icon(theme.IconNameConfirm), "Make TODO", func() {
 			if err := recordActivity(stripCarryForwardSince(item.Text), "TODO"); err != nil {
+				logOperationError("promote Month Review item to TODO", err)
 				dialog.ShowError(err, w)
 				return
 			}
@@ -282,6 +286,7 @@ func showMonthReviewWindowReady(a fyne.App, anchor time.Time) {
 		})
 		promoteGoalBtn = newHoverIconButton(theme.Icon(theme.IconNameDocumentCreate), "Make GOAL", func() {
 			if err := recordActivity(stripCarryForwardSince(item.Text), "GOAL"); err != nil {
+				logOperationError("promote Month Review item to GOAL", err)
 				dialog.ShowError(err, w)
 				return
 			}
@@ -292,6 +297,7 @@ func showMonthReviewWindowReady(a fyne.App, anchor time.Time) {
 		})
 		dropBtn = newHoverIconButton(theme.Icon(theme.IconNameDelete), "Discard", func() {
 			if err := recordActivity(stripCarryForwardSince(item.Text), "DISCARDED"); err != nil {
+				logOperationError("discard Month Review item", err)
 				dialog.ShowError(err, w)
 				return
 			}

@@ -70,7 +70,10 @@ func showMonthKickoffWindow(a fyne.App, anchor time.Time) {
 		for _, line := range strings.Split(newGoalsEntry.Text, "\n") {
 			line = strings.TrimSpace(line)
 			if line != "" {
-				recordActivity(line, "GOAL")
+				if err := recordActivity(line, "GOAL"); err != nil {
+					logOperationError("record monthly goal", err)
+					return
+				}
 			}
 		}
 		w.Close()

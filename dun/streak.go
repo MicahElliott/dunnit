@@ -393,6 +393,7 @@ func showStreakAchievementsWindow(a fyne.App, callouts []string) {
 	w := a.NewWindow("Dunnit: Achievements")
 	list := container.NewVBox(
 		widget.NewLabel(fmt.Sprintf("%d streak indicators hit today:", len(callouts))),
+		newExplanatoryLabel("These are positive signals found in today’s ledger; they are informational and do not change your streak."),
 	)
 	for _, callout := range callouts {
 		list.Add(widget.NewLabel("• " + callout))

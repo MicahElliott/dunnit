@@ -102,11 +102,15 @@ type KeyResult struct {
 // recordObjective/recordKeyResult append a new OBJECTIVE/KEYRESULT
 // ledger line tagged for period's unit containing anchor.
 func recordObjective(text string, period summaryPeriod, anchor time.Time) {
-	recordActivity(text+" "+periodTag(period, anchor), CategoryObjective)
+	if err := recordActivity(text+" "+periodTag(period, anchor), CategoryObjective); err != nil {
+		logOperationError("record objective", err)
+	}
 }
 
 func recordKeyResult(text string, period summaryPeriod, anchor time.Time) {
-	recordActivity(text+" "+periodTag(period, anchor), CategoryKeyResult)
+	if err := recordActivity(text+" "+periodTag(period, anchor), CategoryKeyResult); err != nil {
+		logOperationError("record key result", err)
+	}
 }
 
 // recordFocus appends a FOCUS ledger line (the "theme for this
@@ -114,7 +118,9 @@ func recordKeyResult(text string, period summaryPeriod, anchor time.Time) {
 // Setting a new one doesn't erase the old line (append-only); readFocus
 // returns the latest one found.
 func recordFocus(text string, period summaryPeriod, anchor time.Time) {
-	recordActivity(text+" "+periodTag(period, anchor), CategoryFocus)
+	if err := recordActivity(text+" "+periodTag(period, anchor), CategoryFocus); err != nil {
+		logOperationError("record period focus", err)
+	}
 }
 
 // readFocus returns the most recently recorded FOCUS text for
@@ -147,7 +153,9 @@ func recordKeyResultStatus(keyResultText, status, note string, period summaryPer
 	if strings.TrimSpace(note) != "" {
 		text += " -- " + note
 	}
-	recordActivity(text+" "+periodTag(period, anchor), CategoryKeyResultStatus)
+	if err := recordActivity(text+" "+periodTag(period, anchor), CategoryKeyResultStatus); err != nil {
+		logOperationError("record key result status", err)
+	}
 }
 
 // readObjectives scans every ledger file for OBJECTIVE/KEYRESULT/

@@ -231,8 +231,8 @@ func getOpenItems() []OpenItem {
 // ("Fix the login bug"), which reads oddly once marked DONE, so this
 // converts it to "Fixed the login bug" instead. Purely cosmetic;
 // harmless no-op if the leading word isn't a recognized/regular verb.
-func recordConvertedDone(item OpenItem) {
-	recordActivity(inflectLifecycleText(item.Text, "DONE")+convertedSuffix(item.Category), "DONE")
+func recordConvertedDone(item OpenItem) error {
+	return recordActivity(inflectLifecycleText(item.Text, "DONE")+convertedSuffix(item.Category), "DONE")
 }
 
 // inflectLifecycleText normalizes a lifecycle item's leading verb for its
@@ -313,8 +313,8 @@ func dittoLifecycleItem(item OpenItem, delta int) error {
 // item's text, marking it as resolved without pretending it was
 // completed -- for deliberately deferring an item so the Upcoming
 // list doesn't grow unbounded. The original line is left untouched.
-func recordPostponed(item OpenItem) {
-	recordActivity(inflectLifecycleText(item.Text, "TODO")+convertedSuffix(item.Category), "SOMEDAY")
+func recordPostponed(item OpenItem) error {
+	return recordActivity(inflectLifecycleText(item.Text, "TODO")+convertedSuffix(item.Category), "SOMEDAY")
 }
 
 // recordDiscarded logs a DISCARDED entry referencing an original open
@@ -322,8 +322,8 @@ func recordPostponed(item OpenItem) {
 // "Nah" button) -- distinct from Postpone (SOMEDAY, meant to revisit
 // later) since a discarded item isn't expected to come back. The
 // original line is left untouched.
-func recordDiscarded(item OpenItem) {
-	recordActivity(inflectLifecycleText(item.Text, "TODO")+convertedSuffix(item.Category), "DISCARDED")
+func recordDiscarded(item OpenItem) error {
+	return recordActivity(inflectLifecycleText(item.Text, "TODO")+convertedSuffix(item.Category), "DISCARDED")
 }
 
 // groupOpenItemsByCategory buckets items by category, preserving

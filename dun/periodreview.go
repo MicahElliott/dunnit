@@ -131,6 +131,7 @@ func showPeriodReviewWindowReady(a fyne.App, period summaryPeriod, anchor time.T
 			existingBox.Add(widget.NewButton("View: "+display, func() {
 				body, err := os.ReadFile(path)
 				if err != nil {
+					logOperationError("read saved "+string(period)+" Review", err)
 					dialog.ShowError(err, w)
 					return
 				}
@@ -183,6 +184,7 @@ func showPeriodReviewWindowReady(a fyne.App, period summaryPeriod, anchor time.T
 				}
 				if err != nil {
 					log.Println("Error generating "+string(period)+" Review:", err)
+					logOperationError(string(period)+" Review generation", err)
 					statusLabel.SetText("Error generating report \u2014 see logs.")
 					dialog.ShowError(err, w)
 					return
@@ -224,17 +226,23 @@ func showPeriodReviewWindowReady(a fyne.App, period summaryPeriod, anchor time.T
 	doneBtn := widget.NewButton("Done", func() {
 		for i, item := range openTodos {
 			if todoChecks[i].Checked {
-				recordPostponed(item)
+				if err := recordPostponed(item); err != nil {
+					logOperationError("postpone Review TODO", err)
+				}
 			}
 		}
 		for i, item := range openDoing {
 			if doingChecks[i].Checked {
-				recordPostponed(item)
+				if err := recordPostponed(item); err != nil {
+					logOperationError("postpone Review DOING", err)
+				}
 			}
 		}
 		for i, item := range openQuestions {
 			if questionChecks[i].Checked {
-				recordPostponed(item)
+				if err := recordPostponed(item); err != nil {
+					logOperationError("postpone Review QUESTION", err)
+				}
 			}
 		}
 		if applyOKRs != nil {

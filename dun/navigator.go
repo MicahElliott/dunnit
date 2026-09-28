@@ -173,6 +173,7 @@ func showNavigatorWindow(a fyne.App) {
 		))
 
 	content := container.NewVBox(
+		newExplanatoryLabel("Filter ledger history by category, tags, or date range. Select a result set to ask the configured AI or view its category histogram."),
 		filterRow,
 		container.NewBorder(nil, nil, nil, container.NewHBox(histogramBtn, askAIBtn), countLabel),
 		resultsScroll,
@@ -228,6 +229,7 @@ func showNavigatorAskAIDialog(a fyne.App, parent fyne.Window, entries []LedgerEn
 					return
 				}
 				if err != nil {
+					logOperationError("Navigator AI request", err)
 					dialog.ShowError(err, parent)
 					return
 				}

@@ -72,6 +72,7 @@ func pullTaggedEntries(tag string, since time.Time, categories map[string]bool) 
 		}
 		f, err := os.Open(path)
 		if err != nil {
+			logOperationError("open meeting history "+path, err)
 			continue
 		}
 		scanner := bufio.NewScanner(f)
@@ -88,7 +89,8 @@ func pullTaggedEntries(tag string, since time.Time, categories map[string]bool) 
 				}
 			}
 		}
-		f.Close()
+		logOperationError("scan meeting history "+path, scanner.Err())
+		logOperationError("close meeting history "+path, f.Close())
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].date.Before(out[j].date) })
 	return out
@@ -198,7 +200,10 @@ func showMeetingPrepDialogForTag(a fyne.App, initialTag string) {
 		if tag == "" || note == "" {
 			return
 		}
-		recordActivity(tag+" "+note, "MEETING")
+		if err := recordActivity(tag+" "+note, "MEETING"); err != nil {
+			logOperationError("save meeting note", err)
+			return
+		}
 		noteEntry.SetText("")
 	}
 

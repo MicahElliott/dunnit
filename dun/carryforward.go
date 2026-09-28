@@ -362,7 +362,9 @@ func carryForwardDailyPlan(now time.Time) (sourceDate time.Time, items []OpenIte
 		if todayKeys[key] {
 			continue
 		}
-		recordActivity(item.Text+carryForwardSinceSuffix(sinceDates[i]), item.Category)
+		if err := recordActivity(item.Text+carryForwardSinceSuffix(sinceDates[i]), item.Category); err != nil {
+			logOperationError("carry forward item", err)
+		}
 		todayKeys[key] = true
 	}
 	return sourceDate, candidates

@@ -62,8 +62,12 @@ func ledgerFilesFor(period summaryPeriod, now time.Time) []string {
 func allLedgerFiles() []string {
 	var files []string
 	root := DunnitDir()
-	filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() {
+	if err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			logOperationError("walk ledger directory", err)
+			return nil
+		}
+		if info.IsDir() {
 			return nil
 		}
 		name := info.Name()
@@ -72,7 +76,9 @@ func allLedgerFiles() []string {
 		}
 		files = append(files, path)
 		return nil
-	})
+	}); err != nil {
+		logOperationError("walk ledger directory", err)
+	}
 	return files
 }
 
@@ -199,6 +205,7 @@ func concatLedgerFilesWithCategories(files []string, categories map[string]bool)
 	for _, path := range files {
 		f, err := os.Open(path)
 		if err != nil {
+			logOperationError("open ledger for report "+path, err)
 			continue
 		}
 		date := ledgerFileDate(path)
@@ -218,7 +225,8 @@ func concatLedgerFilesWithCategories(files []string, categories map[string]bool)
 			}
 			rows = append(rows, row)
 		}
-		f.Close()
+		logOperationError("scan ledger for report "+path, scanner.Err())
+		logOperationError("close ledger for report "+path, f.Close())
 	}
 
 	type sourceLine struct {
@@ -345,6 +353,7 @@ func runSummarizeReady(a fyne.App, period summaryPeriod) {
 				return
 			}
 			if err != nil {
+				logOperationError(string(period)+" summary generation", err)
 				w := a.NewWindow("Dunnit: " + string(period) + " Summary")
 				w.SetContent(windowPad(widget.NewLabel("Error running configured LLM CLI:\n" + err.Error())))
 				w.Resize(fyne.NewSize(600, 500))

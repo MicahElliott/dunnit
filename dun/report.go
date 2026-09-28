@@ -37,9 +37,14 @@ func reportFilename(kind, covered, theme string) string {
 
 func writeReportFile(path, text string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		logOperationError("create report directory", err)
 		return err
 	}
-	return os.WriteFile(path, []byte(text), 0644)
+	if err := os.WriteFile(path, []byte(text), 0644); err != nil {
+		logOperationError("write report "+path, err)
+		return err
+	}
+	return nil
 }
 
 // showGeneratedReport displays a markdown report in a small
@@ -61,6 +66,7 @@ func showGeneratedReport(a fyne.App, title, savePath, text string) {
 	copyButtons := reportCopyButtons(a, text)
 	saveBtn := widget.NewButtonWithIcon("Save", theme.Icon(theme.IconNameDocumentSave), func() {
 		if err := writeReportFile(savePath, text); err != nil {
+			logOperationError("save generated report", err)
 			dialog.ShowError(err, w)
 			return
 		}
@@ -303,6 +309,7 @@ func copyMacOSRichClipboard(htmlDocument string) bool {
 	convert.Stdin = strings.NewReader(htmlDocument)
 	rtf, err := convert.Output()
 	if err != nil {
+		logOperationError("convert rich clipboard content", err)
 		return false
 	}
 	if len(rtf) == 0 {
@@ -317,31 +324,40 @@ func runClipboardCommand(name string, args []string, content string) bool {
 	}
 	cmd := exec.Command(name, args...)
 	cmd.Stdin = strings.NewReader(content)
-	return cmd.Run() == nil
+	if err := cmd.Run(); err != nil {
+		logOperationError("run "+name+" clipboard command", err)
+		return false
+	}
+	return true
 }
 
 func startClipboardCommand(name string, args []string, content string) bool {
 	cmd := exec.Command(name, args...)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
+		logOperationError("open "+name+" clipboard input", err)
 		return false
 	}
 	if err := cmd.Start(); err != nil {
+		logOperationError("start "+name+" clipboard command", err)
 		return false
 	}
 	if _, err := io.WriteString(stdin, content); err != nil {
-		_ = stdin.Close()
-		_ = cmd.Process.Kill()
+		logOperationError("write "+name+" clipboard content", err)
+		logOperationError("close "+name+" clipboard input", stdin.Close())
+		logOperationError("stop "+name+" clipboard command", cmd.Process.Kill())
 		return false
 	}
 	if err := stdin.Close(); err != nil {
-		_ = cmd.Process.Kill()
+		logOperationError("close "+name+" clipboard input", err)
+		logOperationError("stop "+name+" clipboard command", cmd.Process.Kill())
 		return false
 	}
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
 	select {
 	case err := <-done:
+		logOperationError("finish "+name+" clipboard command", err)
 		return err == nil
 	case <-time.After(100 * time.Millisecond):
 		// wl-copy stays alive to serve the selection. xclip may either
@@ -377,6 +393,7 @@ func showEditableReportWindow(a fyne.App, title, savePath, initialText string) {
 
 	saveBtn := widget.NewButtonWithIcon("Save", theme.Icon(theme.IconNameDocumentSave), func() {
 		if err := writeReportFile(savePath, editor.Text); err != nil {
+			logOperationError("save edited report", err)
 			dialog.ShowError(err, w)
 			return
 		}

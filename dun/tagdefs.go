@@ -76,11 +76,13 @@ func loadTagDefinitions() (map[string]TagDefinition, error) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return map[string]TagDefinition{}, nil
 	} else if err != nil {
+		logOperationError("stat tag definitions", err)
 		return nil, fmt.Errorf("stat tag definitions: %w", err)
 	}
 
 	var file tagDefinitionsFile
 	if _, err := toml.DecodeFile(path, &file); err != nil {
+		logOperationError("decode tag definitions", err)
 		return nil, fmt.Errorf("decode tag definitions: %w", err)
 	}
 	if file.Tags == nil {
@@ -171,23 +173,28 @@ func SaveTagDefinition(definition TagDefinition) error {
 	definitions[name] = definition
 
 	if err := os.MkdirAll(DunnitDir(), 0755); err != nil {
+		logOperationError("create dunnit directory for tag definitions", err)
 		return fmt.Errorf("create dunnit dir: %w", err)
 	}
 	f, err := os.CreateTemp(DunnitDir(), ".tags.toml-*")
 	if err != nil {
+		logOperationError("create tag definitions temp file", err)
 		return fmt.Errorf("create tag definitions temp file: %w", err)
 	}
 	tmpPath := f.Name()
-	defer os.Remove(tmpPath)
+	defer func() { logOperationError("remove temporary tag definitions", os.Remove(tmpPath)) }()
 
 	if err := toml.NewEncoder(f).Encode(tagDefinitionsFile{Tags: definitions}); err != nil {
-		_ = f.Close()
+		logOperationError("encode tag definitions", err)
+		logOperationError("close failed tag definitions temp file", f.Close())
 		return fmt.Errorf("encode tag definitions: %w", err)
 	}
 	if err := f.Close(); err != nil {
+		logOperationError("close tag definitions temp file", err)
 		return fmt.Errorf("close tag definitions temp file: %w", err)
 	}
 	if err := os.Rename(tmpPath, tagDefinitionsPath()); err != nil {
+		logOperationError("replace tag definitions", err)
 		return fmt.Errorf("replace tag definitions: %w", err)
 	}
 	return nil
@@ -273,6 +280,7 @@ func tagDefinitionMetadata(definition TagDefinition) string {
 func showTagDefinitionEditor(parent fyne.Window, tag string, onSave func()) {
 	definition, found, err := LoadTagDefinition(tag)
 	if err != nil {
+		logOperationError("load tag definition for editor", err)
 		dialog.ShowError(err, parent)
 		return
 	}

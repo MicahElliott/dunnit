@@ -204,7 +204,10 @@ func recurringItemsSuggestionBox(items []RecurringItem, onAdded func()) fyne.Can
 		var addBtn *hoverButton
 		addBtn = newHoverIconButton(theme.Icon(theme.IconNameContentAdd), "Add", func() {
 			log.Println("recurringItemsSuggestionBox Add clicked:", r.Category, r.Text)
-			recordActivity(r.Text, r.Category)
+			if err := recordActivity(r.Text, r.Category); err != nil {
+				logOperationError("add recurring item", err)
+				return
+			}
 			label.RemoveAll()
 			label.Add(itemTextLabel("[added] " + r.Category + ": " + r.Text))
 			label.Refresh()

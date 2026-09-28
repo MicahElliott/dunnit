@@ -73,7 +73,9 @@ func showPostMeetingCapture(a fyne.App, tag string) {
 			if meetingTag != "" {
 				line = meetingTag + " " + line
 			}
-			recordActivity(line, cat)
+			if err := recordActivity(line, cat); err != nil {
+				logOperationError("record post-meeting "+cat, err)
+			}
 		}
 	}
 

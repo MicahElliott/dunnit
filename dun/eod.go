@@ -60,14 +60,17 @@ func appendTomorrowLine(line string) error {
 	line = normalizeLedgerText(line)
 	fpath, fname := tomorrowLedgerPath()
 	if err := os.MkdirAll(fpath, os.ModePerm); err != nil {
+		logOperationError("create tomorrow ledger directory", err)
 		return err
 	}
 	f, err := os.OpenFile(fname, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
+		logOperationError("open tomorrow ledger", err)
 		return err
 	}
-	defer f.Close()
+	defer func() { logOperationError("close tomorrow ledger", f.Close()) }()
 	_, err = f.WriteString(line + "\n")
+	logOperationError("write tomorrow ledger", err)
 	return err
 }
 
@@ -79,7 +82,9 @@ func recordTomorrowGoals(lines []string) {
 		if line == "" {
 			continue
 		}
-		appendTomorrowLine("[05:00] GOAL " + line)
+		if err := appendTomorrowLine("[05:00] GOAL " + line); err != nil {
+			logOperationError("record tomorrow goal", err)
+		}
 	}
 }
 
@@ -546,28 +551,40 @@ func showEODWindow(a fyne.App) {
 				log.Println("Error saving EOD report:", err)
 			}
 		}
-		recordActivity(productivity.Selected, "PRODUCTIVITY")
-		if hrs := strings.TrimSpace(meetingHours.Text); hrs != "" {
-			recordActivity(hrs, "MEETING_HOURS")
+		if err := recordActivity(productivity.Selected, "PRODUCTIVITY"); err != nil {
+			logOperationError("record EOD productivity", err)
 		}
-		recordActivity(sentiment.Selected, "SENTIMENT")
+		if hrs := strings.TrimSpace(meetingHours.Text); hrs != "" {
+			if err := recordActivity(hrs, "MEETING_HOURS"); err != nil {
+				logOperationError("record EOD meeting hours", err)
+			}
+		}
+		if err := recordActivity(sentiment.Selected, "SENTIMENT"); err != nil {
+			logOperationError("record EOD sentiment", err)
+		}
 
 		if strings.TrimSpace(goals.Text) != "" {
 			recordTomorrowGoals(strings.Split(goals.Text, "\n"))
 		}
 		for i, item := range openTodos {
 			if todoChecks[i].Checked {
-				recordPostponed(item)
+				if err := recordPostponed(item); err != nil {
+					logOperationError("postpone EOD TODO", err)
+				}
 			}
 		}
 		for i, item := range openDoing {
 			if doingChecks[i].Checked {
-				recordPostponed(item)
+				if err := recordPostponed(item); err != nil {
+					logOperationError("postpone EOD DOING", err)
+				}
 			}
 		}
 		for i, item := range openQuestions {
 			if questionChecks[i].Checked {
-				recordPostponed(item)
+				if err := recordPostponed(item); err != nil {
+					logOperationError("postpone EOD QUESTION", err)
+				}
 			}
 		}
 		markEndOfDayRun(now)

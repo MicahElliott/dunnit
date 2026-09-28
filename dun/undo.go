@@ -212,6 +212,7 @@ func showEditItemDialogForCategory(parent fyne.Window, item OpenItem, initialCat
 			err = replaceLedgerItemAt(item, newCat, inflectLifecycleText(text, newCat))
 		}
 		if err != nil {
+			logOperationError("save edited ledger item", err)
 			dialog.ShowError(err, parent)
 			return
 		}
@@ -229,6 +230,7 @@ func showEditItemDialogForCategory(parent fyne.Window, item OpenItem, initialCat
 	cancelBtn := widget.NewButton("Cancel", func() { d.Hide() })
 	deleteBtn := widget.NewButton("Delete", func() {
 		if err := deleteLedgerItemLine(item); err != nil {
+			logOperationError("delete ledger item", err)
 			dialog.ShowError(err, parent)
 			return
 		}
@@ -309,11 +311,13 @@ func writeLedgerLinesForItem(item OpenItem, lines []string) error {
 func writeLedgerLinesForPath(fname string, lines []string) error {
 	f, err := os.Create(fname)
 	if err != nil {
+		logOperationError("rewrite ledger "+fname, err)
 		return err
 	}
-	defer f.Close()
+	defer func() { logOperationError("close rewritten ledger "+fname, f.Close()) }()
 	for _, l := range lines {
 		if _, err := f.WriteString(normalizeLedgerText(l) + "\n"); err != nil {
+			logOperationError("write rewritten ledger "+fname, err)
 			return err
 		}
 	}
@@ -343,6 +347,7 @@ func showUndoEditLastEntry(a fyne.App, onChange func()) {
 
 	undoBtn := widget.NewButton("Undo (Remove)", func() {
 		if err := removeLastLedgerLine(); err != nil {
+			logOperationError("undo last ledger entry", err)
 			dialog.ShowError(err, w)
 			return
 		}
@@ -351,6 +356,7 @@ func showUndoEditLastEntry(a fyne.App, onChange func()) {
 	})
 	saveBtn := widget.NewButton("Save Edit", func() {
 		if err := replaceLastLedgerLine(entry.Text); err != nil {
+			logOperationError("save edited last ledger entry", err)
 			dialog.ShowError(err, w)
 			return
 		}
@@ -359,7 +365,10 @@ func showUndoEditLastEntry(a fyne.App, onChange func()) {
 	})
 
 	w.SetContent(windowPad(container.NewBorder(
-		widget.NewLabel("Last ledger line:"), nil, nil, nil,
+		container.NewVBox(
+			newWindowHeading("Last ledger line"),
+			newExplanatoryLabel("Edit the line and save it, or remove it entirely with Undo."),
+		), nil, nil, nil,
 		container.NewBorder(nil, container.NewHBox(undoBtn, saveBtn), nil, nil, entry),
 	)))
 	w.Resize(fyne.NewSize(420, 200))

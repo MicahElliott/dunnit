@@ -6,6 +6,8 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -35,29 +37,44 @@ func gatherSomedayItems() []OpenItem {
 	entries := AllLedgerEntries()
 	handledSuffix := convertedSuffix(somedayCategory)
 
-	handled := make(map[string]bool) // original (suffix-stripped, since-stripped) text -> true
-	var somedayEntries []LedgerEntry
+	handled := make(map[string]bool)
+	itemsByKey := make(map[string]OpenItem)
+	var itemOrder []string
 	for _, e := range entries {
 		if strings.HasSuffix(e.Text, handledSuffix) {
 			orig := strings.TrimSuffix(e.Text, handledSuffix)
-			orig = stripCarryForwardSince(orig)
-			handled[orig] = true
+			handled[somedayItemKey(orig)] = true
 			continue
 		}
 		if e.Category == somedayCategory {
-			somedayEntries = append(somedayEntries, e)
+			text := stripCarryForwardSince(e.Text)
+			key := somedayItemKey(text)
+			if _, exists := itemsByKey[key]; !exists {
+				itemOrder = append(itemOrder, key)
+			}
+			itemsByKey[key] = OpenItem{Category: somedayCategory, Text: text}
 		}
 	}
 
 	var out []OpenItem
-	for _, e := range somedayEntries {
-		text := stripCarryForwardSince(e.Text)
-		if handled[text] {
+	for _, key := range itemOrder {
+		if handled[key] {
 			continue
 		}
-		out = append(out, OpenItem{Category: somedayCategory, Text: text})
+		out = append(out, itemsByKey[key])
 	}
 	return out
+}
+
+// somedayItemKey is the logical identity used only by this browser. SOMEDAY
+// rows are a backlog, so repeated postponements of the same task should still
+// produce one triage row even when copied metadata differs.
+func somedayItemKey(text string) string {
+	key, ok := carryForwardEntryText(LedgerEntry{Category: somedayCategory, Text: text})
+	if ok {
+		return key
+	}
+	return strings.ToLower(strings.Join(strings.Fields(text), " "))
 }
 
 // promoteSomedayItem re-activates a browsed SOMEDAY item as a fresh
@@ -65,18 +82,20 @@ func gatherSomedayItems() []OpenItem {
 // SOMEDAY line is untouched), and stamps a "(via SOMEDAY)" resolution
 // marker so gatherSomedayItems stops listing it afterward. Mirrors
 // recordConvertedDone/recordPostponed's shape (todos.go).
-func promoteSomedayItem(item OpenItem, newCategory string) {
+func promoteSomedayItem(item OpenItem, newCategory string) error {
 	text := inflectLifecycleText(item.Text, newCategory)
-	recordActivity(text, newCategory)
-	recordActivity(text+convertedSuffix(somedayCategory), "DISCARDED")
+	if err := recordActivity(text, newCategory); err != nil {
+		return err
+	}
+	return recordActivity(text+convertedSuffix(somedayCategory), "DISCARDED")
 }
 
 // discardSomedayItem marks a browsed SOMEDAY item as permanently
 // handled (removed from this browser) without promoting it anywhere
 // -- for cleaning out SOMEDAY items that turned out not to be worth
 // keeping after all.
-func discardSomedayItem(item OpenItem) {
-	recordActivity(item.Text+convertedSuffix(somedayCategory), "DISCARDED")
+func discardSomedayItem(item OpenItem) error {
+	return recordActivity(item.Text+convertedSuffix(somedayCategory), "DISCARDED")
 }
 
 // showSomedayBrowserWindow lists every still-open SOMEDAY item across
@@ -104,16 +123,28 @@ func showSomedayBrowserWindow(a fyne.App) {
 		for _, item := range items {
 			item := item // capture
 			row := itemTextLabel(categoryIconPrefix(item.Category) + item.Text)
-			promoteTodoBtn := widget.NewButton("→ TODO", func() {
-				promoteSomedayItem(item, "TODO")
+			promoteTodoBtn := newHoverIconButton(theme.Icon(theme.IconNameConfirm), "Make TODO", func() {
+				if err := promoteSomedayItem(item, "TODO"); err != nil {
+					logOperationError("promote SOMEDAY item to TODO", err)
+					dialog.ShowError(err, w)
+					return
+				}
 				refresh()
 			})
-			promoteGoalBtn := widget.NewButton("→ GOAL", func() {
-				promoteSomedayItem(item, "GOAL")
+			promoteGoalBtn := newHoverIconButton(theme.Icon(theme.IconNameDocumentCreate), "Make GOAL", func() {
+				if err := promoteSomedayItem(item, "GOAL"); err != nil {
+					logOperationError("promote SOMEDAY item to GOAL", err)
+					dialog.ShowError(err, w)
+					return
+				}
 				refresh()
 			})
-			discardBtn := widget.NewButton("Discard", func() {
-				discardSomedayItem(item)
+			discardBtn := newHoverIconButton(theme.Icon(theme.IconNameDelete), "Discard", func() {
+				if err := discardSomedayItem(item); err != nil {
+					logOperationError("discard SOMEDAY item", err)
+					dialog.ShowError(err, w)
+					return
+				}
 				refresh()
 			})
 			listBox.Add(container.NewBorder(nil, nil, nil,
@@ -123,7 +154,16 @@ func showSomedayBrowserWindow(a fyne.App) {
 	}
 	refresh()
 
-	w.SetContent(windowPad(container.NewVScroll(listBox)))
+	content := container.NewBorder(
+		container.NewVBox(
+			newWindowHeading("🕰️ SOMEDAY items"),
+			newExplanatoryLabel("These are postponed possibilities. Make one a TODO or GOAL when it deserves attention, or discard it when it no longer matters."),
+		),
+		widget.NewButton("Close", w.Close),
+		nil, nil,
+		container.NewVScroll(listBox),
+	)
+	w.SetContent(windowPad(content))
 	w.Resize(fyne.NewSize(520, 480))
 	w.Show()
 }

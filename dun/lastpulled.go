@@ -23,9 +23,14 @@ func loadLastPulled() map[string]time.Time {
 	out := map[string]time.Time{}
 	data, err := os.ReadFile(lastPulledPath())
 	if err != nil {
+		if !os.IsNotExist(err) {
+			logOperationError("read last-pulled markers", err)
+		}
 		return out
 	}
-	_ = json.Unmarshal(data, &out)
+	if err := json.Unmarshal(data, &out); err != nil {
+		logOperationError("decode last-pulled markers", err)
+	}
 	return out
 }
 
@@ -35,10 +40,16 @@ func loadLastPulled() map[string]time.Time {
 func saveLastPulled(m map[string]time.Time) {
 	data, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
+		logOperationError("encode last-pulled markers", err)
 		return
 	}
-	_ = os.MkdirAll(DunnitDir(), 0755)
-	_ = os.WriteFile(lastPulledPath(), data, 0644)
+	if err := os.MkdirAll(DunnitDir(), 0755); err != nil {
+		logOperationError("create dunnit directory for last-pulled markers", err)
+		return
+	}
+	if err := os.WriteFile(lastPulledPath(), data, 0644); err != nil {
+		logOperationError("write last-pulled markers", err)
+	}
 }
 
 // markPulled records now as the last-pulled time for tag, persisting
