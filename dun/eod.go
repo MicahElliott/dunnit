@@ -377,6 +377,13 @@ func showEODWindow(a fyne.App) {
 		showEODAlreadyRunWindow(a, now)
 		return
 	}
+	showReportPreparation(a, "End-of-Day Summary", func() {
+		showEODWindowReady(a)
+	})
+}
+
+func showEODWindowReady(a fyne.App) {
+	now := time.Now()
 	w := a.NewWindow("Dunnit: End of Day")
 
 	// Today's items, shown first -- read-only, so the user has the
@@ -483,7 +490,7 @@ func showEODWindow(a fyne.App) {
 		}()
 	}
 	generateBtn.OnTapped = func() {
-		showReportPreparation(a, "End-of-Day Summary", startGeneration)
+		startGeneration()
 	}
 	w.SetOnClosed(func() {
 		if draftRequest != nil {

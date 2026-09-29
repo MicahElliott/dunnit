@@ -364,7 +364,16 @@ func showGeneratedStandupSummary(a fyne.App, summary string) {
 		dailyReportPathForKind("standup", now), normalizeReport(summary, title))
 }
 
-// showStandupExport builds the deterministic standup summary (FR-17
+// showStandupExport starts the standup workflow with the shared tidy-up
+// handoff. The editable seed is built only after that handoff completes, so
+// it reflects any entries or tag/category corrections made in Daybook.
+func showStandupExport(a fyne.App) {
+	showReportPreparation(a, "Standup Summary", func() {
+		showStandupExportReady(a)
+	})
+}
+
+// showStandupExportReady builds the deterministic standup summary (FR-17
 // -- no LLM/network call, pure local ledger parsing) covering
 // everything since the last #dsu meeting (or the weekday-aware
 // yesterday fallback), copies it to the clipboard, and shows it in an
@@ -383,7 +392,7 @@ func showGeneratedStandupSummary(a fyne.App, summary string) {
 // which free-text editing already covers, plus now supports editing
 // both completed/notable and open-plan context before it goes to the
 // LLM).
-func showStandupExport(a fyne.App) {
+func showStandupExportReady(a fyne.App) {
 	now := time.Now()
 	cfg := LoadConfig()
 	lines := gatherStandupLines(cfg, now)
@@ -426,7 +435,7 @@ func showStandupExport(a fyne.App) {
 		}()
 	}
 	generateBtn := widget.NewButton("Generate Standup Summary", func() {
-		showReportPreparation(a, "Standup Summary", generateNow)
+		generateNow()
 	})
 
 	content := container.NewBorder(

@@ -52,6 +52,11 @@ var metaTextColor = color.NRGBA{R: 0x80, G: 0x80, B: 0x80, A: 0xff}
 // keeping them readable in both ordinary rows and the Daybook prefix.
 var personTextColor = color.NRGBA{R: 0x9a, G: 0x4f, B: 0x00, A: 0xff}
 
+// untaggedDisplayTag is a display-only marker for Daybook rows without a
+// real #tag. It makes missing tags visible during the report tidy-up step
+// without adding a synthetic tag to ledger text, tag history, or filters.
+const untaggedDisplayTag = "#UNTAGGED"
+
 const personIcon = "👤\ufe0e"
 
 const displayIconTextSizeRatio = 0.78
@@ -193,6 +198,13 @@ func daybookItemTextLabel(prefix, text string, stats map[string]*tagStat, onTagT
 		runs = append(runs, newTagLinkWithStyle(
 			"["+display.primaryTag+"] ", daybookTagTooltip(display.primaryTag, stats[display.primaryTag]),
 			tagTextColor(display.primaryTag), true, func() { onTagTap(display.primaryTag) }))
+	} else {
+		runs = append(runs, newHoverTextWithStyle(
+			"["+untaggedDisplayTag+"] ",
+			color.Color(metaTextColor),
+			theme.TextSize()*0.84,
+			fyne.TextStyle{Italic: true},
+			"No #tag found; add one if this entry belongs to a project, ticket, topic, or other work theme."))
 	}
 	appendFlagRuns(&runs, flags)
 	appendDaybookCoreRuns(&runs, display, stats, onTagTap)
