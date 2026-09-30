@@ -53,7 +53,7 @@ func searchLedgers(query string) []searchResult {
 func showSearchDialog(a fyne.App) {
 	w := a.NewWindow("Dunnit: Search Ledger History")
 
-	queryEntry := widget.NewEntry()
+	queryEntry := newSingleLineEntry()
 	queryEntry.SetPlaceHolder("Search term (tag, category, or keyword)\u2026")
 
 	resultsBox := container.NewVBox()

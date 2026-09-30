@@ -23,15 +23,15 @@ func SetThings() {
 func showSettings(a fyne.App) {
 	cfg := LoadConfig()
 	w := a.NewWindow("Dunnit: Settings")
-	dunnitDir := widget.NewEntry()
+	dunnitDir := newSingleLineEntry()
 	dunnitDir.SetText(cfg.DunnitDir)
 	dunnitDir.SetPlaceHolder("Leave blank for default")
-	fileSearchPath := widget.NewEntry()
+	fileSearchPath := newSingleLineEntry()
 	fileSearchPath.SetText(strings.Join(cfg.FileSearchPath, " "))
 	fileSearchPath.SetPlaceHolder("~/work/cc3 ~/work/kp")
 	llmCLISelect := widget.NewSelect(llmCLISettingOptions(), nil)
 	llmCLISelect.SetSelected(llmCLISettingLabel(cfg.LLMCLI))
-	llmModelEntry := widget.NewEntry()
+	llmModelEntry := newSingleLineEntry()
 	llmModelEntry.SetText(cfg.LLMModel)
 	llmModelEntry.SetPlaceHolder("e.g. gpt-6-luna")
 	browseDir := widget.NewButtonWithIcon("", theme.FolderOpenIcon(), func() {
@@ -49,25 +49,25 @@ func showSettings(a fyne.App) {
 	gitSync := widget.NewCheck("", nil)
 	gitSync.SetChecked(cfg.GitSyncEnabled)
 
-	dayStart := widget.NewEntry()
+	dayStart := newSingleLineEntry()
 	dayStart.SetText(cfg.DayStart)
 	dayStart.SetPlaceHolder("HH:MM or 6am")
 
-	dayEnd := widget.NewEntry()
+	dayEnd := newSingleLineEntry()
 	dayEnd.SetText(cfg.DayEnd)
 	dayEnd.SetPlaceHolder("HH:MM or 6pm")
 
-	nudgeInterval := widget.NewEntry()
+	nudgeInterval := newSingleLineEntry()
 	nudgeInterval.SetText(strconv.Itoa(cfg.NudgeIntervalMinutes))
 
-	lunchTime := widget.NewEntry()
+	lunchTime := newSingleLineEntry()
 	lunchTime.SetText(cfg.LunchTime)
 	lunchTime.SetPlaceHolder("HH:MM or noon")
 
 	digestDay := widget.NewSelect([]string{"", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"}, nil)
 	digestDay.SetSelected(cfg.WeeklyDigestDay)
 
-	digestTime := widget.NewEntry()
+	digestTime := newSingleLineEntry()
 	digestTime.SetText(cfg.WeeklyDigestTime)
 	digestTime.SetPlaceHolder("HH:MM, 6am, or 4p")
 
@@ -86,7 +86,7 @@ func showSettings(a fyne.App) {
 	yearEndMonth := widget.NewSelect(monthOptions, nil)
 	yearEndMonth.SetSelected(selectedMonth(cfg.YearEndMonth))
 
-	snoozeMinutes := widget.NewEntry()
+	snoozeMinutes := newSingleLineEntry()
 	snoozeMinutes.SetText(strconv.Itoa(cfg.SnoozeMinutes))
 
 	skipHolidays := widget.NewCheck("", nil)
@@ -123,7 +123,7 @@ func showSettings(a fyne.App) {
 	// per-tag checkbox list -- tags are open-ended/user-coined (see
 	// tags.go), unlike categories' small fixed set, so a full
 	// checkbox list isn't practical here.
-	excludeTagsEntry := widget.NewEntry()
+	excludeTagsEntry := newSingleLineEntry()
 	excludeTagsEntry.SetText(strings.Join(cfg.ReportExcludeTags, ", "))
 	excludeTagsEntry.SetPlaceHolder("#home, #personal, #buy, #shop")
 

@@ -141,6 +141,9 @@ func hasCarryForwardSince(text string) bool {
 // into category and text. Returns ok=false if the line doesn't look
 // like a well-formed ledger entry.
 func parseLedgerLine(line string) (category, text string, ok bool) {
+	if _, validTimestamp := parseLedgerLineTime(line, time.Now()); !validTimestamp {
+		return "", "", false
+	}
 	parts := strings.SplitN(line, " ", 3)
 	if len(parts) < 3 {
 		return "", "", false

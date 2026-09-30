@@ -351,6 +351,9 @@ func carryForwardEntryKey(entry LedgerEntry, carriedDates map[string]time.Time, 
 		// An explicit same-day resolution suffix links an unmarked source
 		// row to its DONE/SOMEDAY/DISCARDED record even when no carry
 		// marker was ever written.
+		if since, carried := carriedDates[identity]; carried {
+			return "carried\x00" + since.Format("2006-01-02") + "\x00" + identity, true
+		}
 		return "resolved-unmarked\x00" + dateKey, true
 	}
 	if since, exists := carriedDates[identity]; exists && isLifecycleCategory(entry.Category) && carriedRowDates[identity][dateOnly(entry.Date).Format("2006-01-02")] {

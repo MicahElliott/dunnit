@@ -140,6 +140,29 @@ week/month/quarter/year scale.
 See the tray menu's **Kickoff**/**Review** submenus for the full set
 of periods, and the README for setup/config details.
 
+## Agent-assisted tag profiles
+
+An agent that already has access to a tracking system can populate Dunnit's
+tag profile through the local CLI. The agent performs the Jira, GitHub, or
+other lookup with its own tools, then runs a command such as:
+
+```sh
+./dunnit tag SCRUM-12345 \
+  --title 'Fix email delivery' \
+  --summary 'Investigate why delivery is delayed' \
+  --kind ticket \
+  --status active \
+  --url 'https://jira.example.test/browse/SCRUM-12345'
+```
+
+The tag command writes `$DUNNIT_DIR/tags.toml`, preserves fields that were not
+specified, and accepts `--description`, `--parent TAG`, and repeatable
+`--alias NAME` options. Dunnit therefore stays connector-free: the harness
+owns authentication and external lookup, while Dunnit only stores the
+resulting profile. The tag editor offers the same common kinds (`project`,
+`ticket`, `topic`, `person`, `team`, `service`, `area`, `goal`) and statuses
+(`active`, `planned`, `blocked`, `paused`, `done`, `archived`).
+
 ## AI / LLM CLI setup
 
 Dunnit's report features can use a locally installed command-line client.

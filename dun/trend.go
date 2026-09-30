@@ -248,9 +248,9 @@ func formatTrendRange(points []trendPoint, from, to time.Time) string {
 func showTrendView(a fyne.App) {
 	rangeSelect := widget.NewSelect([]string{"7 days", "14 days", "30 days", "90 days", "Custom dates"}, nil)
 	rangeSelect.SetSelected("30 days")
-	fromEntry := widget.NewEntry()
+	fromEntry := newSingleLineEntry()
 	fromEntry.SetPlaceHolder("From YYYY-MM-DD")
-	toEntry := widget.NewEntry()
+	toEntry := newSingleLineEntry()
 	toEntry.SetPlaceHolder("To YYYY-MM-DD")
 	fromEntry.Hide()
 	toEntry.Hide()

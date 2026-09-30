@@ -210,6 +210,38 @@ Examples:
 Clicking a local link opens it with `$EDITOR`, falling back to the operating
 system's default file opener when `$EDITOR` is not set.
 
+## Automation and the CLI
+
+The existing two-argument CLI form records a ledger entry without opening the
+GUI:
+
+```sh
+./dunnit DONE 'Finished the Jira story #SCRUM-12345 ~30m'
+```
+
+Tag profiles can also be created or updated directly. This is intended for an
+agent harness that can look up a Jira, GitHub, or other tracking item using its
+own authenticated tools and then hand the result to Dunnit:
+
+```sh
+./dunnit tag SCRUM-12345 \
+  --title 'Fix email delivery' \
+  --summary 'Investigate why delivery is delayed' \
+  --kind ticket \
+  --status active \
+  --url 'https://jira.example.test/browse/SCRUM-12345'
+```
+
+Use `--description` for a longer Markdown description, `--parent TAG` for a
+parent tag, and repeat `--alias NAME` for aliases. The command updates only
+the fields supplied, so a harness can fill in a profile incrementally. Dunnit
+does not need a connector or credentials for this workflow; the harness owns
+the lookup and calls this small local CLI.
+
+The recommended profile kinds are `project`, `ticket`, `topic`, `person`,
+`team`, `service`, `area`, and `goal`. Recommended statuses are `active`,
+`planned`, `blocked`, `paused`, `done`, and `archived`.
+
 Time settings accept 24-hour `HH:MM` values and convenient forms such as
 `6a`, `6am`, `6:30p`, `630p`, `6:30 pm`, `noon`, and `midnight`. Saved
 settings are written back in `HH:MM` form.

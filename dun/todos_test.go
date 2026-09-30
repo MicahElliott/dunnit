@@ -26,6 +26,16 @@ func TestParseOpenItems(t *testing.T) {
 	}
 }
 
+func TestParseLedgerLineRejectsNonLedgerContinuationLines(t *testing.T) {
+	if _, _, ok := parseLedgerLine("- Surbhi: email delivery issue #74847"); ok {
+		t.Fatal("Markdown continuation line was parsed as a ledger entry")
+	}
+	category, text, ok := parseLedgerLine("[09:10:11] TODO investigate #74847")
+	if !ok || category != "TODO" || text != "investigate #74847" {
+		t.Fatalf("valid ledger line parsed as (%q, %q, %v)", category, text, ok)
+	}
+}
+
 func TestGetCategoryGroupItemsExcludesEODOnlyFromHilites(t *testing.T) {
 	withTempDunnitDir(t)
 	writeLedgerLinesForDate(t, time.Now(), []string{

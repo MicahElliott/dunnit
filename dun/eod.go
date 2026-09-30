@@ -508,7 +508,7 @@ func showEODWindowReady(a fyne.App) {
 	productivity := widget.NewSelect([]string{"1", "2", "3", "4", "5"}, nil)
 	productivity.SetSelected("3")
 
-	meetingHours := widget.NewEntry()
+	meetingHours := newSingleLineEntry()
 	meetingHours.SetPlaceHolder("e.g. 2.5")
 
 	sentiment := widget.NewSelect([]string{"Negative", "Neutral", "Positive"}, nil)

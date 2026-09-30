@@ -41,7 +41,7 @@ var postMeetingCategories = []string{"TIL", "GOAL", "RISK"}
 func showPostMeetingCapture(a fyne.App, tag string) {
 	w := a.NewWindow("Dunnit: Post-Meeting Capture")
 
-	tagEntry := widget.NewEntry()
+	tagEntry := newSingleLineEntry()
 	tagEntry.SetPlaceHolder("#tag (e.g. #boss) \u2014 entries are grouped under this tag")
 	tagEntry.SetText(tag)
 

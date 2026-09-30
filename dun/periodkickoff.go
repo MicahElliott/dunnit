@@ -113,7 +113,7 @@ func okrKickoffSection(a fyne.App, period summaryPeriod, anchor time.Time) fyne.
 		return nil
 	}
 
-	focusEntry := widget.NewEntry()
+	focusEntry := newSingleLineEntry()
 	focusEntry.SetText(readFocus(period, anchor))
 	focusEntry.SetPlaceHolder("Theme for this " + strings.ToLower(string(period)) + " (e.g. \u201cConsolidation quarter\u201d)\u2026")
 	saveFocusBtn := widget.NewButton("Save", func() {
@@ -143,9 +143,9 @@ func okrKickoffSection(a fyne.App, period summaryPeriod, anchor time.Time) fyne.
 	}
 	refreshObjectives()
 
-	newObjEntry := widget.NewEntry()
+	newObjEntry := newSingleLineEntry()
 	newObjEntry.SetPlaceHolder("New Objective\u2026")
-	krEntry := widget.NewEntry()
+	krEntry := newSingleLineEntry()
 	krEntry.SetPlaceHolder("Key Result for the Objective above\u2026")
 
 	addObjBtn := widget.NewButton("Add Objective", func() {
@@ -241,7 +241,7 @@ func showPeriodKickoffWindow(a fyne.App, period summaryPeriod, anchor time.Time)
 
 	newItemCat := widget.NewSelect(openTrackedCategories, nil)
 	newItemCat.SetSelected("GOAL")
-	newItemText := widget.NewEntry()
+	newItemText := newSingleLineEntry()
 	newItemText.SetPlaceHolder("Add a goal or open item for this " + strings.ToLower(string(period)) + "\u2026")
 	addItem := func() {
 		text := strings.TrimSpace(newItemText.Text)

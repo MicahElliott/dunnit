@@ -151,11 +151,11 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 	// containers (same fix as minsInput in ui.go) -- otherwise Fyne's
 	// default layout can render a plain widget.Entry at an oddly
 	// narrow width alongside other fixed-width siblings in an HBox.
-	timeEntry := widget.NewEntry()
+	timeEntry := newSingleLineEntry()
 	timeEntry.SetPlaceHolder("HH:MM or 6am")
 	timeWrapper := container.NewGridWrap(fyne.NewSize(88, timeEntry.MinSize().Height), timeEntry)
 
-	domEntry := widget.NewEntry()
+	domEntry := newSingleLineEntry()
 	domEntry.SetPlaceHolder("day 1-31")
 	domWrapper := container.NewGridWrap(fyne.NewSize(70, domEntry.MinSize().Height), domEntry)
 	domWrapper.Hide()

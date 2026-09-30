@@ -130,7 +130,7 @@ func showMeetingPrepDialog(a fyne.App) {
 func showMeetingPrepDialogForTag(a fyne.App, initialTag string) {
 	w := a.NewWindow("Dunnit: Meeting Prep")
 
-	tagEntry := widget.NewEntry()
+	tagEntry := newSingleLineEntry()
 	tagEntry.SetPlaceHolder("#tag (e.g. #jeff, #boss)")
 	tagEntry.SetText(initialTag)
 

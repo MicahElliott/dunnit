@@ -193,6 +193,26 @@ func TestTagEntriesLast30DaysDeduplicatesLogicalEntries(t *testing.T) {
 	}
 }
 
+func TestTagEntriesLast30DaysCollapsesUnmarkedCarriedResolution(t *testing.T) {
+	withTempDunnitDir(t)
+	now := time.Date(2026, time.September, 23, 12, 0, 0, 0, time.Local)
+	writeLedgerLinesForDate(t, now.AddDate(0, 0, -12), []string{
+		"[09:00] TODO investigate delivery #74847",
+	})
+	writeLedgerLinesForDate(t, now.AddDate(0, 0, -4), []string{
+		"[09:00] DISCARDED investigate delivery #74847 (via TODO)",
+	})
+	writeLedgerLinesForDate(t, now.AddDate(0, 0, -1), []string{
+		"[09:00] TODO investigate delivery #74847 s/2026-09-11",
+	})
+	InvalidateLedgerCaches()
+
+	entries := tagEntriesLast30Days("#74847", now)
+	if len(entries) != 1 || entries[0].Category != "TODO" {
+		t.Fatalf("tag history = %+v, want one reopened TODO lineage", entries)
+	}
+}
+
 func TestFinalizeTagStatsFavorsRecentUse(t *testing.T) {
 	now := time.Date(2026, 9, 18, 12, 0, 0, 0, time.UTC)
 	stats := map[string]*tagStat{

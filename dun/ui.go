@@ -640,7 +640,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 	// MinSize -- stretchRowLayout below treats it as a fixed-width
 	// object (like groupFilter/category), giving all remaining space
 	// to `input` instead.
-	minsInput := widget.NewEntry()
+	minsInput := newSingleLineEntry()
 	minsInput.SetPlaceHolder("mins")
 	minsWrapper := container.NewGridWrap(fyne.NewSize(64, minsInput.MinSize().Height), minsInput)
 	daybookInputEmpty = func() bool {

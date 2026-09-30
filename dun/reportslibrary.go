@@ -216,13 +216,13 @@ func showReportsLibraryWindow(a fyne.App) {
 		"All time", "Today", "This week", "This month", "This quarter", "This fiscal year", "Last 30 days", "Last 90 days", "Custom dates",
 	}, nil)
 	periodSelect.SetSelected("All time")
-	fromEntry := widget.NewEntry()
+	fromEntry := newSingleLineEntry()
 	fromEntry.SetPlaceHolder("From YYYY-MM-DD")
-	toEntry := widget.NewEntry()
+	toEntry := newSingleLineEntry()
 	toEntry.SetPlaceHolder("To YYYY-MM-DD")
 	fromEntry.Hide()
 	toEntry.Hide()
-	queryEntry := widget.NewEntry()
+	queryEntry := newSingleLineEntry()
 	queryEntry.SetPlaceHolder("Search saved report contents…")
 	filterStatus := newExplanatoryLabel("")
 

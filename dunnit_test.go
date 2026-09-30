@@ -1,6 +1,7 @@
 package main
 
 import (
+	core "dun/dun"
 	"os"
 	"path/filepath"
 	"strings"
@@ -49,5 +50,22 @@ func TestRunCLIReturnsNonZeroWhenLedgerWriteFails(t *testing.T) {
 
 	if got := runCLI([]string{"DONE", "This cannot be recorded"}); got == 0 {
 		t.Fatal("runCLI returned 0 after the ledger write failed")
+	}
+}
+
+func TestRunCLITagDefinition(t *testing.T) {
+	t.Setenv("DUNNIT_DIR", t.TempDir())
+	if got := runCLI([]string{
+		"tag", "#SCRUM-12345", "--title", "Email delivery", "--kind", "ticket",
+		"--status", "active", "--alias", "old-ticket",
+	}); got != 0 {
+		t.Fatalf("runCLI tag returned %d, want 0", got)
+	}
+	definition, found, err := core.LoadTagDefinition("SCRUM-12345")
+	if err != nil || !found {
+		t.Fatalf("LoadTagDefinition = %#v, %v, found %v", definition, err, found)
+	}
+	if definition.Title != "Email delivery" || definition.Kind != "ticket" || definition.Status != "active" || len(definition.Aliases) != 1 {
+		t.Fatalf("tag definition = %#v, want CLI fields", definition)
 	}
 }

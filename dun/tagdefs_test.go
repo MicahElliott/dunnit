@@ -93,3 +93,17 @@ func TestSaveTagDefinitionPreservesOtherDefinitions(t *testing.T) {
 		t.Fatalf("first definition summary = %q, want %q", first.Summary, "one")
 	}
 }
+
+func TestTagDefinitionSelectorsUseCanonicalValuesAndPreserveUnknowns(t *testing.T) {
+	if got := tagDefinitionSelectValue("(none)"); got != "" {
+		t.Fatalf("none selector value = %q, want empty", got)
+	}
+	for _, option := range []string{"project", "ticket", "topic", "person", "team", "service", "area", "goal"} {
+		if !containsString(tagDefinitionKindOptions, option) {
+			t.Errorf("kind options missing %q", option)
+		}
+	}
+	if got := tagDefinitionSelectOptions(tagDefinitionStatusOptions, "custom-old-status"); got[len(got)-1] != "custom-old-status" {
+		t.Fatalf("unknown status was not preserved: %v", got)
+	}
+}

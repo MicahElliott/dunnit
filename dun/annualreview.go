@@ -26,7 +26,7 @@ func showAnnualReviewDialog(a fyne.App) {
 
 	cfg := LoadConfig()
 	currentYear := fiscalYearLabel(time.Now(), cfg)
-	yearEntry := widget.NewEntry()
+	yearEntry := newSingleLineEntry()
 	yearEntry.SetText(strconv.Itoa(currentYear))
 
 	generate := func() {

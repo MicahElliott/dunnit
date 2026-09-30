@@ -33,6 +33,30 @@ type tagDefinitionsFile struct {
 	Tags map[string]TagDefinition `toml:"tags"`
 }
 
+var tagDefinitionKindOptions = []string{
+	"(none)", "project", "ticket", "topic", "person", "team", "service", "area", "goal",
+}
+
+var tagDefinitionStatusOptions = []string{
+	"(none)", "active", "planned", "blocked", "paused", "done", "archived",
+}
+
+func tagDefinitionSelectOptions(options []string, current string) []string {
+	for _, option := range options {
+		if option == current || (current == "" && option == "(none)") {
+			return append([]string{}, options...)
+		}
+	}
+	return append(append([]string{}, options...), current)
+}
+
+func tagDefinitionSelectValue(selected string) string {
+	if selected == "(none)" {
+		return ""
+	}
+	return selected
+}
+
 func tagDefinitionsPath() string {
 	return filepath.Join(DunnitDir(), "tags.toml")
 }
@@ -293,11 +317,11 @@ func showTagDefinitionEditor(parent fyne.Window, tag string, onSave func()) {
 		definition.Name = name
 	}
 
-	titleEntry := widget.NewEntry()
+	titleEntry := newSingleLineEntry()
 	titleEntry.SetText(definition.Title)
 	titleEntry.SetPlaceHolder("Human-readable title (optional)")
 
-	summaryEntry := widget.NewEntry()
+	summaryEntry := newSingleLineEntry()
 	summaryEntry.SetText(definition.Summary)
 	summaryEntry.SetPlaceHolder("One-sentence summary (optional)")
 
@@ -306,23 +330,29 @@ func showTagDefinitionEditor(parent fyne.Window, tag string, onSave func()) {
 	descriptionEntry.SetPlaceHolder("Longer Markdown description (optional)")
 	descriptionEntry.SetMinRowsVisible(7)
 
-	urlEntry := widget.NewEntry()
+	urlEntry := newSingleLineEntry()
 	urlEntry.SetText(definition.URL)
 	urlEntry.SetPlaceHolder("https://... (optional)")
 
-	kindEntry := widget.NewEntry()
-	kindEntry.SetText(definition.Kind)
-	kindEntry.SetPlaceHolder("project, ticket, topic... (optional)")
+	kindSelect := widget.NewSelect(tagDefinitionSelectOptions(tagDefinitionKindOptions, definition.Kind), nil)
+	kindSelected := definition.Kind
+	if kindSelected == "" {
+		kindSelected = "(none)"
+	}
+	kindSelect.SetSelected(kindSelected)
 
-	statusEntry := widget.NewEntry()
-	statusEntry.SetText(definition.Status)
-	statusEntry.SetPlaceHolder("active, paused, archived... (optional)")
+	statusSelect := widget.NewSelect(tagDefinitionSelectOptions(tagDefinitionStatusOptions, definition.Status), nil)
+	statusSelected := definition.Status
+	if statusSelected == "" {
+		statusSelected = "(none)"
+	}
+	statusSelect.SetSelected(statusSelected)
 
-	aliasesEntry := widget.NewEntry()
+	aliasesEntry := newSingleLineEntry()
 	aliasesEntry.SetText(strings.Join(addTagPrefixes(definition.Aliases), " "))
 	aliasesEntry.SetPlaceHolder("#old-name #another-name (optional)")
 
-	parentEntry := widget.NewEntry()
+	parentEntry := newSingleLineEntry()
 	parentEntry.SetText(definition.Parent)
 	parentEntry.SetPlaceHolder("Parent tag (optional)")
 
@@ -332,8 +362,8 @@ func showTagDefinitionEditor(parent fyne.Window, tag string, onSave func()) {
 		widget.NewLabel("Summary"), summaryEntry,
 		widget.NewLabel("Description"), descriptionEntry,
 		widget.NewLabel("Link"), urlEntry,
-		widget.NewLabel("Kind"), kindEntry,
-		widget.NewLabel("Status"), statusEntry,
+		widget.NewLabel("Kind"), kindSelect,
+		widget.NewLabel("Status"), statusSelect,
 		widget.NewLabel("Aliases"), aliasesEntry,
 		widget.NewLabel("Parent"), parentEntry,
 	)
@@ -356,8 +386,8 @@ func showTagDefinitionEditor(parent fyne.Window, tag string, onSave func()) {
 			Summary:     strings.TrimSpace(summaryEntry.Text),
 			Description: strings.TrimSpace(descriptionEntry.Text),
 			URL:         strings.TrimSpace(urlEntry.Text),
-			Kind:        strings.TrimSpace(kindEntry.Text),
-			Status:      strings.TrimSpace(statusEntry.Text),
+			Kind:        tagDefinitionSelectValue(kindSelect.Selected),
+			Status:      tagDefinitionSelectValue(statusSelect.Selected),
 			Aliases:     aliases,
 			Parent:      parentName,
 		}

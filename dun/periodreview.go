@@ -51,7 +51,7 @@ func okrReviewSection(period summaryPeriod, anchor time.Time) (box fyne.CanvasOb
 		for _, kr := range o.KeyResults {
 			statusSelect := widget.NewSelect(okrStatusOptions, nil)
 			statusSelect.SetSelected(kr.Status)
-			noteEntry := widget.NewEntry()
+			noteEntry := newSingleLineEntry()
 			noteEntry.SetText(kr.Note)
 			noteEntry.SetPlaceHolder("Optional note\u2026")
 			rows = append(rows, krRow{text: kr.Text, status: statusSelect, note: noteEntry})

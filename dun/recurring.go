@@ -296,10 +296,10 @@ func showRecurringItemsDialog(a fyne.App, parent fyne.Window) {
 	catSelect := widget.NewSelect(recurringItemCategories, nil)
 	catSelect.SetSelected("TODO")
 
-	textEntry := widget.NewEntry()
+	textEntry := newSingleLineEntry()
 	textEntry.SetPlaceHolder("Item text\u2026")
 
-	timeEntry := widget.NewEntry()
+	timeEntry := newSingleLineEntry()
 	timeEntry.SetPlaceHolder("HH:MM or 6am (optional)")
 	timeWrapper := container.NewGridWrap(fyne.NewSize(132, timeEntry.MinSize().Height), timeEntry)
 
@@ -317,7 +317,7 @@ func showRecurringItemsDialog(a fyne.App, parent fyne.Window) {
 	dowSelect.SetSelected(dowNames[time.Monday])
 	dowSelect.Hide()
 
-	domEntry := widget.NewEntry()
+	domEntry := newSingleLineEntry()
 	domEntry.SetPlaceHolder("1\u201331")
 	domWrapper := container.NewGridWrap(fyne.NewSize(50, domEntry.MinSize().Height), domEntry)
 	domWrapper.Hide()

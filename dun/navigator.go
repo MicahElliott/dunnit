@@ -110,7 +110,7 @@ func showNavigatorWindow(a fyne.App) {
 	catSelect := widget.NewSelect(catOptions, nil)
 	catSelect.SetSelected("All")
 
-	tagsEntry := widget.NewEntry()
+	tagsEntry := newSingleLineEntry()
 	tagsEntry.SetPlaceHolder("#tag1, #tag2 (blank = any)")
 
 	rangeSelect := widget.NewSelect(navigatorDateRangeOptions, nil)
@@ -201,7 +201,7 @@ func showNavigatorAskAIDialog(a fyne.App, parent fyne.Window, entries []LedgerEn
 		return
 	}
 
-	question := widget.NewEntry()
+	question := newSingleLineEntry()
 	question.SetPlaceHolder("e.g. What did I accomplish on this topic?")
 
 	dialog.ShowCustomConfirm("Ask AI", "Ask", "Cancel", question, func(ok bool) {
