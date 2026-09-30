@@ -255,7 +255,7 @@ func showRecurringItemsDialog(a fyne.App, parent fyne.Window) {
 		sortRecurringItems(items)
 		itemsBox.RemoveAll()
 		if len(items) == 0 {
-			itemsBox.Add(widget.NewLabel("No recurring items yet."))
+			itemsBox.Add(widget.NewLabel("No recurring plans yet."))
 		}
 		for i, r := range items {
 			i := i // capture
@@ -301,7 +301,7 @@ func showRecurringItemsDialog(a fyne.App, parent fyne.Window) {
 
 	timeEntry := newSingleLineEntry()
 	timeEntry.SetPlaceHolder("HH:MM or 6am (optional)")
-	timeWrapper := container.NewGridWrap(fyne.NewSize(132, timeEntry.MinSize().Height), timeEntry)
+	timeWrapper := container.NewGridWrap(fyne.NewSize(150, timeEntry.MinSize().Height), timeEntry)
 
 	cadenceSelect := widget.NewSelect(cadenceOptions, nil)
 	cadenceSelect.SetSelected("daily")
@@ -441,9 +441,9 @@ func showRecurringItemsDialog(a fyne.App, parent fyne.Window) {
 	domEntry.OnSubmitted = func(string) { addItem() }
 	timeEntry.OnSubmitted = func(string) { addItem() }
 
-	helpLine := newExplanatoryLabel("📝 Untimed entries are suggested in Start of Day / Start of Month. Add an optional time such as HH:MM, 6am, or noon for a native reminder and a prefilled Daybook popup.")
+	helpLine := newExplanatoryLabel("📝 These recurring plans are suggestions, not ledger entries. Untimed plans appear in Start of Day / Start of Month; add an optional time such as HH:MM, 6am, or noon for a native reminder and a prefilled Daybook popup.")
 
-	heading := newWindowHeading("🔁 Recurring Items")
+	heading := newWindowHeading("🔁 Recurring Plans")
 
 	// entryRow stretches textEntry to fill remaining width (same
 	// stretchRowLayout approach as ui.go's doneWrapper), rather than
@@ -463,7 +463,7 @@ func showRecurringItemsDialog(a fyne.App, parent fyne.Window) {
 	)
 	content := container.NewBorder(form, nil, nil, nil, itemsScroll)
 
-	w := a.NewWindow("Dunnit: Recurring Items")
+	w := a.NewWindow("Dunnit: Recurring Plans")
 	w.SetContent(windowPad(content))
 	w.Resize(fyne.NewSize(520, 440))
 	w.Show()

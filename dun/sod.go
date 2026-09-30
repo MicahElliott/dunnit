@@ -335,7 +335,7 @@ func showSODWindow(a fyne.App) {
 			}
 		}
 		if box := recurringItemsSuggestionBox(dailyWeekly, refreshPlan); box != nil {
-			recurringBox.Add(widget.NewLabelWithStyle("Recurring Items Due Today", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
+			recurringBox.Add(widget.NewLabelWithStyle("Recurring Plans Due Today", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
 			recurringBox.Add(box)
 		}
 		recurringBox.Refresh()
@@ -386,9 +386,9 @@ func showSODWindow(a fyne.App) {
 
 	var statusNote fyne.CanvasObject
 	if alreadyRan {
-		statusNote = newExplanatoryLabel("Start of Day has already run today. It’s okay to run it again if you want to add more recurring items.")
+		statusNote = newExplanatoryLabel("Start of Day has already run today. It’s okay to run it again if you want to add more recurring plans.")
 	} else {
-		statusNote = newExplanatoryLabel("Start of Day has now run today. It’s okay to run it again if you want to add more recurring items.")
+		statusNote = newExplanatoryLabel("Start of Day has now run today. It’s okay to run it again if you want to add more recurring plans.")
 	}
 
 	content := container.NewVBox(

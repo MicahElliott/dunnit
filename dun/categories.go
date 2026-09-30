@@ -50,8 +50,8 @@ type Category struct {
 //     hours/days-scale estimation feature exists, and adding one
 //     would be overkill for large accomplishments anyway).
 //   - MEETING/WAITING: previously included, but these aren't
-//     completed-effort entries either (MEETING is scratch agenda
-//     notes; WAITING is "blocked," not "done") -- narrowed out
+//     completed-effort entries either (MEETING is a meeting record;
+//     WAITING is "blocked," not "done") -- narrowed out
 //     alongside the Plan-group exclusion above.
 var timeTrackableCategories = map[string]bool{
 	"DONE": true, "DOING": true, "FAIL": true, "WASTED": true,
@@ -148,7 +148,7 @@ var Categories = []Category{
 	{"⏳", "WAITING", "Blocked on someone or something else.", "plan", "", false},
 	{"🔧", "FIXME", "A bug or broken thing to fix.", "plan", "negative", false},
 	{"⚠️", "RISK", "A risk worth tracking.", "plan", "negative", false},
-	{"📅", "MEETING", "Agenda notes for an upcoming meeting.", "plan", "", false},
+	{"📅", "MEETING", "Meeting prep, attendance, live notes, or outcomes; include a tag for the meeting.", "plan", "", false},
 	{"🕰️", "SOMEDAY", "Something to do eventually, not now.", "plan", "", false},
 	{"🏎️", "OPTIMIZE", "Working well, but worth improving.", "plan", "", false},
 

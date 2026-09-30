@@ -220,7 +220,7 @@ func summarizeStandupWithLLMCLIContext(ctx context.Context, lines []string) (str
 
 func standupActivityLabel(now time.Time) string {
 	if now.Weekday() == time.Monday {
-		return "Friday"
+		return "Fri"
 	}
 	return "yesterday"
 }
@@ -342,8 +342,8 @@ func summarizeStandupWithLLCLIAt(ctx context.Context, lines []string, now time.T
 			"under exactly these three headings: "+
 			"\"What did I do "+activityLabel+"\", \"What will I do today\", and "+
 			"\"Risks / blockers\". Base the completed-work section on the "+
-			"notable items given; on Monday, include weekend work under the "+
-			"Friday heading when it is present. Base \"today\" on the currently-open "+
+			"notable items given; on Mon, include weekend work under the "+
+			"Fri heading when it is present. Base \"today\" on the currently-open "+
 			"TODOs/DOING/GOALs given (pick the most relevant ones, don’t just "+
 			"dump the whole list verbatim). If there’s nothing worth "+
 			"flagging as a risk or blocker, say so briefly rather than "+

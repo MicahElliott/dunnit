@@ -63,7 +63,7 @@ func showMonthKickoffWindow(a fyne.App, anchor time.Time) {
 	if box := recurringItemsSuggestionBox(dueMonthly, refreshGoals); box != nil {
 		recurringBox.Add(box)
 	} else {
-		recurringBox.Add(widget.NewLabel("(no monthly recurring items due)"))
+		recurringBox.Add(widget.NewLabel("(no monthly recurring plans due)"))
 	}
 
 	doneBtn := widget.NewButton("Commence "+now.Month().String(), func() {
@@ -89,7 +89,7 @@ func showMonthKickoffWindow(a fyne.App, anchor time.Time) {
 		sodHeading("GOALs in motion"),
 		currentGoalsBox,
 		newGoalsEntry,
-		widget.NewLabelWithStyle("Looking Ahead: Monthly Recurring Items", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
+		widget.NewLabelWithStyle("Looking Ahead: Monthly Recurring Plans", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		recurringBox,
 		doneBtn,
 	)

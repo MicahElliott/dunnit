@@ -315,19 +315,19 @@ func Schedule(a fyne.App, w fyne.Window) gocron.Scheduler {
 // unrecognized string (treated as "digest not configured").
 func parseWeekday(s string) (day time.Weekday, ok bool) {
 	switch strings.ToLower(strings.TrimSpace(s)) {
-	case "sunday":
+	case "sun", "sunday":
 		return time.Sunday, true
-	case "monday":
+	case "mon", "monday":
 		return time.Monday, true
-	case "tuesday":
+	case "tue", "tues", "tuesday":
 		return time.Tuesday, true
-	case "wednesday":
+	case "wed", "wednesday":
 		return time.Wednesday, true
-	case "thursday":
+	case "thu", "thur", "thurs", "thursday":
 		return time.Thursday, true
-	case "friday":
+	case "fri", "friday":
 		return time.Friday, true
-	case "saturday":
+	case "sat", "saturday":
 		return time.Saturday, true
 	default:
 		return 0, false

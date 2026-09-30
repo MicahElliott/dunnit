@@ -59,7 +59,7 @@ var meetingCadenceRank = map[string]int{
 }
 
 // dowNames indexes by time.Weekday (0=Sunday..6=Saturday).
-var dowNames = []string{"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}
+var dowNames = []string{"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}
 
 func safeDOW(dow int) string {
 	if dow < 0 || dow >= len(dowNames) {
@@ -153,7 +153,7 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 	// narrow width alongside other fixed-width siblings in an HBox.
 	timeEntry := newSingleLineEntry()
 	timeEntry.SetPlaceHolder("HH:MM or 6am")
-	timeWrapper := container.NewGridWrap(fyne.NewSize(88, timeEntry.MinSize().Height), timeEntry)
+	timeWrapper := container.NewGridWrap(fyne.NewSize(120, timeEntry.MinSize().Height), timeEntry)
 
 	domEntry := newSingleLineEntry()
 	domEntry.SetPlaceHolder("day 1-31")
@@ -299,7 +299,7 @@ func showMiniCalendarDialog(a fyne.App, parent fyne.Window) {
 	refreshMeetings()
 
 	heading := newWindowHeading("🗓️ Recurring Meetings")
-	helpLine := newExplanatoryLabel("📝 Use these tags throughout your weeks any time a meeting topic thought comes to mind. They’ll be collected and presented to you just before your meeting starts. And summaries will be shown after.")
+	helpLine := newExplanatoryLabel("📝 Use these tags throughout your weeks whenever a meeting thought comes to mind. They’ll be collected for Meeting Prep before the meeting; use Meeting Prep to record attendance, live notes, or outcomes too.")
 	actionsRow := container.NewHBox(cadenceSelect, dowSelect, domWrapper, timeWrapper, weekendSelect, addBtn, cancelEditBtn)
 	meetingsScroll := container.NewVScroll(meetingsBox)
 	meetingsScroll.SetMinSize(fyne.NewSize(0, 170))

@@ -96,8 +96,8 @@ func TestStandupActivityLabelNamesFridayAfterWeekend(t *testing.T) {
 	location := time.FixedZone("test", -7*60*60)
 	monday := time.Date(2026, time.September, 21, 9, 0, 0, 0, location)
 	tuesday := monday.AddDate(0, 0, 1)
-	if got := standupActivityLabel(monday); got != "Friday" {
-		t.Fatalf("standupActivityLabel(Monday) = %q, want Friday", got)
+	if got := standupActivityLabel(monday); got != "Fri" {
+		t.Fatalf("standupActivityLabel(Monday) = %q, want Fri", got)
 	}
 	if got := standupActivityLabel(tuesday); got != "yesterday" {
 		t.Fatalf("standupActivityLabel(Tuesday) = %q, want yesterday", got)

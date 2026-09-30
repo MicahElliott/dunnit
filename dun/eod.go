@@ -349,7 +349,7 @@ func showEODReport(a fyne.App, date time.Time, path, report string) {
 func showEODAlreadyRunWindow(a fyne.App, date time.Time) {
 	w := a.NewWindow("Dunnit: End of Day")
 	message := "End of Day has already been handled for " +
-		date.Format("Monday, January 2") + "."
+		date.Format("Mon, January 2") + "."
 	_, reportPath := eodReportPath(date)
 	if _, err := os.Stat(reportPath); err == nil {
 		message += " The existing EOD report was left unchanged."
@@ -435,6 +435,8 @@ func showEODWindowReady(a fyne.App) {
 	generationRequested := false
 	generating := false
 	var finalizeDay func(bool)
+	var finalizeBtn *widget.Button
+	generationStatus := newExplanatoryLabel("Generate a draft, then review or edit it before finalizing the day.")
 	draftStopBtn := widget.NewButton("Stop generating", func() {
 		if draftRequest != nil {
 			draftRequest.cancel()
@@ -451,7 +453,11 @@ func showEODWindowReady(a fyne.App) {
 		generationRequested = true
 		generating = true
 		summary.Enable()
+		generationStatus.SetText("Generating the EOD report; please wait…")
 		generateBtn.Disable()
+		if finalizeBtn != nil {
+			finalizeBtn.Disable()
+		}
 		skipBtn.Show()
 		draftStopBtn.Show()
 		draftRequest = newLLMCLIRequest()
@@ -470,15 +476,21 @@ func showEODWindowReady(a fyne.App) {
 				generating = false
 				draftStopBtn.Hide()
 				generateBtn.Enable()
+				if finalizeBtn != nil {
+					finalizeBtn.Enable()
+				}
 				if !hasContent {
+					generationStatus.SetText("Nothing is logged today to summarize. You can type a report here.")
 					summary.SetPlaceHolder("Nothing is logged today to summarize. You can type a report here.")
 					return
 				}
 				if err != nil {
 					if request.canceled() {
+						generationStatus.SetText("Generation stopped. You can type or edit the summary before finalizing.")
 						return
 					}
 					log.Println("Error drafting EOD summary:", err)
+					generationStatus.SetText("No draft was generated. You can type a report here and finalize it.")
 					summary.SetPlaceHolder("No summary was generated. You can type one here and finalize.")
 					return
 				}
@@ -486,6 +498,7 @@ func showEODWindowReady(a fyne.App) {
 					summary.SetText(draft)
 					setReportRichTextMarkdown(summaryPreview, draft)
 				}
+				generationStatus.SetText("Draft generated. Review or edit it, then Finalize Day to open the saved report.")
 			})
 		}()
 	}
@@ -500,6 +513,7 @@ func showEODWindowReady(a fyne.App) {
 	summaryBox := container.NewVBox(
 		summary,
 		container.NewHBox(generateBtn, draftStopBtn),
+		generationStatus,
 		widget.NewLabelWithStyle("Preview:", fyne.TextAlignLeading, fyne.TextStyle{Italic: true}),
 		summaryPreviewScroll,
 		container.NewHBox(copyMarkdownSummaryBtn, copyRichTextSummaryBtn),
@@ -544,6 +558,8 @@ func showEODWindowReady(a fyne.App) {
 	}
 	form := widget.NewForm(items...)
 	finalized := false
+	var finalizedReportPath string
+	var finalizedReportText string
 	finalizeDay = func(writeEODReport bool) {
 		if finalized {
 			return
@@ -556,6 +572,9 @@ func showEODWindowReady(a fyne.App) {
 			_, path := eodReportPath(now)
 			if err := writeReportFileIfAbsent(path, eodReportForDisplay(summary.Text, now)); err != nil {
 				log.Println("Error saving EOD report:", err)
+			} else {
+				finalizedReportPath = path
+				finalizedReportText = summary.Text
 			}
 		}
 		if err := recordActivity(productivity.Selected, "PRODUCTIVITY"); err != nil {
@@ -596,8 +615,11 @@ func showEODWindowReady(a fyne.App) {
 		}
 		markEndOfDayRun(now)
 		w.Close()
+		if finalizedReportPath != "" {
+			showEODReport(a, now, finalizedReportPath, finalizedReportText)
+		}
 	}
-	finalizeBtn := widget.NewButton("Finalize Day", func() { finalizeDay(true) })
+	finalizeBtn = widget.NewButton("Finalize Day", func() { finalizeDay(true) })
 
 	w.SetContent(windowPad(container.NewBorder(nil,
 		container.NewHBox(finalizeBtn, skipBtn), nil, nil,

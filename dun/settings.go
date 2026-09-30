@@ -64,8 +64,12 @@ func showSettings(a fyne.App) {
 	lunchTime.SetText(cfg.LunchTime)
 	lunchTime.SetPlaceHolder("HH:MM or noon")
 
-	digestDay := widget.NewSelect([]string{"", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"}, nil)
-	digestDay.SetSelected(cfg.WeeklyDigestDay)
+	digestDay := widget.NewSelect(append([]string{""}, dowNames...), nil)
+	digestChoice := cfg.WeeklyDigestDay
+	if day, ok := parseWeekday(cfg.WeeklyDigestDay); ok {
+		digestChoice = dowNames[day]
+	}
+	digestDay.SetSelected(digestChoice)
 
 	digestTime := newSingleLineEntry()
 	digestTime.SetText(cfg.WeeklyDigestTime)
@@ -282,7 +286,7 @@ func showSettings(a fyne.App) {
 		showMiniCalendarDialog(a, w)
 	})
 
-	recurringItemsBtn := widget.NewButton("Recurring Items\u2026", func() {
+	recurringItemsBtn := widget.NewButton("Recurring Plans\u2026", func() {
 		showRecurringItemsDialog(a, w)
 	})
 

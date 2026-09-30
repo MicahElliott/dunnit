@@ -191,7 +191,7 @@ func showMeetingPrepDialogForTag(a fyne.App, initialTag string) {
 	}
 
 	noteEntry := widget.NewMultiLineEntry()
-	noteEntry.SetPlaceHolder("New agenda note for this meeting\u2026")
+	noteEntry.SetPlaceHolder("Prep note, live note, or meeting outcome\u2026")
 	noteEntry.SetMinRowsVisible(3)
 
 	saveNote := func() {
@@ -206,22 +206,37 @@ func showMeetingPrepDialogForTag(a fyne.App, initialTag string) {
 		}
 		noteEntry.SetText("")
 	}
+	recordAttendance := func() {
+		tag := normalizeTag(tagEntry.Text)
+		if tag == "" {
+			return
+		}
+		if err := recordActivity(tag+" attended", "MEETING"); err != nil {
+			logOperationError("record meeting attendance", err)
+		}
+	}
 
 	content := container.NewVBox(
 		widget.NewLabel("Meeting Prep"),
-		container.NewBorder(nil, nil, nil, container.NewHBox(catFilterSelect, weeksSelect, refreshBtn), tagEntry),
+		container.NewBorder(nil, nil, nil, container.NewHBox(
+			widget.NewLabel("Show:"), catFilterSelect,
+			widget.NewLabel("Look back (weeks):"), weeksSelect,
+			refreshBtn,
+		), tagEntry),
 		onlyNewCheck,
-		newExplanatoryLabel("Recent entries for this tag (editable scratch view \u2014 does not alter the ledger):"),
+		newExplanatoryLabel("Look back is measured in weeks; the history shows up to the 8 most recent matching entries. Editing this box does not alter the ledger."),
 		history,
-		widget.NewLabel("Add a new note:"),
+		widget.NewLabel("Record a meeting note:"),
+		newExplanatoryLabel("Save Note appends a new MEETING entry to today’s ledger under the tag. Use it before, during, or after the meeting; Record attended adds a simple attendance marker."),
 		noteEntry,
 		container.NewHBox(
 			widget.NewButton("Save Note", saveNote),
+			widget.NewButton("Record attended", recordAttendance),
 			widget.NewButton("Close", func() { w.Close() }),
 		),
 	)
 
 	w.SetContent(windowPad(content))
-	w.Resize(fyne.NewSize(480, 520))
+	w.Resize(fyne.NewSize(560, 560))
 	w.Show()
 }

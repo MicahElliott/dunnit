@@ -53,7 +53,7 @@ func TestPresentParticiple(t *testing.T) {
 	cases := map[string]string{
 		"send": "sending", "write": "writing", "make": "making",
 		"run": "running", "fix": "fixing", "try": "trying",
-		"tie": "tying", "Send": "Sending", "FIX": "FIXING",
+		"tie": "tying", "frame": "framing", "Send": "Sending", "FIX": "FIXING",
 	}
 	for in, want := range cases {
 		if got := PresentParticiple(in); got != want {
@@ -68,6 +68,7 @@ func TestBaseTenseLeadingWord(t *testing.T) {
 		"Sending the report ~5m": "Send the report ~5m",
 		"Shipped the fix":        "Ship the fix",
 		"Creating a task":        "Create a task",
+		"Framing a proposal":     "Frame a proposal",
 		"Walk the dog":           "Walk the dog",
 	}
 	for in, want := range cases {

@@ -121,13 +121,49 @@ returning; a newly typed TODO without a carry marker may intentionally reopen
 the work. Older items belong in `SOMEDAY` or history until you choose to bring
 them back.
 
-- **Weekly / Monthly / Quarterly / Annual**: the same Kickoff (forward-
-  looking) and Review (backward-looking) shape repeats at each larger
-  scale, with more built up at the larger scales (OKRs at
-  quarter/year, an IMPACT/MILESTONE/WIN-driven narrative at year-end).
+### The week is a first-class unit
+
+The day is the capture loop; the **week is the main planning and reporting
+unit**. A week gives the day's entries a useful boundary without asking every
+hourly note to carry a project plan. Dunnit keeps the week visible in several
+ways:
+
+- Each ledger lives inside an ISO week directory (`wNN`), and a Week Kickoff
+  and Week Review are available from the tray menu.
+- Week Kickoff is where you decide what deserves attention this week, review
+  open work, add a weekly goal, and accept any weekly recurring plans.
+- Daily Start of Day carries active `TODO`/`DOING` work across workdays inside
+  that rhythm. Week Review gathers the week's entries into a report and gives
+  you a place to close or defer what should not continue.
+- `Postpone` is the explicit pressure-release action: it records `SOMEDAY`
+  and removes the open item from active planning until you bring it back.
+  `Done` records a completed outcome, `Discard` drops an item, and leaving an
+  item open carries it forward for another daily or weekly decision.
+
+Use the week to choose a small set of outcomes and themes, then use the day to
+record what actually happened. Month, quarter, and year Kickoffs and Reviews
+roll up from that weekly record; they do not replace the week as the normal
+working horizon.
+
+### Meetings
+
+`MEETING` is a meeting record, not only an agenda category. Add the meeting's
+tag and use it for any of these moments:
+
+- before the meeting, save a prep question or agenda topic;
+- while it is happening, save a live note;
+- after it, save an outcome or use **Record attended** in Meeting Prep, which
+  writes a tagged `MEETING` entry ending in `attended`.
+
+The Meeting Prep history box is an editable scratch view and never changes old
+ledger lines. Its **Look back** selector means “search the last N weeks,” and
+the history is capped at the eight most recent matching entries. **Save Note**
+adds a new tagged `MEETING` entry to today's ledger. Post-Meeting Capture is
+for the follow-on `TIL`, `GOAL`, `RISK`, and `TODO` entries that come out of
+the meeting.
 
 Two workflows run orthogonally to this calendar rhythm: **Meeting
-Prep** (pull recent history on a topic/person before a meeting) and
+Prep** (pull recent history on a topic/person and record meeting notes) and
 **Post-Meeting Capture** (quickly log TILs/GOALs/RISKs/TODOs right
 after). Standups draw automatically from the ledger since your last
 standup.
@@ -252,6 +288,13 @@ because those can open a browser or otherwise make network requests.
   an alias, so `cc3:docs/foo.txt` opens the matching file with `$EDITOR`. The
   special `dunnit:` prefix resolves from Dunnit's own data directory.
 
+### Dunnit vocabulary
+
+An **entry** is one timestamped line in a ledger. An **item** is an open piece
+of planned work such as a `TODO`, `DOING`, or `GOAL`; a recurring plan is a
+suggestion that can become an entry when you add it. “Dunnit” is the product
+name, so it is less precise than “entry” when referring to recorded history.
+
 For install, configuration, and data-storage details, see the
 top-level [`README`](../README.md) rather than this guide.
 
@@ -280,7 +323,7 @@ authoritative source; update this section whenever categories change._
 - ⏳ `WAITING` — Blocked on someone/something else; not actionable right now.
 - 🔧 `FIXME` — Something broken that needs fixing — roughly Jira's "Bug".
 - ⚠️ `RISK` — A risk worth flagging/tracking.
-- 📅 `MEETING` — Scratch agenda-builder notes for an upcoming meeting (tag-scoped).
+- 📅 `MEETING` — Tag-scoped meeting prep, attendance, live notes, or outcomes.
 - 🕰️ `SOMEDAY` — Something you might want to do eventually, not now (also where stalled TODOs/GOALs land).
 - 🏎️ `OPTIMIZE` — Something working but worth improving/speeding up.
 

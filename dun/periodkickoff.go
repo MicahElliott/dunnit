@@ -232,7 +232,7 @@ func showPeriodKickoffWindow(a fyne.App, period summaryPeriod, anchor time.Time)
 		}
 		due := dueRecurringItems(cfg, now, cadence)
 		if box := recurringItemsSuggestionBox(due, refreshList); box != nil {
-			recurringBox.Add(widget.NewLabelWithStyle("Recurring Items Due This "+string(period), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
+			recurringBox.Add(widget.NewLabelWithStyle("Recurring Plans Due This "+string(period), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}))
 			recurringBox.Add(box)
 		}
 		recurringBox.Refresh()

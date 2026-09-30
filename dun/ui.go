@@ -1534,7 +1534,7 @@ func buildTrayMenu(a fyne.App, w4 fyne.Window) *fyne.Menu {
 		fyne.NewMenuItem("Search…", func() { showSearchDialog(a) }),
 		fyne.NewMenuItem("Navigator…", func() { showNavigatorWindow(a) }),
 		fyne.NewMenuItem("SOMEDAY Items…", func() { showSomedayBrowserWindow(a) }),
-		fyne.NewMenuItem("Recurring Items…", func() {
+		fyne.NewMenuItem("Recurring Plans…", func() {
 			showRecurringItemsDialog(a, w4)
 		}),
 	)
