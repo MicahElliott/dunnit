@@ -156,12 +156,15 @@ kind = "project"
 status = "active"
 aliases = ["oldfoo"]
 parent = "company"
+exclude = true
 ```
 
 Tag profiles are optional metadata. Clicking a tag shows its profile above the
 recent activity history, and tags without profiles continue to work normally.
-Profile metadata is current state; activity remains in the append-only ledger,
-so no special `TAG` ledger category is needed.
+Set `exclude = true` to omit the tag (and its aliases) from reports and summary
+views without adding it separately in Settings. Profile metadata is current
+state; activity remains in the append-only ledger, so no special `TAG` ledger
+category is needed.
 
 ## Configuration
 

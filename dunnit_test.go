@@ -57,7 +57,7 @@ func TestRunCLITagDefinition(t *testing.T) {
 	t.Setenv("DUNNIT_DIR", t.TempDir())
 	if got := runCLI([]string{
 		"tag", "#SCRUM-12345", "--title", "Email delivery", "--kind", "ticket",
-		"--status", "active", "--alias", "old-ticket",
+		"--status", "active", "--alias", "old-ticket", "--exclude",
 	}); got != 0 {
 		t.Fatalf("runCLI tag returned %d, want 0", got)
 	}
@@ -65,7 +65,7 @@ func TestRunCLITagDefinition(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("LoadTagDefinition = %#v, %v, found %v", definition, err, found)
 	}
-	if definition.Title != "Email delivery" || definition.Kind != "ticket" || definition.Status != "active" || len(definition.Aliases) != 1 {
+	if definition.Title != "Email delivery" || definition.Kind != "ticket" || definition.Status != "active" || len(definition.Aliases) != 1 || !definition.Exclude {
 		t.Fatalf("tag definition = %#v, want CLI fields", definition)
 	}
 }

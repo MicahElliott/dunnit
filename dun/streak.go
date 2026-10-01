@@ -34,7 +34,7 @@ func ledgerHasAnyEntries(date time.Time) bool {
 }
 
 func isExcludedStreakEntry(entry LedgerEntry) bool {
-	return lineHasExcludedTag(entry.Text, LoadConfig().ReportExcludeTags)
+	return lineHasExcludedTag(entry.Text, effectiveReportExcludeTags(LoadConfig()))
 }
 
 func filterExcludedStreakEntries(entries []LedgerEntry) []LedgerEntry {

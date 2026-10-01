@@ -924,7 +924,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 			openItemsBox.Refresh()
 			return
 		}
-		excludeTags := LoadConfig().ReportExcludeTags
+		excludeTags := effectiveReportExcludeTags(LoadConfig())
 		tagStats := gatherTagStats()
 		addRow := func(item OpenItem) {
 			// Planned's icon-only controls stay as plain Fyne buttons.
@@ -1097,7 +1097,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 			completedBox.Refresh()
 			return
 		}
-		excludeTags := LoadConfig().ReportExcludeTags
+		excludeTags := effectiveReportExcludeTags(LoadConfig())
 		tagStats := gatherTagStats()
 		cats, grouped := groupCategoryItemsByGroup("end", items)
 		excludedCount := 0
@@ -1158,7 +1158,7 @@ func BuildMainWindow(a fyne.App) fyne.Window {
 			reflectionsBox.Refresh()
 			return
 		}
-		excludeTags := LoadConfig().ReportExcludeTags
+		excludeTags := effectiveReportExcludeTags(LoadConfig())
 		tagStats := gatherTagStats()
 		cats, grouped := groupCategoryItemsByGroup("hilite", items)
 		excludedCount := 0

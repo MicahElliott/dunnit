@@ -376,9 +376,8 @@ func startClipboardCommand(name string, args []string, content string) bool {
 func showEditableReportWindow(a fyne.App, title, savePath, initialText string) {
 	w := a.NewWindow(title)
 
-	editor := widget.NewMultiLineEntry()
+	editor := newMultiLineEntry()
 	editor.SetText(initialText)
-	editor.Wrapping = fyne.TextWrapWord
 
 	preview := newReportRichText(initialText)
 	preview.Wrapping = fyne.TextWrapWord

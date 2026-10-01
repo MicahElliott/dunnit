@@ -84,6 +84,7 @@ func runTagCLI(args []string) int {
 		kind        string
 		status      string
 		parent      string
+		exclude     bool
 		aliases     stringList
 	)
 	fs.StringVar(&title, "title", "", "human-readable title")
@@ -92,6 +93,7 @@ func runTagCLI(args []string) int {
 	fs.StringVar(&url, "url", "", "http:// or https:// link")
 	fs.StringVar(&kind, "kind", "", "project, ticket, topic, person, team, service, area, or goal")
 	fs.StringVar(&status, "status", "", "active, planned, blocked, paused, done, or archived")
+	fs.BoolVar(&exclude, "exclude", false, "exclude this tag from reports (use --exclude=false to clear)")
 	fs.Var(&aliases, "alias", "repeatable alias")
 	fs.StringVar(&parent, "parent", "", "parent tag")
 	fs.Usage = func() {
@@ -146,6 +148,9 @@ func runTagCLI(args []string) int {
 	}
 	if fsWasSet(fs, "status") {
 		definition.Status = strings.TrimSpace(status)
+	}
+	if fsWasSet(fs, "exclude") {
+		definition.Exclude = exclude
 	}
 	if fsWasSet(fs, "parent") {
 		definition.Parent = strings.TrimSpace(parent)

@@ -244,7 +244,7 @@ func showNavigatorAskAIDialog(a fyne.App, parent fyne.Window, entries []LedgerEn
 // entry's date since entries here may span many days unlike a single
 // day's raw ledger file) for feeding to summarizeWithLLMCLIPrompt.
 func ledgerEntriesToText(entries []LedgerEntry) string {
-	excludeTags := LoadConfig().ReportExcludeTags
+	excludeTags := effectiveReportExcludeTags(LoadConfig())
 	var sb strings.Builder
 	for _, e := range entries {
 		if lineHasExcludedTag(e.Text, excludeTags) {

@@ -50,6 +50,26 @@ func TestGatherLedgerTextForDateExcludesConfiguredTags(t *testing.T) {
 	}
 }
 
+func TestGatherLedgerTextForDateExcludesTagProfileTags(t *testing.T) {
+	withTempDunnitDir(t)
+	if err := SaveTagDefinition(TagDefinition{Name: "private", Exclude: true}); err != nil {
+		t.Fatalf("SaveTagDefinition: %v", err)
+	}
+	today := time.Now()
+	writeLedgerLinesForDate(t, today, []string{
+		"[09:00:00] DONE work task #work",
+		"[09:05:00] DONE private errand #private",
+	})
+
+	text := gatherLedgerTextForDate(today)
+	if strings.Contains(text, "private errand") {
+		t.Fatalf("tag-profile-excluded entry appeared in report input: %q", text)
+	}
+	if !strings.Contains(text, "work task") {
+		t.Fatalf("included work entry missing from report input: %q", text)
+	}
+}
+
 func TestGatherLedgerTextForRangeDeduplicatesCarryForwardRows(t *testing.T) {
 	withTempDunnitDir(t)
 	first := time.Date(2026, time.September, 21, 0, 0, 0, 0, time.Local)

@@ -144,7 +144,7 @@ func parseLedgerLineTime(line string, date time.Time) (t time.Time, ok bool) {
 func gatherStandupLines(cfg Config, now time.Time) []string {
 	since := standupWindowStart(cfg, now)
 	dates := append(append([]time.Time{}, standupSourceDates(now)...), now)
-	excludeTags := LoadConfig().ReportExcludeTags
+	excludeTags := effectiveReportExcludeTags(LoadConfig())
 
 	seen := make(map[string]bool)
 	var out []string
@@ -234,7 +234,7 @@ func standupSeedReport(lines []string, now time.Time) string {
 }
 
 func standupOpenItemsForReport() []OpenItem {
-	excludeTags := LoadConfig().ReportExcludeTags
+	excludeTags := effectiveReportExcludeTags(LoadConfig())
 	var items []OpenItem
 	for _, item := range getOpenItems() {
 		if item.Category != "TODO" && item.Category != "DOING" && item.Category != "GOAL" {

@@ -98,7 +98,7 @@ func recordTomorrowGoals(lines []string) {
 // item (recordPostponed, into SOMEDAY); leaving it unchecked leaves
 // it available for the next Start of Day carry-forward.
 func eodOpenItemsSection(category string) (box *fyne.Container, items []OpenItem, checks []*widget.Check) {
-	excludeTags := LoadConfig().ReportExcludeTags
+	excludeTags := effectiveReportExcludeTags(LoadConfig())
 	for _, item := range getOpenItems() {
 		if item.Category == category && !lineHasExcludedTag(item.Text, excludeTags) {
 			items = append(items, item)
@@ -128,9 +128,10 @@ func eodLedgerLineLabel(line string) fyne.CanvasObject {
 }
 
 func eodIncludedLedgerLines(lines []string, cfg Config) []string {
+	excludeTags := effectiveReportExcludeTags(cfg)
 	kept := make([]string, 0, len(lines))
 	for _, line := range lines {
-		if lineHasExcludedTag(line, cfg.ReportExcludeTags) {
+		if lineHasExcludedTag(line, excludeTags) {
 			continue
 		}
 		kept = append(kept, line)
@@ -139,8 +140,9 @@ func eodIncludedLedgerLines(lines []string, cfg Config) []string {
 }
 
 func eodEntryIncluded(entry LedgerEntry, cfg Config) bool {
+	excludeTags := effectiveReportExcludeTags(cfg)
 	for _, tag := range entry.Tags {
-		for _, excluded := range cfg.ReportExcludeTags {
+		for _, excluded := range excludeTags {
 			if strings.EqualFold(tag, excluded) {
 				return false
 			}
@@ -331,7 +333,7 @@ func eodReportForDisplay(report string, date time.Time) string {
 		bodyLines = append(bodyLines, line)
 	}
 	body := strings.TrimSpace(strings.Join(bodyLines, "\n"))
-	body = strings.TrimSpace(filterExcludedTagLines(body, LoadConfig().ReportExcludeTags))
+	body = strings.TrimSpace(filterExcludedTagLines(body, effectiveReportExcludeTags(LoadConfig())))
 	body = strings.TrimSpace(augmentEODReport(body, date))
 	heading := "# End-of-Day Recap — " + date.Format("Mon Jan 2, 2006")
 	stats := "*Stats: " + eodReportStats(date) + "*"
@@ -414,10 +416,10 @@ func showEODWindowReady(a fyne.App) {
 	// text in a plain entry field, so this renders it properly via
 	// Fyne's built-in widget.NewRichTextFromMarkdown, updating live as
 	// the summary is edited.
-	summary := widget.NewMultiLineEntry()
+	summary := newMultiLineEntry()
 	summary.SetPlaceHolder("Tap Generate to create the EOD report summary…")
 	summary.Disable()
-	summary.SetMinRowsVisible(10)
+	summaryField := multiLineEntryField(summary, 10)
 	summaryPreview := newReportRichText("")
 	summaryPreview.Wrapping = fyne.TextWrapWord
 	summary.OnChanged = func(text string) {
@@ -511,7 +513,7 @@ func showEODWindowReady(a fyne.App) {
 		}
 	})
 	summaryBox := container.NewVBox(
-		summary,
+		summaryField,
 		container.NewHBox(generateBtn, draftStopBtn),
 		generationStatus,
 		widget.NewLabelWithStyle("Preview:", fyne.TextAlignLeading, fyne.TextStyle{Italic: true}),
@@ -528,9 +530,9 @@ func showEODWindowReady(a fyne.App) {
 	sentiment := widget.NewSelect([]string{"Negative", "Neutral", "Positive"}, nil)
 	sentiment.SetSelected("Neutral")
 
-	goals := widget.NewMultiLineEntry()
+	goals := newMultiLineEntry()
 	goals.SetPlaceHolder("Any goals for tomorrow? One per line\u2026")
-	goals.SetMinRowsVisible(3)
+	goalsField := multiLineEntryField(goals, 3)
 
 	// Open TODOs, DOING, and QUESTIONs each get their own Postpone checkbox
 	// section. Checking a box sends that item to SOMEDAY before the next
@@ -545,7 +547,7 @@ func showEODWindowReady(a fyne.App) {
 		widget.NewFormItem("Productivity (1\u20135)", productivity),
 		widget.NewFormItem("Meeting Hours", meetingHours),
 		widget.NewFormItem("Sentiment", sentiment),
-		widget.NewFormItem("Tomorrow’s Goals", goals),
+		widget.NewFormItem("Tomorrow’s Goals", goalsField),
 	}
 	if len(openTodos) > 0 {
 		items = append(items, widget.NewFormItem("Postpone Open TODOs", todoBox))

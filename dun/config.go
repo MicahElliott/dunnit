@@ -184,14 +184,15 @@ type Config struct {
 	// 2026-09-02) -- edit via Settings to change.
 	FavoriteCategories []string `toml:"favorite_categories"`
 
-	// ReportExcludeTags is a list of "#tag" strings; any ledger line
-	// containing one of these tags is excluded from every report/
+	// ReportExcludeTags is the Settings list of "#tag" strings; any ledger
+	// line containing one of these tags is excluded from every report/
 	// summary generation pipeline (Kickoff/Review digests, Standup,
 	// Status Report, Annual Review, Metrics, etc) -- the goal is
 	// keeping non-work items (personal errands, etc) out of work-
 	// facing reports without needing to keep them out of the ledger
-	// itself. Default seed: #home/#personal/#buy/#shop (Micah's
-	// stated preference, 2026-09-02) -- edit via Settings to change.
+	// itself. Tag profiles can add exclusions with their Exclude field.
+	// Default seed: #home/#personal/#buy/#shop (Micah's stated
+	// preference, 2026-09-02) -- edit via Settings to change.
 	// Entries are matched as exact #tag tokens (see extractTags),
 	// case-sensitive, same as tags are written/matched everywhere
 	// else in this codebase.

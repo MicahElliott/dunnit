@@ -48,6 +48,7 @@ func TestTagDefinitionRoundTripAndAliasLookup(t *testing.T) {
 		Status:      "active",
 		Aliases:     []string{"oldfoo", "#legacy"},
 		Parent:      "company",
+		Exclude:     true,
 	}
 	if err := SaveTagDefinition(want); err != nil {
 		t.Fatalf("SaveTagDefinition: %v", err)
@@ -73,6 +74,26 @@ func TestTagDefinitionRoundTripAndAliasLookup(t *testing.T) {
 	text := string(data)
 	if !strings.Contains(text, `[tags.foo]`) || strings.Contains(text, "name =") {
 		t.Fatalf("tags.toml has unexpected shape:\n%s", text)
+	}
+	if !strings.Contains(text, "exclude = true") {
+		t.Fatalf("tags.toml omitted exclude flag:\n%s", text)
+	}
+}
+
+func TestEffectiveReportExcludeTagsIncludesExcludedTagProfilesAndAliases(t *testing.T) {
+	withTempDunnitDir(t)
+	if err := SaveTagDefinition(TagDefinition{
+		Name:    "home",
+		Aliases: []string{"personal-home"},
+		Exclude: true,
+	}); err != nil {
+		t.Fatalf("SaveTagDefinition: %v", err)
+	}
+
+	got := effectiveReportExcludeTags(Config{ReportExcludeTags: []string{"#work", "home"}})
+	want := []string{"#work", "#home", "#personal-home"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("effectiveReportExcludeTags = %v, want %v", got, want)
 	}
 }
 

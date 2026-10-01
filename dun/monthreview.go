@@ -158,9 +158,9 @@ func showMonthReviewWindowReady(a fyne.App, anchor time.Time) {
 	if len(hiliteOptions) > 0 {
 		hiliteCaptureSelect.SetSelected(hiliteOptions[0])
 	}
-	hiliteCapture := widget.NewMultiLineEntry()
+	hiliteCapture := newMultiLineEntry()
 	hiliteCapture.SetPlaceHolder("Add one or more missing Hilites, one per line…")
-	hiliteCapture.SetMinRowsVisible(2)
+	hiliteCaptureField := multiLineEntryField(hiliteCapture, 2)
 	addHiliteBtn := widget.NewButton("Add Hilite", func() {
 		category := categoryCodeFromLabel(hiliteCaptureSelect.Selected)
 		if category == "" {
@@ -311,7 +311,7 @@ func showMonthReviewWindowReady(a fyne.App, anchor time.Time) {
 	}
 
 	doneBtn := widget.NewButton("Finish review", func() { w.Close() })
-	excluded := strings.Join(cfg.ReportExcludeTags, ", ")
+	excluded := strings.Join(effectiveReportExcludeTags(cfg), ", ")
 	if excluded == "" {
 		excluded = "none"
 	}
@@ -325,7 +325,7 @@ func showMonthReviewWindowReady(a fyne.App, anchor time.Time) {
 		container.NewHBox(selectAllHilitesBtn, clearHilitesBtn),
 		hiliteEvidence,
 		container.NewHBox(hiliteCaptureSelect, addHiliteBtn),
-		hiliteCapture,
+		hiliteCaptureField,
 		newWindowHeading("Generate report"),
 		newExplanatoryLabel("Choose a style, then generate. The result opens in an editable report window."),
 		container.NewHBox(widget.NewLabel("Style:"), themeSelect, generateBtn),

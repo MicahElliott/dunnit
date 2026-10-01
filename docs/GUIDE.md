@@ -192,8 +192,9 @@ other lookup with its own tools, then runs a command such as:
 ```
 
 The tag command writes `$DUNNIT_DIR/tags.toml`, preserves fields that were not
-specified, and accepts `--description`, `--parent TAG`, and repeatable
-`--alias NAME` options. Dunnit therefore stays connector-free: the harness
+specified, and accepts `--description`, `--parent TAG`, repeatable
+`--alias NAME`, and `--exclude` options. Use `--exclude=false` to clear the
+flag. Dunnit therefore stays connector-free: the harness
 owns authentication and external lookup, while Dunnit only stores the
 resulting profile. The tag editor offers the same common kinds (`project`,
 `ticket`, `topic`, `person`, `team`, `service`, `area`, `goal`) and statuses

@@ -364,7 +364,7 @@ func gatherReviewSourceMaterialWithCategories(period summaryPeriod, from, to tim
 			logOperationError("read review source "+f.Path, err)
 			continue
 		}
-		filteredBody := filterExcludedTagLines(string(body), LoadConfig().ReportExcludeTags)
+		filteredBody := filterExcludedTagLines(string(body), effectiveReportExcludeTags(LoadConfig()))
 		if strings.TrimSpace(filteredBody) == "" {
 			continue
 		}

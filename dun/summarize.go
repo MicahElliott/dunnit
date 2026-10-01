@@ -200,7 +200,7 @@ type reportLedgerLine struct {
 // while applying category filtering, configured tag exclusions, and logical
 // carry-forward deduplication to parsed ledger entries.
 func concatLedgerFilesWithCategories(files []string, categories map[string]bool) string {
-	excludeTags := LoadConfig().ReportExcludeTags
+	excludeTags := effectiveReportExcludeTags(LoadConfig())
 	var rows []reportLedgerLine
 	for _, path := range files {
 		f, err := os.Open(path)

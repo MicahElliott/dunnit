@@ -51,9 +51,9 @@ func showMonthKickoffWindow(a fyne.App, anchor time.Time) {
 		currentGoalsBox.Refresh()
 	}
 	refreshGoals()
-	newGoalsEntry := widget.NewMultiLineEntry()
+	newGoalsEntry := newMultiLineEntry()
 	newGoalsEntry.SetPlaceHolder("New/updated GOALs for this month? One per line\u2026")
-	newGoalsEntry.SetMinRowsVisible(2)
+	newGoalsField := multiLineEntryField(newGoalsEntry, 2)
 
 	// Monthly recurring items, surfaced as a checklist (see
 	// RECURRING-ITEMS-DESIGN-SEED.md) -- each due monthly item is a
@@ -88,7 +88,7 @@ func showMonthKickoffWindow(a fyne.App, anchor time.Time) {
 		priorReviewReferenceBox(a, w, periodMonth, anchor),
 		sodHeading("GOALs in motion"),
 		currentGoalsBox,
-		newGoalsEntry,
+		newGoalsField,
 		widget.NewLabelWithStyle("Looking Ahead: Monthly Recurring Plans", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		recurringBox,
 		doneBtn,

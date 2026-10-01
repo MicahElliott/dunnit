@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -27,6 +28,7 @@ type TagDefinition struct {
 	Status      string   `toml:"status"`
 	Aliases     []string `toml:"aliases"`
 	Parent      string   `toml:"parent"`
+	Exclude     bool     `toml:"exclude"`
 }
 
 type tagDefinitionsFile struct {
@@ -133,6 +135,56 @@ func loadTagDefinitions() (map[string]TagDefinition, error) {
 		definitions[name] = definition
 	}
 	return definitions, nil
+}
+
+// effectiveReportExcludeTags combines the Settings list with tag profiles
+// marked Exclude. Aliases inherit the profile's exclusion so a ledger using
+// an older alias is filtered consistently with the canonical tag.
+func effectiveReportExcludeTags(cfg Config) []string {
+	var excluded []string
+	seen := make(map[string]bool)
+	add := func(raw string) {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			return
+		}
+		if !strings.HasPrefix(raw, "#") {
+			raw = "#" + raw
+		}
+		key := strings.ToLower(raw)
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		excluded = append(excluded, raw)
+	}
+
+	for _, tag := range cfg.ReportExcludeTags {
+		add(tag)
+	}
+	definitions, err := loadTagDefinitions()
+	if err != nil {
+		// A malformed optional tag profile should not disable exclusions that
+		// were configured in Settings.
+		logOperationError("load tag definitions for report exclusions", err)
+		return excluded
+	}
+	names := make([]string, 0, len(definitions))
+	for name := range definitions {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		definition := definitions[name]
+		if !definition.Exclude {
+			continue
+		}
+		add(name)
+		for _, alias := range definition.Aliases {
+			add(alias)
+		}
+	}
+	return excluded
 }
 
 // LoadTagDefinition looks up a profile by its tag or one of its aliases.
@@ -298,6 +350,9 @@ func tagDefinitionMetadata(definition TagDefinition) string {
 		}
 		parts = append(parts, "aliases "+strings.Join(aliases, ", "))
 	}
+	if definition.Exclude {
+		parts = append(parts, "excluded from reports")
+	}
 	return strings.Join(parts, " · ")
 }
 
@@ -325,10 +380,10 @@ func showTagDefinitionEditor(parent fyne.Window, tag string, onSave func()) {
 	summaryEntry.SetText(definition.Summary)
 	summaryEntry.SetPlaceHolder("One-sentence summary (optional)")
 
-	descriptionEntry := widget.NewMultiLineEntry()
+	descriptionEntry := newMultiLineEntry()
 	descriptionEntry.SetText(definition.Description)
 	descriptionEntry.SetPlaceHolder("Longer Markdown description (optional)")
-	descriptionEntry.SetMinRowsVisible(7)
+	descriptionField := multiLineEntryField(descriptionEntry, 7)
 
 	urlEntry := newSingleLineEntry()
 	urlEntry.SetText(definition.URL)
@@ -356,16 +411,20 @@ func showTagDefinitionEditor(parent fyne.Window, tag string, onSave func()) {
 	parentEntry.SetText(definition.Parent)
 	parentEntry.SetPlaceHolder("Parent tag (optional)")
 
+	excludeCheck := widget.NewCheck("Exclude from reports", nil)
+	excludeCheck.SetChecked(definition.Exclude)
+
 	form := container.NewVBox(
 		widget.NewLabel("Tag: #"+definition.Name),
 		widget.NewLabel("Title"), titleEntry,
 		widget.NewLabel("Summary"), summaryEntry,
-		widget.NewLabel("Description"), descriptionEntry,
+		widget.NewLabel("Description"), descriptionField,
 		widget.NewLabel("Link"), urlEntry,
 		widget.NewLabel("Kind"), kindSelect,
 		widget.NewLabel("Status"), statusSelect,
 		widget.NewLabel("Aliases"), aliasesEntry,
 		widget.NewLabel("Parent"), parentEntry,
+		excludeCheck,
 	)
 
 	d := dialog.NewCustomWithoutButtons("Tag Definition", container.NewVScroll(form), parent)
@@ -390,6 +449,7 @@ func showTagDefinitionEditor(parent fyne.Window, tag string, onSave func()) {
 			Status:      tagDefinitionSelectValue(statusSelect.Selected),
 			Aliases:     aliases,
 			Parent:      parentName,
+			Exclude:     excludeCheck.Checked,
 		}
 		if updated.URL != "" {
 			if _, ok := parseHTTPURL(updated.URL); !ok {
